@@ -1,0 +1,175 @@
+#!/usr/bin/env bash
+
+# ============================================
+# QUICK SETUP - Non-interactive .env generation
+# ============================================
+# For automated/scripted deployments
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+# Check if .env exists
+if [ -f "${PROJECT_ROOT}/.env" ]; then
+    echo "⚠️  .env already exists!"
+    read -p "Overwrite? (yes/no): " confirm
+    if [ "$confirm" != "yes" ]; then
+        echo "Cancelled."
+        exit 0
+    fi
+    cp "${PROJECT_ROOT}/.env" "${PROJECT_ROOT}/.env.backup.$(date +%Y%m%d_%H%M%S)"
+fi
+
+# Required parameters
+VPS_HOST="${1:-}"
+VPS_ROOT_PASSWORD="${2:-}"
+LETSENCRYPT_EMAIL="${3:-}"
+SUPABASE_DOMAIN="${4:-bitsflaredb.bits.do}"
+
+# Validate required params
+if [ -z "$VPS_HOST" ] || [ -z "$VPS_ROOT_PASSWORD" ]; then
+    echo "Usage: $0 <VPS_IP> <ROOT_PASSWORD> <EMAIL> [DOMAIN]"
+    echo ""
+    echo "Example:"
+    echo "  $0 194.163.149.70 'mypassword' 'you@email.com' 'bitsflaredb.bits.do'"
+    echo ""
+    exit 1
+fi
+
+# Determine if SSL should be enabled
+USE_LETSENCRYPT="false"
+if [ -n "$LETSENCRYPT_EMAIL" ] && [ -n "$SUPABASE_DOMAIN" ]; then
+    USE_LETSENCRYPT="true"
+fi
+
+echo "🔐 Generating secure passwords..."
+
+# Generate passwords
+generate_password() {
+    openssl rand -base64 48 | tr -d "=+/" | cut -c1-${1:-32}
+}
+
+DEPLOY_USER_PASSWORD=$(generate_password 32)
+POSTGRES_PASSWORD=$(generate_password 32)
+PG_ADMIN_PASSWORD=$(generate_password 32)
+GRAFANA_ADMIN_PASSWORD=$(generate_password 32)
+MINIO_ROOT_PASSWORD=$(generate_password 32)
+JWT_SECRET=$(openssl rand -base64 32)
+
+# Generate JWT tokens
+echo "🔑 Generating JWT tokens..."
+
+generate_jwt_token() {
+    local role=$1
+    local secret=$2
+
+    local header='{"alg":"HS256","typ":"JWT"}'
+    local payload="{\"role\":\"${role}\",\"iss\":\"supabase\",\"iat\":1641971400,\"exp\":4795571400}"
+
+    local header_b64=$(echo -n "$header" | base64 | tr -d '=' | tr '/+' '_-')
+    local payload_b64=$(echo -n "$payload" | base64 | tr -d '=' | tr '/+' '_-')
+    local signature=$(echo -n "${header_b64}.${payload_b64}" | openssl dgst -sha256 -hmac "$secret" -binary | base64 | tr -d '=' | tr '/+' '_-')
+
+    echo "${header_b64}.${payload_b64}.${signature}"
+}
+
+ANON_KEY=$(generate_jwt_token "anon" "${JWT_SECRET}")
+SERVICE_ROLE_KEY=$(generate_jwt_token "service_role" "${JWT_SECRET}")
+
+# Create .env
+echo "📝 Creating .env file..."
+
+cat > "${PROJECT_ROOT}/.env" << ENV_FILE
+# ============================================
+# PIGSTY SUPABASE - CONFIGURATION
+# ============================================
+# Generated: $(date)
+# NEVER commit this file to git!
+
+# ============================================
+# VPS CONNECTION
+# ============================================
+VPS_HOST=${VPS_HOST}
+VPS_ROOT_PASSWORD=${VPS_ROOT_PASSWORD}
+
+# ============================================
+# DEPLOY USER (created automatically)
+# ============================================
+DEPLOY_USER=deploy
+DEPLOY_USER_PASSWORD=${DEPLOY_USER_PASSWORD}
+
+# ============================================
+# POSTGRESQL
+# ============================================
+POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+PG_ADMIN_PASSWORD=${PG_ADMIN_PASSWORD}
+
+# ============================================
+# SUPABASE JWT (40+ characters required)
+# ============================================
+JWT_SECRET=${JWT_SECRET}
+ANON_KEY=${ANON_KEY}
+SERVICE_ROLE_KEY=${SERVICE_ROLE_KEY}
+
+# ============================================
+# MONITORING
+# ============================================
+GRAFANA_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
+
+# ============================================
+# STORAGE
+# ============================================
+MINIO_ROOT_USER=minioadmin
+MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+
+# ============================================
+# OPTIONAL: DOMAIN & SSL
+# ============================================
+SUPABASE_DOMAIN=${SUPABASE_DOMAIN}
+SUPABASE_API_EXTERNAL_URL=https://${SUPABASE_DOMAIN}
+LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL}
+USE_LETSENCRYPT=${USE_LETSENCRYPT}
+
+# ============================================
+# OPTIONAL: SMTP (for email features)
+# ============================================
+SMTP_HOST=
+SMTP_PORT=587
+SMTP_USER=
+SMTP_PASSWORD=
+SMTP_SENDER_NAME=Supabase
+ENV_FILE
+
+echo ""
+echo "✅ .env created successfully!"
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "📋 CONFIGURATION SUMMARY"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "VPS: ${VPS_HOST}"
+echo "Domain: ${SUPABASE_DOMAIN}"
+echo "SSL: ${USE_LETSENCRYPT}"
+echo ""
+echo "🔐 SAVE THESE CREDENTIALS:"
+echo ""
+echo "Deploy User: deploy / ${DEPLOY_USER_PASSWORD}"
+echo "PostgreSQL Admin: ${PG_ADMIN_PASSWORD}"
+echo "Grafana: admin / ${GRAFANA_ADMIN_PASSWORD}"
+echo "MinIO: minioadmin / ${MINIO_ROOT_PASSWORD}"
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "🚀 NEXT STEPS:"
+echo ""
+echo "  1. Deploy everything:"
+echo "     ./scripts/deploy all"
+echo ""
+if [ "$USE_LETSENCRYPT" = "true" ]; then
+    echo "  2. Setup SSL (after deployment):"
+    echo "     ./scripts/deploy ssl:setup"
+    echo ""
+fi
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""

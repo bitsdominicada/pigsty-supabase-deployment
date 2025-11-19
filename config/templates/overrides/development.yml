@@ -1,0 +1,24 @@
+---
+#==============================================================#
+# File      :   development.yml
+# Desc      :   Development environment overrides
+# Path      :   config/templates/overrides/development.yml
+#==============================================================#
+
+# Development tuning (lighter)
+node_tune: tiny
+pg_conf: tiny
+
+# Lower connection limits for dev
+pg_max_connections: 100
+
+# Shorter backup retention for dev
+pgbackrest_retention_full: 3
+
+# Basic monitoring only
+grafana_enabled: true
+prometheus_scrape_interval: 60s
+loki_enabled: false
+
+# No alerting in dev
+alertmanager_enabled: false

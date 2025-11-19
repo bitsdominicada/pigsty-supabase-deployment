@@ -1,0 +1,25 @@
+---
+#==============================================================#
+# File      :   infra.yml
+# Desc      :   INFRA module specific overrides
+# Path      :   config/templates/overrides/modules/infra.yml
+#==============================================================#
+
+# Portal configuration
+# Note: SSL domain and certbot settings injected from .env via credentials.yml
+infra_portal:
+  home: { domain: home.pigsty }
+  grafana: { domain: g.pigsty, endpoint: "${grafana}" }
+  prometheus: { domain: p.pigsty, endpoint: "${prometheus}" }
+  alertmanager: { domain: a.pigsty, endpoint: "${alertmanager}" }
+  # Supabase portal - domain and certbot will be set dynamically from .env
+  # Example: supa: { domain: bitsflaredb.bits.do, endpoint: "10.10.10.10:8000", websocket: true, certbot: bitsflaredb.bits.do }
+
+# Grafana settings
+grafana_plugins: []
+grafana_git_plugin_repos: []
+
+# Prometheus settings
+prometheus_scrape_interval: 30s
+prometheus_scrape_timeout: 10s
+prometheus_sd_interval: 10s

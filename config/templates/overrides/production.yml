@@ -1,0 +1,24 @@
+---
+#==============================================================#
+# File      :   production.yml
+# Desc      :   Production environment overrides
+# Path      :   config/templates/overrides/production.yml
+#==============================================================#
+
+# Production tuning
+node_tune: oltp
+pg_conf: oltp
+
+# Higher connection limits for production
+pg_max_connections: 200
+
+# Production backup retention
+pgbackrest_retention_full: 14
+
+# Enable all monitoring features
+grafana_enabled: true
+prometheus_scrape_interval: 30s
+loki_enabled: true
+
+# Production alerting
+alertmanager_enabled: true

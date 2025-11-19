@@ -1,0 +1,28 @@
+---
+#==============================================================#
+# File      :   pgsql.yml
+# Desc      :   PGSQL module specific overrides
+# Path      :   config/templates/overrides/modules/pgsql.yml
+#==============================================================#
+
+# PostgreSQL cluster configuration
+pg_cluster: pg-meta
+pg_version: 17
+
+# Patroni HA configuration
+patroni_mode: default
+patroni_watchdog_mode: off
+
+# Connection pooling
+pgbouncer_enabled: true
+pgbouncer_port: 6432
+
+# Additional PostgreSQL users (beyond Supabase defaults)
+# Add custom users here:
+# pg_users:
+#   - { name: myapp_user, password: 'xxx', pgbouncer: true }
+
+# Additional databases
+# Add custom databases here:
+# pg_databases:
+#   - { name: myapp_db, owner: myapp_user }

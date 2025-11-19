@@ -1,0 +1,26 @@
+---
+#==============================================================#
+# File      :   common.yml
+# Desc      :   Common overrides for all environments
+# Path      :   config/templates/overrides/common.yml
+# Note      :   Settings shared across prod/dev/staging
+#==============================================================#
+
+# Common timezone
+node_timezone: America/Santo_Domingo
+
+# Common locale
+node_locale: en_US.UTF-8
+
+# Backup schedule (daily at 1 AM)
+node_crontab:
+  - '00 01 * * * postgres /pg/bin/pg-backup full'
+
+# Common monitoring
+grafana_enabled: true
+prometheus_enabled: true
+
+# Common security (will be overridden by credentials.yml)
+# These are just placeholders
+# grafana_admin_password: <from .env>
+# pg_admin_password: <from .env>

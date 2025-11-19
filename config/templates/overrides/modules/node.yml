@@ -1,0 +1,27 @@
+---
+#==============================================================#
+# File      :   node.yml
+# Desc      :   NODE module specific overrides
+# Path      :   config/templates/overrides/modules/node.yml
+#==============================================================#
+
+# Node tuning (overridden by environment-specific files)
+# node_tune: oltp  # Set in production.yml or development.yml
+
+# Timezone
+# node_timezone: America/Santo_Domingo  # Set in common.yml
+
+# Packages to install on all nodes
+node_packages:
+  - vim
+  - htop
+  - curl
+  - wget
+  - git
+  - jq
+
+# Disable unnecessary services
+node_disable_numa: false
+node_disable_swap: false
+node_disable_firewall: true
+node_disable_selinux: true

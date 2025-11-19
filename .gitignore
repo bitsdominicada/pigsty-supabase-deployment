@@ -1,12 +1,14 @@
-# Environment variables
+# Environment
 .env
 .env.local
 .env.*.local
+.env.active
 
 # SSH keys
 *.pem
 *.key
 id_rsa*
+pigsty_deploy*
 authorized_keys
 
 # Ansible
@@ -14,15 +16,15 @@ authorized_keys
 ansible/inventory/hosts.ini
 *.vault
 
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-.Python
-*.so
-.venv/
-venv/
-ENV/
+# Configuration (generated)
+config/generated/
+config/patches/credentials.yml
+config/patches/credentials.patch
+
+# Temp files
+/tmp/
+*.tmp
+*.temp
 
 # Logs
 *.log
@@ -39,9 +41,18 @@ Thumbs.db
 *.swo
 *~
 
-# Backup files
+# Backups
 *.bak
 *.backup
+*.backup.*
+.old-scripts/
 
-# Local config
-config/pigsty.local.yml
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+*.so
+.venv/
+venv/
+ENV/

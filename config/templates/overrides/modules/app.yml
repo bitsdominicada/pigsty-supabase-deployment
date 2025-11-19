@@ -1,0 +1,44 @@
+---
+#==============================================================#
+# File      :   app.yml
+# Desc      :   APP module specific overrides (Supabase)
+# Path      :   config/templates/overrides/modules/app.yml
+#==============================================================#
+
+# Supabase app configuration
+app_list:
+  - { name: supabase, state: enabled }
+
+# Supabase environment variables
+# Note: Sensitive values (passwords, JWT) and URLs injected from .env via credentials.yml
+app_supabase:
+  # API URLs - will be set dynamically from .env
+  # HTTP example: SITE_URL: "http://${admin_ip}:8000"
+  # HTTPS example: SITE_URL: "https://bitsflaredb.bits.do"
+
+  # PostgreSQL connection
+  POSTGRES_HOST: "${admin_ip}"
+  POSTGRES_PORT: "5436"
+  POSTGRES_DB: "supa"
+  POSTGRES_USER: "supabase_admin"
+  # POSTGRES_PASSWORD: <from .env>
+
+  # S3 Storage (MinIO)
+  S3_PROTOCOL: "http"
+  S3_ENDPOINT: "http://${admin_ip}:9000"
+  S3_BUCKET: "supabase"
+  S3_REGION: "us-east-1"
+  # S3_ACCESS_KEY: <from .env>
+  # S3_SECRET_KEY: <from .env>
+
+  # JWT Configuration
+  # JWT_SECRET: <from .env>
+  # ANON_KEY: <from .env>
+  # SERVICE_ROLE_KEY: <from .env>
+
+  # SMTP Configuration (optional, from .env)
+  # SMTP_HOST: <from .env>
+  # SMTP_PORT: <from .env>
+  # SMTP_USER: <from .env>
+  # SMTP_PASS: <from .env>
+  # SMTP_SENDER_NAME: <from .env>
