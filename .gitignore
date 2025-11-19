@@ -1,0 +1,47 @@
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# SSH keys
+*.pem
+*.key
+id_rsa*
+authorized_keys
+
+# Ansible
+*.retry
+ansible/inventory/hosts.ini
+*.vault
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+*.so
+.venv/
+venv/
+ENV/
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Backup files
+*.bak
+*.backup
+
+# Local config
+config/pigsty.local.yml
