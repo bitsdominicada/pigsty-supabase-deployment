@@ -102,20 +102,39 @@ cp .env.example .env
 vi .env  # Set VPS_HOST, passwords, JWT_SECRET
 ```
 
-### 2. Deploy
+**For HTTPS (optional but recommended):**
+```bash
+# Add to .env before deployment
+SUPABASE_DOMAIN=your-domain.com
+LETSENCRYPT_EMAIL=your@email.com
+USE_LETSENCRYPT=true
+```
+
+### 2. One-Command Deployment
 
 ```bash
-# Full deployment (recommended)
+# Full deployment with automatic HTTPS (if configured)
 ./scripts/deploy all
+```
 
-# Or step by step
+**What happens automatically:**
+1. ✅ Prepares VPS (user, SSH, firewall)
+2. ✅ Configures Pigsty with official template
+3. ✅ Installs PostgreSQL 17 + HA stack
+4. ✅ Installs Docker + Supabase
+5. ✅ **Sets up HTTPS** (if domain configured in .env)
+6. ✅ Verifies all services
+
+**Duration:** 15-25 minutes total
+
+**Alternative (step by step):**
+```bash
 ./scripts/deploy prepare   # VPS setup
 ./scripts/deploy config    # Generate configs
 ./scripts/deploy install   # Install stack
+./scripts/deploy ssl:setup # HTTPS (if not auto-configured)
 ./scripts/deploy verify    # Health check
 ```
-
-**Duration:** 15-25 minutes total
 
 ### 3. Access
 
@@ -275,15 +294,20 @@ sudo -u postgres pgbackrest --stanza=pg-meta restore
 1. Point your domain DNS to VPS IP
 2. Open ports 80 and 443 on VPS
 
-**Configure domain in .env:**
+**Configure domain in .env BEFORE deployment:**
 ```bash
 SUPABASE_DOMAIN=bitsflaredb.bits.do
 LETSENCRYPT_EMAIL=your@email.com
 USE_LETSENCRYPT=true
 ```
 
-**Setup SSL (automatic):**
+**Setup SSL:**
+
+✅ **Automatic** (recommended): If configured in .env, SSL is set up automatically during `./scripts/deploy all`
+
+🔧 **Manual** (if you forgot to configure before): 
 ```bash
+# Add domain to .env, then run:
 ./scripts/deploy ssl:setup
 ```
 

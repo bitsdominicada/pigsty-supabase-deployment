@@ -93,7 +93,36 @@ case "${1:-all}" in
         source "${SCRIPT_DIR}/modules/03-install.sh"
         install_stack
 
+        # Check if SSL is configured in .env
+        load_env
+        if [ "${USE_LETSENCRYPT:-false}" = "true" ] && [ -n "${SUPABASE_DOMAIN:-}" ]; then
+            log_info "SSL enabled in .env, setting up HTTPS..."
+            "${SCRIPT_DIR}/modules/08-ssl-setup.sh" setup
+        else
+            log_warning "SSL not configured in .env (USE_LETSENCRYPT=false or SUPABASE_DOMAIN empty)"
+            log_info "To enable HTTPS later, run: ./scripts/deploy ssl:setup"
+        fi
+
+        echo ""
         log_success "Deployment completed successfully!"
+
+        # Show final status
+        load_env
+        echo ""
+        log_step "Deployment Summary"
+        echo ""
+        echo -e "${GREEN}✓ PostgreSQL 17${NC} running on ${BLUE}${VPS_HOST}:5432${NC}"
+        echo -e "${GREEN}✓ pgBouncer${NC} connection pooler on ${BLUE}${VPS_HOST}:6432${NC}"
+        echo -e "${GREEN}✓ HAProxy${NC} load balancer on ${BLUE}${VPS_HOST}:5436${NC}"
+        echo -e "${GREEN}✓ Grafana${NC} dashboard at ${BLUE}http://${VPS_HOST}:3000${NC}"
+        echo -e "${GREEN}✓ Supabase Studio${NC} at ${BLUE}http://${VPS_HOST}:8000${NC}"
+
+        if [ "${USE_LETSENCRYPT:-false}" = "true" ] && [ -n "${SUPABASE_DOMAIN:-}" ]; then
+            echo ""
+            echo -e "${GREEN}✓ HTTPS Enabled:${NC} ${BLUE}https://${SUPABASE_DOMAIN}${NC}"
+        fi
+
+        echo ""
         ;;
 
     prepare)
