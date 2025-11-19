@@ -54,110 +54,42 @@ config_sync() {
 
     mkdir -p "$backup_dir"
 
-    # Step 1: Build merged configuration
-    log_info "Building configuration from layers..."
+    # Download current pigsty.yml from VPS (or regenerate if not exists)
+    log_info "Downloading current pigsty.yml from VPS..."
 
-    local base_file="${config_dir}/templates/base.yml"
-    local common_file="${config_dir}/templates/overrides/common.yml"
-    local env_file="${config_dir}/templates/overrides/production.yml"  # TODO: Make dynamic
+    if ! scp -i ~/.ssh/pigsty_deploy \
+        -o StrictHostKeyChecking=no \
+        -o LogLevel=ERROR \
+        "${DEPLOY_USER}@${VPS_HOST}:~/pigsty/pigsty.yml" \
+        "$generated_file" 2>/dev/null; then
 
-    # Check if base exists
-    if [ ! -f "$base_file" ]; then
-        log_warning "Base template not found, downloading from VPS..."
-        config_pull
+        log_warning "Could not download pigsty.yml, will regenerate on VPS..."
+
+        # Run configure on VPS to generate clean pigsty.yml
+        ssh_exec << REMOTE
+cd ~/pigsty
+./configure -c app/supa -i ${VPS_HOST} -n > /dev/null 2>&1
+echo "✓ Generated clean pigsty.yml"
+REMOTE
+
+        # Download the generated file
+        scp -i ~/.ssh/pigsty_deploy \
+            -o StrictHostKeyChecking=no \
+            -o LogLevel=ERROR \
+            "${DEPLOY_USER}@${VPS_HOST}:~/pigsty/pigsty.yml" \
+            "$generated_file" 2>/dev/null
     fi
 
-    # Simple merge (will use yq if available)
-    source "${PROJECT_ROOT}/lib/yaml-merge.sh"
+    log_success "Base configuration retrieved"
 
-    local temp_merged="/tmp/pigsty-merged-$$.yml"
+    # Apply credentials and SSL configuration using Python
+    log_info "Applying credentials and SSL configuration..."
 
-    # Merge: base + common + environment + modules
-    local files_to_merge=(
-        "$base_file"
-    )
+    export GRAFANA_ADMIN_PASSWORD POSTGRES_PASSWORD PG_ADMIN_PASSWORD MINIO_ROOT_PASSWORD
+    export JWT_SECRET ANON_KEY SERVICE_ROLE_KEY VPS_HOST
+    export SUPABASE_DOMAIN USE_LETSENCRYPT LETSENCRYPT_EMAIL
 
-    [ -f "$common_file" ] && files_to_merge+=("$common_file")
-    [ -f "$env_file" ] && files_to_merge+=("$env_file")
-
-    # Add module overrides
-    for module_file in "${config_dir}"/templates/overrides/modules/*.yml; do
-        [ -f "$module_file" ] && files_to_merge+=("$module_file")
-    done
-
-    log_info "Merging ${#files_to_merge[@]} configuration files..."
-    merge_yaml "$temp_merged" "${files_to_merge[@]}"
-
-    # Step 2: Apply credentials and SSL configuration from .env
-    log_info "Applying credentials from .env..."
-
-    # Use sed to replace placeholders (simple approach for Phase 1)
-    sed -e "s/grafana_admin_password: .*/grafana_admin_password: ${GRAFANA_ADMIN_PASSWORD}/" \
-        -e "s/pg_admin_password: .*/pg_admin_password: ${PG_ADMIN_PASSWORD}/" \
-        -e "s/minio_secret_key: .*/minio_secret_key: ${MINIO_ROOT_PASSWORD}/" \
-        "$temp_merged" > "$generated_file"
-
-    # Inject SSL domain configuration if enabled
-    if [ "${USE_LETSENCRYPT:-false}" = "true" ] && [ -n "${SUPABASE_DOMAIN:-}" ]; then
-        log_info "Configuring SSL domain: ${SUPABASE_DOMAIN}"
-
-        # Add certbot email to config
-        if ! grep -q "certbot_email:" "$generated_file"; then
-            sed -i.bak "/^all:/a\\
-certbot_email: ${LETSENCRYPT_EMAIL}
-" "$generated_file"
-            rm -f "${generated_file}.bak"
-        fi
-
-        # Update infra_portal with SSL domain
-        if grep -q "infra_portal:" "$generated_file"; then
-            # Add supa entry with SSL domain to infra_portal
-            sed -i.bak "/infra_portal:/a\\
-  supa: { domain: ${SUPABASE_DOMAIN}, endpoint: \"${VPS_HOST}:8000\", websocket: true, certbot: ${SUPABASE_DOMAIN} }
-" "$generated_file"
-            rm -f "${generated_file}.bak"
-        fi
-
-        # Update Supabase URLs to use HTTPS
-        if grep -q "app_supabase:" "$generated_file"; then
-            # Inject HTTPS URLs
-            sed -i.bak "/app_supabase:/a\\
-  SITE_URL: \"https://${SUPABASE_DOMAIN}\"\\
-  API_EXTERNAL_URL: \"https://${SUPABASE_DOMAIN}\"\\
-  SUPABASE_PUBLIC_URL: \"https://${SUPABASE_DOMAIN}\"
-" "$generated_file"
-            rm -f "${generated_file}.bak"
-        fi
-    fi
-
-    # Add Supabase credentials if not present
-    if ! grep -q "JWT_SECRET:" "$generated_file"; then
-        log_info "Adding Supabase credentials..."
-        cat >> "$generated_file" << SUPACREDS
-
-# Supabase Credentials (from .env)
-app_supabase:
-  JWT_SECRET: "${JWT_SECRET}"
-  ANON_KEY: "${ANON_KEY}"
-  SERVICE_ROLE_KEY: "${SERVICE_ROLE_KEY}"
-  POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
-  S3_ACCESS_KEY: "${MINIO_ROOT_USER}"
-  S3_SECRET_KEY: "${MINIO_ROOT_PASSWORD}"
-SUPACREDS
-
-        # Add SMTP if configured
-        if [ -n "${SMTP_HOST:-}" ]; then
-            cat >> "$generated_file" << SMTP
-  SMTP_HOST: "${SMTP_HOST}"
-  SMTP_PORT: "${SMTP_PORT:-587}"
-  SMTP_USER: "${SMTP_USER:-}"
-  SMTP_PASS: "${SMTP_PASSWORD:-}"
-  SMTP_SENDER_NAME: "${SMTP_SENDER_NAME:-Supabase}"
-SMTP
-        fi
-    fi
-
-    rm -f "$temp_merged"
+    python3 "${PROJECT_ROOT}/lib/yaml-update.py" "$generated_file"
 
     log_success "Configuration built successfully"
 

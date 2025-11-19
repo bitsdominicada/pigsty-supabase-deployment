@@ -287,12 +287,55 @@ USE_LETSENCRYPT=true
 ./scripts/deploy ssl:setup
 ```
 
-This will:
-- Update pigsty.yml with SSL domain configuration
-- Apply nginx changes
-- Request Let's Encrypt certificate via Pigsty's certbot
-- Update Supabase URLs to HTTPS
-- Restart services
+**What happens internally:**
+
+1. **Sync Configuration**
+   - Updates `pigsty.yml` with domain in `infra_portal.supa`
+   - Configures HTTPS URLs in `apps.supabase.conf`:
+     ```yaml
+     apps:
+       supabase:
+         conf:
+           SITE_URL: https://bitsflaredb.bits.do
+           API_EXTERNAL_URL: https://bitsflaredb.bits.do
+           SUPABASE_PUBLIC_URL: https://bitsflaredb.bits.do
+     ```
+
+2. **Apply Nginx Configuration**
+   - Runs `./infra.yml -t nginx_config,nginx_restart`
+   - Creates `/etc/nginx/conf.d/supa.conf` with:
+     ```nginx
+     server {
+         server_name  bitsflaredb.bits.do;
+         listen       80;
+         listen       443 ssl;
+         location ^~ /.well-known/acme-challenge/ {
+             root /www/acme;  # For Let's Encrypt validation
+         }
+     }
+     ```
+
+3. **Request Let's Encrypt Certificate**
+   - Uses certbot with webroot method:
+     ```bash
+     certbot certonly --webroot \
+       --webroot-path /www/acme \
+       -d bitsflaredb.bits.do
+     ```
+   - Certificates stored in `/etc/letsencrypt/live/bitsflaredb.bits.do/`
+
+4. **Configure Nginx with SSL Certificates**
+   - Updates nginx to use Let's Encrypt certs:
+     ```nginx
+     ssl_certificate     /etc/letsencrypt/live/bitsflaredb.bits.do/fullchain.pem;
+     ssl_certificate_key /etc/letsencrypt/live/bitsflaredb.bits.do/privkey.pem;
+     ```
+   - Reloads nginx
+
+5. **Update Supabase Containers**
+   - Updates `/opt/supabase/.env` with HTTPS URLs
+   - Restarts all Supabase containers
+   - Containers now use HTTPS endpoints
 
 **Check certificate:**
 ```bash
@@ -304,10 +347,12 @@ This will:
 ./scripts/deploy ssl:renew --dry-run
 ```
 
-**Notes:**
-- Certbot pre-installed in Pigsty
-- Auto-renewal via systemd timer
-- 90-day validity period
+**Important Notes:**
+- ✅ Certbot pre-installed in Pigsty
+- ✅ Auto-renewal via systemd timer (`certbot.timer`)
+- ✅ 90-day validity, auto-renews at 60 days
+- ✅ Configuration in pigsty.yml survives redeployments
+- ⚠️ Don't manually edit `/etc/nginx/conf.d/supa.conf` - regenerate via `./infra.yml`
 
 ### Logs
 

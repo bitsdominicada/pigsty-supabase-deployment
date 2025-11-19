@@ -100,33 +100,71 @@ REMOTE
     ssh_exec << REMOTE
 set -e
 
-# Certbot is pre-installed in Pigsty
-# Use --nginx flag for automatic configuration
-echo "Requesting certificate for ${SUPABASE_DOMAIN}..."
-sudo certbot --nginx \
-    --non-interactive \
-    --agree-tos \
-    --email ${LETSENCRYPT_EMAIL} \
-    -d ${SUPABASE_DOMAIN}
+# Check if certificate already exists
+if sudo certbot certificates 2>/dev/null | grep -q "${SUPABASE_DOMAIN}"; then
+    echo "Certificate for ${SUPABASE_DOMAIN} already exists"
+else
+    echo "Requesting certificate for ${SUPABASE_DOMAIN}..."
+    sudo certbot certonly \
+        --webroot \
+        --webroot-path /www/acme \
+        --non-interactive \
+        --agree-tos \
+        --email ${LETSENCRYPT_EMAIL} \
+        -d ${SUPABASE_DOMAIN}
 
-echo ""
-echo "Certificate installed successfully!"
+    echo ""
+    echo "Certificate installed successfully!"
+fi
 REMOTE
 
-    log_success "SSL certificate installed"
+    log_success "SSL certificate obtained"
 
-    # Step 4: Update Supabase configuration and restart
+    # Step 4: Configure nginx to use Let's Encrypt certificates
+    log_step "Configuring nginx with Let's Encrypt certificates"
+
+    ssh_exec << REMOTE
+set -e
+
+# Update nginx config to use Let's Encrypt certificates
+echo "Updating nginx configuration to use Let's Encrypt..."
+sudo sed -i 's|ssl_certificate     /etc/nginx/conf.d/cert/${SUPABASE_DOMAIN}.crt;|ssl_certificate     /etc/letsencrypt/live/${SUPABASE_DOMAIN}/fullchain.pem;|' /etc/nginx/conf.d/supa.conf
+
+sudo sed -i 's|ssl_certificate_key /etc/nginx/conf.d/cert/${SUPABASE_DOMAIN}.key;|ssl_certificate_key /etc/letsencrypt/live/${SUPABASE_DOMAIN}/privkey.pem;|' /etc/nginx/conf.d/supa.conf
+
+# Test nginx configuration
+sudo nginx -t
+
+# Reload nginx
+sudo systemctl reload nginx
+
+echo "✓ Nginx configured with Let's Encrypt certificates"
+REMOTE
+
+    log_success "Nginx configured with SSL certificates"
+
+    # Step 5: Update Supabase .env and restart containers
     log_step "Updating Supabase with HTTPS URLs"
 
     ssh_exec << REMOTE
 set -e
-cd ~/pigsty
+cd /opt/supabase
 
-# Restart Supabase to pick up new HTTPS URLs from pigsty.yml
-./app.yml -t app_config,app_launch
+# Update Supabase .env with correct HTTPS URLs
+sudo sed -i 's|SITE_URL=.*|SITE_URL=https://${SUPABASE_DOMAIN}|' .env
+sudo sed -i 's|API_EXTERNAL_URL=.*|API_EXTERNAL_URL=https://${SUPABASE_DOMAIN}|' .env
+sudo sed -i 's|SUPABASE_PUBLIC_URL=.*|SUPABASE_PUBLIC_URL=https://${SUPABASE_DOMAIN}|' .env
+
+# Restart Supabase containers
+echo "Restarting Supabase containers..."
+sudo docker compose down
+sleep 3
+sudo docker compose up -d
+
+echo "✓ Supabase restarted with HTTPS URLs"
 REMOTE
 
-    log_success "Supabase restarted with HTTPS"
+    log_success "Supabase configured with HTTPS"
 
     echo ""
     log_step "SSL Setup Complete!"
