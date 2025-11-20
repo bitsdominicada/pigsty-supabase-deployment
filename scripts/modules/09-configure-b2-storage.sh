@@ -58,7 +58,7 @@ sudo sed -i '/^TUS_ALLOW_S3_TAGS=/d' .env
 sudo sed -i '/^MINIO_DOMAIN_IP=/d' .env
 
 # Add Backblaze B2 configuration
-cat >> .env << 'EOF'
+sudo tee -a .env > /dev/null << 'EOF'
 
 # Backblaze B2 Configuration
 S3_BUCKET=${S3_BUCKET}
@@ -99,7 +99,7 @@ set -e
 cd /opt/supabase
 
 # Backup docker-compose.yml
-cp docker-compose.yml docker-compose.yml.backup.$(date +%Y%m%d_%H%M%S)
+sudo cp docker-compose.yml docker-compose.yml.backup.$(date +%Y%m%d_%H%M%S)
 
 # Check if TUS_ALLOW_S3_TAGS already exists
 if grep -q "TUS_ALLOW_S3_TAGS" docker-compose.yml; then

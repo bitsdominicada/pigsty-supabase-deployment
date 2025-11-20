@@ -10,7 +10,7 @@
 #==============================================================#
 
 PROG_NAME="$(basename $0)"
-PROG_DIR="$(cd $(dirname $0) && pwd)"
+PROG_DIR="$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)"
 PROJECT_ROOT="$(cd ${PROG_DIR}/../.. && pwd)"
 
 source "${PROJECT_ROOT}/scripts/utils.sh"
@@ -34,8 +34,8 @@ function fix_supabase_env() {
         # Backup original .env
         sudo cp /opt/supabase/.env /opt/supabase/.env.backup-\$(date +%Y%m%d-%H%M%S)
 
-        # Fix #1: Update POSTGRES_HOST to Docker gateway
-        sudo sed -i 's|^POSTGRES_HOST=.*|POSTGRES_HOST=172.17.0.1|' /opt/supabase/.env
+        # Fix #1: Update POSTGRES_HOST to VPS IP (containers connect from Docker network)
+        sudo sed -i 's|^POSTGRES_HOST=.*|POSTGRES_HOST=${VPS_HOST}|' /opt/supabase/.env
 
         # Fix #5: Update POSTGRES_PASSWORD with correct value
         sudo sed -i 's|^POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=${POSTGRES_PASSWORD}|' /opt/supabase/.env
@@ -92,6 +92,9 @@ function fix_docker_compose() {
 
         # Fix analytics DB_PASSWORD to use non-encoded password (Fix #4)
         sudo sed -i 's|DB_PASSWORD: \${POSTGRES_PASSWORD_ENCODED}|DB_PASSWORD: ${POSTGRES_PASSWORD}|' /opt/supabase/docker-compose.yml
+
+        # Fix analytics DB_DATABASE to use ${POSTGRES_DB} instead of hardcoded "supabase"
+        sudo sed -i 's|DB_DATABASE: supabase|DB_DATABASE: ${POSTGRES_DB}|' /opt/supabase/docker-compose.yml
 EOF
 
     log_success "docker-compose.yml updated"
@@ -106,9 +109,12 @@ function update_pg_passwords() {
     source "${PROJECT_ROOT}/.env"
 
     sshpass -p "${DEPLOY_USER_PASSWORD}" ssh -o StrictHostKeyChecking=no "${DEPLOY_USER}@${VPS_HOST}" bash << EOF
-        # Fix #2: Add pg_hba.conf rule for VPS IP
-        if ! sudo grep -q "${VPS_HOST}/32" /pg/data/pg_hba.conf; then
-            echo "host     all                all                ${VPS_HOST}/32  scram-sha-256" | sudo tee -a /pg/data/pg_hba.conf > /dev/null
+        # Fix #2: Add pg_hba.conf rule for VPS IP (all users)
+        # This is needed because Docker containers connecting to VPS IP appear as coming from VPS IP
+        if ! sudo grep -q "host     all                all                ${VPS_HOST}/32" /pg/data/pg_hba.conf; then
+            echo "Adding general pg_hba.conf rule for VPS IP..."
+            # Insert after the docker network rule
+            sudo sed -i '/host.*postgres.*all.*172.17.0.0\/16/a host     all                all                ${VPS_HOST}/32  scram-sha-256' /pg/data/pg_hba.conf
             sudo su - postgres -c "psql -p 5432 -c 'SELECT pg_reload_conf();'"
             echo "pg_hba.conf updated with VPS IP rule"
         fi
