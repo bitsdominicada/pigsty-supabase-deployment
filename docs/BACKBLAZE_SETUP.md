@@ -92,13 +92,13 @@ Actualiza con tus credenciales:
 
 ```bash
 # STORAGE - BACKBLAZE B2
-S3_PROVIDER=backblaze
-
 S3_BUCKET=supabase-storage
-S3_ENDPOINT=s3.us-west-004.backblazeb2.com
+S3_ENDPOINT=https://s3.us-west-004.backblazeb2.com
 S3_REGION=us-west-004
 S3_ACCESS_KEY=0054f413fc50d980000000003
 S3_SECRET_KEY=K005clOQr83kINWjCg9fWQ7GxaVsLY0
+S3_FORCE_PATH_STYLE=false
+S3_PROTOCOL=https
 ```
 
 ### Opción B: Configurar .env manualmente
@@ -109,19 +109,21 @@ Si ya tienes un `.env`, solo cambia la sección de storage:
 # ============================================
 # STORAGE - BACKBLAZE B2
 # ============================================
-S3_PROVIDER=backblaze
-
 # MinIO NOT USED
 MINIO_ROOT_USER=minioadmin
-MINIO_ROOT_PASSWORD=cualquier_valor
+MINIO_ROOT_PASSWORD=not_used
 
-# Backblaze B2
+# S3 Configuration (Backblaze B2)
 S3_BUCKET=supabase-storage
-S3_ENDPOINT=s3.us-west-004.backblazeb2.com
+S3_ENDPOINT=https://s3.us-west-004.backblazeb2.com
 S3_REGION=us-west-004
 S3_ACCESS_KEY=0054f413fc50d980000000003
 S3_SECRET_KEY=K005clOQr83kINWjCg9fWQ7GxaVsLY0
+S3_FORCE_PATH_STYLE=false
+S3_PROTOCOL=https
 ```
+
+**Nota:** La configuración S3 funciona con cualquier proveedor compatible (MinIO, Backblaze, AWS S3, etc.). Solo cambia los valores según tu proveedor.
 
 ---
 
@@ -131,7 +133,7 @@ S3_SECRET_KEY=K005clOQr83kINWjCg9fWQ7GxaVsLY0
 ./scripts/deploy all
 ```
 
-El sistema detectará automáticamente que `S3_PROVIDER=backblaze` y configurará Supabase para usar Backblaze B2 en lugar de MinIO.
+El sistema usará la configuración S3 directamente de tu `.env`. Como configuraste `S3_ENDPOINT` con Backblaze, Supabase usará Backblaze B2 en lugar de MinIO.
 
 ---
 
