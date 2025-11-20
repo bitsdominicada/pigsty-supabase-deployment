@@ -83,65 +83,25 @@ ssl_setup() {
 
     log_success "Configuration synced"
 
-    # Step 2: Apply infra configuration to update nginx
-    log_step "Applying infrastructure configuration"
+    # Step 2: Request certificate using Pigsty's make cert
+    log_step "Requesting Let's Encrypt certificate via Pigsty"
 
     ssh_exec << 'REMOTE'
 set -e
 cd ~/pigsty
-./infra.yml -t nginx_config,nginx_restart
+
+# Use Pigsty's make cert to request and configure certificates
+# This will:
+# 1. Run nginx_certbot task with certbot_sign=true
+# 2. Request Let's Encrypt certificate
+# 3. Configure nginx automatically
+# 4. Reload nginx
+make cert
+
+echo "✓ SSL certificate obtained and nginx configured"
 REMOTE
 
-    log_success "Nginx configuration updated"
-
-    # Step 3: Request certificate using Pigsty's certbot
-    log_step "Requesting Let's Encrypt certificate"
-
-    ssh_exec << REMOTE
-set -e
-
-# Check if certificate already exists
-if sudo certbot certificates 2>/dev/null | grep -q "${SUPABASE_DOMAIN}"; then
-    echo "Certificate for ${SUPABASE_DOMAIN} already exists"
-else
-    echo "Requesting certificate for ${SUPABASE_DOMAIN}..."
-    sudo certbot certonly \
-        --webroot \
-        --webroot-path /www/acme \
-        --non-interactive \
-        --agree-tos \
-        --email ${LETSENCRYPT_EMAIL} \
-        -d ${SUPABASE_DOMAIN}
-
-    echo ""
-    echo "Certificate installed successfully!"
-fi
-REMOTE
-
-    log_success "SSL certificate obtained"
-
-    # Step 4: Configure nginx to use Let's Encrypt certificates
-    log_step "Configuring nginx with Let's Encrypt certificates"
-
-    ssh_exec << REMOTE
-set -e
-
-# Update nginx config to use Let's Encrypt certificates
-echo "Updating nginx configuration to use Let's Encrypt..."
-sudo sed -i 's|ssl_certificate     /etc/nginx/conf.d/cert/${SUPABASE_DOMAIN}.crt;|ssl_certificate     /etc/letsencrypt/live/${SUPABASE_DOMAIN}/fullchain.pem;|' /etc/nginx/conf.d/supa.conf
-
-sudo sed -i 's|ssl_certificate_key /etc/nginx/conf.d/cert/${SUPABASE_DOMAIN}.key;|ssl_certificate_key /etc/letsencrypt/live/${SUPABASE_DOMAIN}/privkey.pem;|' /etc/nginx/conf.d/supa.conf
-
-# Test nginx configuration
-sudo nginx -t
-
-# Reload nginx
-sudo systemctl reload nginx
-
-echo "✓ Nginx configured with Let's Encrypt certificates"
-REMOTE
-
-    log_success "Nginx configured with SSL certificates"
+    log_success "SSL certificate obtained and nginx configured"
 
     # Step 5: Update Supabase .env and restart containers
     log_step "Updating Supabase with HTTPS URLs"
