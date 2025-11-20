@@ -79,7 +79,7 @@ generate_pigsty_config() {
 #--------------------------------------------------------------#
 prepare_vps() {
     log_step "Preparing VPS"
-    "${SCRIPT_DIR}/modules/01-prepare-vps.sh"
+    "${SCRIPT_DIR}/modules/01-prepare.sh"
 }
 
 #--------------------------------------------------------------#
@@ -87,6 +87,8 @@ prepare_vps() {
 #--------------------------------------------------------------#
 download_pigsty() {
     log_step "Downloading Pigsty"
+
+    load_env
 
     log_info "Installing Pigsty v3.6.1 on VPS..."
 
@@ -105,6 +107,7 @@ download_pigsty() {
 # Bootstrap Ansible
 #--------------------------------------------------------------#
 bootstrap_ansible() {
+    load_env
     log_step "Bootstrapping Ansible"
 
     log_info "Installing Ansible and dependencies..."
@@ -124,6 +127,7 @@ bootstrap_ansible() {
 # Install Pigsty Stack (PostgreSQL + MinIO + Infra)
 #--------------------------------------------------------------#
 install_pigsty() {
+    load_env
     log_step "Installing Pigsty Stack"
 
     log_info "This will take 10-20 minutes..."
@@ -152,6 +156,7 @@ install_pigsty() {
 # Install Docker
 #--------------------------------------------------------------#
 install_docker() {
+    load_env
     log_step "Installing Docker"
 
     log_info "Installing Docker and Docker Compose..."
@@ -171,6 +176,7 @@ install_docker() {
 # Launch Supabase
 #--------------------------------------------------------------#
 launch_supabase() {
+    load_env
     log_step "Launching Supabase"
 
     log_info "Starting Supabase containers (11 services)..."
