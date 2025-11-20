@@ -76,6 +76,35 @@ SSHKEY
     ssh_exec << 'DEPS'
 set -e
 
+# Wait for apt locks to be released (Ubuntu automatic updates)
+wait_for_apt() {
+    local max_wait=300  # 5 minutes
+    local wait_time=0
+    local interval=10
+
+    while sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || \
+          sudo fuser /var/lib/dpkg/lock >/dev/null 2>&1 || \
+          sudo fuser /var/lib/apt/lists/lock >/dev/null 2>&1; do
+
+        if [ $wait_time -ge $max_wait ]; then
+            echo "ERROR: apt lock still held after ${max_wait}s, aborting"
+            return 1
+        fi
+
+        echo "Waiting for apt locks to be released... (${wait_time}s / ${max_wait}s)"
+        sleep $interval
+        wait_time=$((wait_time + interval))
+    done
+
+    echo "apt locks released, continuing"
+    return 0
+}
+
+# Wait for any automatic updates to complete
+if command -v apt-get &>/dev/null; then
+    wait_for_apt
+fi
+
 # Update package list
 sudo apt-get update -qq 2>/dev/null || sudo dnf check-update -q 2>/dev/null || true
 

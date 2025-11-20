@@ -302,6 +302,10 @@ deploy_all() {
     download_pigsty
     generate_pigsty_config
     bootstrap_ansible
+
+    # Validate configuration before proceeding
+    "${SCRIPT_DIR}/modules/03-validate.sh"
+
     install_pigsty
     install_docker
     launch_supabase
@@ -321,16 +325,20 @@ main() {
         config)
             generate_pigsty_config
             ;;
+        validate)
+            "${SCRIPT_DIR}/modules/03-validate.sh"
+            ;;
         verify)
             verify_deployment
             ;;
         *)
             print_banner
-            echo "Usage: $0 {all|config|verify}"
+            echo "Usage: $0 {all|config|validate|verify}"
             echo ""
             echo "Commands:"
             echo "  all      - Full deployment (recommended)"
             echo "  config   - Generate and upload pigsty.yml only"
+            echo "  validate - Validate pigsty.yml configuration"
             echo "  verify   - Verify deployment status"
             echo ""
             echo "Example:"

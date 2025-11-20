@@ -54,11 +54,32 @@ def substitute_line(line, env):
         # Match YAML key-value pairs
         patterns = [
             # Exact key name (like admin_ip: 10.10.10.10)
-            (rf'^(\s*{key}\s*:\s*)["\']?.*["\']?\s*$', rf"\g<1>{value}"),
-            # Common replaceable values
+            # Match up to comment (#) or end of value, but NOT entire line to preserve newlines
             (
-                r'(:\s*)["\']?10\.10\.10\.10["\']?',
-                rf"\g<1>{env.get('VPS_HOST', '10.10.10.10')}",
+                rf'^(\s*{key}\s*:\s*)["\']?[^#\n]+["\']?(\s*(?:#.*)?$)',
+                rf"\g<1>{value}\g<2>",
+            ),
+            # Common replaceable values
+            # IMPORTANT: Order matters! More specific patterns FIRST, then general ones
+            # Replace "10.10.10.10" with quotes preserved (like endpoint: "10.10.10.10:8000")
+            (
+                r'"10\.10\.10\.10',
+                rf'"{env.get("VPS_HOST", "10.10.10.10")}',
+            ),
+            # Replace 10.10.10.10 as a key (before colon) - for hosts sections
+            (
+                r"^(\s*)10\.10\.10\.10(\s*:)",
+                rf"\g<1>{env.get('VPS_HOST', '10.10.10.10')}\g<2>",
+            ),
+            # Replace 10.10.10.10 as a value (after colon, without quotes)
+            (
+                r"(:\s*)10\.10\.10\.10(\s)",
+                rf"\g<1>{env.get('VPS_HOST', '10.10.10.10')}\g<2>",
+            ),
+            # Replace 10.10.10.10 in lists and other contexts (last resort)
+            (
+                r"(?<![\"'])10\.10\.10\.10(?![\"'])",
+                env.get("VPS_HOST", "10.10.10.10"),
             ),
             (
                 r'(:\s*)["\']?supa\.pigsty["\']?',
