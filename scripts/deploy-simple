@@ -1,0 +1,336 @@
+#!/usr/bin/env bash
+#==============================================================#
+# File      :   deploy-simple
+# Desc      :   Simplified deployment using official Pigsty flow
+# Path      :   scripts/deploy-simple
+# Usage     :   ./scripts/deploy-simple all
+# Copyright :   2025 - Automation Script
+# License   :   AGPLv3
+#==============================================================#
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+source "${SCRIPT_DIR}/utils.sh"
+
+#--------------------------------------------------------------#
+# Generate pigsty.yml from official Pigsty Supabase template
+#--------------------------------------------------------------#
+generate_pigsty_config() {
+    log_step "Generating pigsty.yml from official Pigsty template"
+
+    load_env
+
+    # Download official supabase.yml from Pigsty
+    log_info "Downloading official conf/supabase.yml from Pigsty..."
+    local supabase_yml="/tmp/supabase-official-$(date +%Y%m%d-%H%M%S).yml"
+
+    if ! curl -fsSL "https://raw.githubusercontent.com/pgsty/pigsty/main/conf/supabase.yml" \
+        -o "${supabase_yml}"; then
+        log_error "Failed to download official supabase.yml"
+        exit 1
+    fi
+
+    log_success "Downloaded official supabase.yml"
+
+    # Generate pigsty.yml with substitutions
+    log_info "Applying configuration from .env..."
+    local pigsty_yml="/tmp/pigsty-generated-$(date +%Y%m%d-%H%M%S).yml"
+
+    if ! python3 "${PROJECT_ROOT}/lib/simple-yaml-gen.py" "${supabase_yml}" > "${pigsty_yml}"; then
+        log_error "Failed to generate pigsty.yml"
+        exit 1
+    fi
+
+    log_success "Generated pigsty.yml with your configuration"
+
+    # Display changes summary
+    echo ""
+    log_info "Configuration summary:"
+    echo "  Domain:      ${SUPABASE_DOMAIN}"
+    echo "  VPS IP:      ${VPS_HOST}"
+    echo "  SSL Email:   ${LETSENCRYPT_EMAIL}"
+    echo "  SSL Enabled: ${USE_LETSENCRYPT}"
+    echo "  B2 Bucket:   ${S3_BUCKET}"
+    echo "  B2 Endpoint: ${S3_ENDPOINT}"
+    echo ""
+
+    # Upload to VPS
+    log_info "Uploading pigsty.yml to VPS..."
+
+    sshpass -p "${DEPLOY_USER_PASSWORD}" scp \
+        -i ~/.ssh/pigsty_deploy \
+        -o StrictHostKeyChecking=no \
+        -o UserKnownHostsFile=/dev/null \
+        -o LogLevel=ERROR \
+        "${pigsty_yml}" \
+        "${DEPLOY_USER}@${VPS_HOST}:~/pigsty/pigsty.yml"
+
+    log_success "pigsty.yml uploaded to VPS"
+
+    # Cleanup temp files
+    rm -f "${supabase_yml}" "${pigsty_yml}"
+}
+
+#--------------------------------------------------------------#
+# Prepare VPS (same as before)
+#--------------------------------------------------------------#
+prepare_vps() {
+    log_step "Preparing VPS"
+    "${SCRIPT_DIR}/modules/01-prepare-vps.sh"
+}
+
+#--------------------------------------------------------------#
+# Download Pigsty
+#--------------------------------------------------------------#
+download_pigsty() {
+    log_step "Downloading Pigsty"
+
+    log_info "Installing Pigsty v3.6.1 on VPS..."
+
+    sshpass -p "${DEPLOY_USER_PASSWORD}" ssh \
+        -i ~/.ssh/pigsty_deploy \
+        -o StrictHostKeyChecking=no \
+        -o UserKnownHostsFile=/dev/null \
+        -o LogLevel=ERROR \
+        "${DEPLOY_USER}@${VPS_HOST}" \
+        "curl -fsSL https://repo.pigsty.io/get | bash"
+
+    log_success "Pigsty downloaded and extracted"
+}
+
+#--------------------------------------------------------------#
+# Bootstrap Ansible
+#--------------------------------------------------------------#
+bootstrap_ansible() {
+    log_step "Bootstrapping Ansible"
+
+    log_info "Installing Ansible and dependencies..."
+
+    sshpass -p "${DEPLOY_USER_PASSWORD}" ssh \
+        -i ~/.ssh/pigsty_deploy \
+        -o StrictHostKeyChecking=no \
+        -o UserKnownHostsFile=/dev/null \
+        -o LogLevel=ERROR \
+        "${DEPLOY_USER}@${VPS_HOST}" \
+        "cd ~/pigsty && ./bootstrap"
+
+    log_success "Ansible bootstrapped"
+}
+
+#--------------------------------------------------------------#
+# Install Pigsty Stack (PostgreSQL + MinIO + Infra)
+#--------------------------------------------------------------#
+install_pigsty() {
+    log_step "Installing Pigsty Stack"
+
+    log_info "This will take 10-20 minutes..."
+    log_info "Installing: PostgreSQL 17, Patroni, MinIO, Grafana, Prometheus..."
+
+    sshpass -p "${DEPLOY_USER_PASSWORD}" ssh \
+        -i ~/.ssh/pigsty_deploy \
+        -o StrictHostKeyChecking=no \
+        -o UserKnownHostsFile=/dev/null \
+        -o LogLevel=ERROR \
+        "${DEPLOY_USER}@${VPS_HOST}" \
+        "cd ~/pigsty && ./install.yml"
+
+    log_success "Pigsty stack installed"
+    log_info "PostgreSQL 17 with Patroni: ✓"
+    log_info "MinIO S3 storage: ✓"
+    log_info "Monitoring (Grafana, Prometheus): ✓"
+
+    if [ "${USE_LETSENCRYPT:-false}" = "true" ]; then
+        log_info "SSL Certificate: ✓ (Let's Encrypt)"
+        log_info "Domain: https://${SUPABASE_DOMAIN}"
+    fi
+}
+
+#--------------------------------------------------------------#
+# Install Docker
+#--------------------------------------------------------------#
+install_docker() {
+    log_step "Installing Docker"
+
+    log_info "Installing Docker and Docker Compose..."
+
+    sshpass -p "${DEPLOY_USER_PASSWORD}" ssh \
+        -i ~/.ssh/pigsty_deploy \
+        -o StrictHostKeyChecking=no \
+        -o UserKnownHostsFile=/dev/null \
+        -o LogLevel=ERROR \
+        "${DEPLOY_USER}@${VPS_HOST}" \
+        "cd ~/pigsty && ./docker.yml"
+
+    log_success "Docker installed"
+}
+
+#--------------------------------------------------------------#
+# Launch Supabase
+#--------------------------------------------------------------#
+launch_supabase() {
+    log_step "Launching Supabase"
+
+    log_info "Starting Supabase containers (11 services)..."
+
+    sshpass -p "${DEPLOY_USER_PASSWORD}" ssh \
+        -i ~/.ssh/pigsty_deploy \
+        -o StrictHostKeyChecking=no \
+        -o UserKnownHostsFile=/dev/null \
+        -o LogLevel=ERROR \
+        "${DEPLOY_USER}@${VPS_HOST}" \
+        "cd ~/pigsty && ./app.yml"
+
+    log_success "Supabase launched"
+
+    # Wait a bit for containers to start
+    log_info "Waiting for services to start..."
+    sleep 15
+
+    # Check container status
+    log_info "Checking container status..."
+    sshpass -p "${DEPLOY_USER_PASSWORD}" ssh \
+        -i ~/.ssh/pigsty_deploy \
+        -o StrictHostKeyChecking=no \
+        -o UserKnownHostsFile=/dev/null \
+        -o LogLevel=ERROR \
+        "${DEPLOY_USER}@${VPS_HOST}" \
+        "sudo docker ps --format 'table {{.Names}}\t{{.Status}}' | grep supabase"
+}
+
+#--------------------------------------------------------------#
+# Verify deployment
+#--------------------------------------------------------------#
+verify_deployment() {
+    log_step "Verifying Deployment"
+
+    load_env
+
+    # Check container count
+    local container_count=$(sshpass -p "${DEPLOY_USER_PASSWORD}" ssh \
+        -i ~/.ssh/pigsty_deploy \
+        -o StrictHostKeyChecking=no \
+        -o UserKnownHostsFile=/dev/null \
+        -o LogLevel=ERROR \
+        "${DEPLOY_USER}@${VPS_HOST}" \
+        "sudo docker ps | grep supabase | wc -l")
+
+    if [ "${container_count}" -eq 11 ]; then
+        log_success "All 11 Supabase containers running"
+    else
+        log_warning "Only ${container_count}/11 containers running"
+    fi
+
+    # Check HTTPS
+    if [ "${USE_LETSENCRYPT:-false}" = "true" ]; then
+        log_info "Testing HTTPS access..."
+        if curl -sI "https://${SUPABASE_DOMAIN}" | grep -q "HTTP"; then
+            log_success "HTTPS working: https://${SUPABASE_DOMAIN}"
+        else
+            log_warning "HTTPS may not be working yet"
+        fi
+    fi
+
+    # Check PostgreSQL
+    log_info "PostgreSQL available at: ${VPS_HOST}:5436"
+
+    # Check Grafana
+    log_info "Grafana available at: http://${VPS_HOST}"
+
+    echo ""
+    print_deployment_summary
+}
+
+#--------------------------------------------------------------#
+# Print deployment summary
+#--------------------------------------------------------------#
+print_deployment_summary() {
+    load_env
+
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "  Deployment Complete!"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    echo "🌐 Supabase:"
+    if [ "${USE_LETSENCRYPT:-false}" = "true" ]; then
+        echo "   URL:      https://${SUPABASE_DOMAIN}"
+    else
+        echo "   URL:      http://${VPS_HOST}:8000"
+    fi
+    echo "   User:     supabase"
+    echo "   Password: ${DASHBOARD_PASSWORD:-pigsty}"
+    echo ""
+    echo "📊 Grafana:"
+    echo "   URL:      http://${VPS_HOST}"
+    echo "   User:     admin"
+    echo "   Password: ${GRAFANA_ADMIN_PASSWORD}"
+    echo ""
+    echo "🗄️  PostgreSQL:"
+    echo "   Host:     ${VPS_HOST}:5436"
+    echo "   Database: postgres"
+    echo "   User:     supabase_admin"
+    echo "   Password: ${POSTGRES_PASSWORD}"
+    echo ""
+    echo "☁️  Backblaze B2:"
+    echo "   Bucket:   ${S3_BUCKET}"
+    echo "   Endpoint: ${S3_ENDPOINT}"
+    echo "   Status:   Configured"
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+}
+
+#--------------------------------------------------------------#
+# Full deployment
+#--------------------------------------------------------------#
+deploy_all() {
+    print_banner
+
+    log_info "Starting simplified Pigsty deployment..."
+    log_info "Using official Pigsty configuration with automated substitutions"
+    echo ""
+
+    prepare_vps
+    download_pigsty
+    generate_pigsty_config
+    bootstrap_ansible
+    install_pigsty
+    install_docker
+    launch_supabase
+    verify_deployment
+
+    log_success "Deployment completed successfully!"
+}
+
+#--------------------------------------------------------------#
+# Main
+#--------------------------------------------------------------#
+main() {
+    case "${1:-help}" in
+        all)
+            deploy_all
+            ;;
+        config)
+            generate_pigsty_config
+            ;;
+        verify)
+            verify_deployment
+            ;;
+        *)
+            print_banner
+            echo "Usage: $0 {all|config|verify}"
+            echo ""
+            echo "Commands:"
+            echo "  all      - Full deployment (recommended)"
+            echo "  config   - Generate and upload pigsty.yml only"
+            echo "  verify   - Verify deployment status"
+            echo ""
+            echo "Example:"
+            echo "  $0 all"
+            ;;
+    esac
+}
+
+main "$@"

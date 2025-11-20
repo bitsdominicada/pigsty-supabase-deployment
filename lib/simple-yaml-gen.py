@@ -72,6 +72,11 @@ def substitute_line(line, env):
                 r'(:\s*)["\']?your@email\.com["\']?',
                 rf"\g<1>{env.get('LETSENCRYPT_EMAIL', 'your@email.com')}",
             ),
+            # Enable certbot auto-sign if USE_LETSENCRYPT is true
+            (
+                r"^(\s*certbot_sign:\s*)false",
+                rf"\g<1>{env.get('USE_LETSENCRYPT', 'false').lower()}",
+            ),
             (
                 r'(:\s*)["\']?DBUser\.Supa["\']?',
                 rf"\g<1>{env.get('POSTGRES_PASSWORD', 'DBUser.Supa')}",
