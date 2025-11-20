@@ -1,0 +1,200 @@
+#!/usr/bin/env bash
+
+# ============================================
+# S3 CONNECTION TEST
+# ============================================
+# Tests S3 connectivity before deployment
+# Works with MinIO, Backblaze B2, AWS S3, etc.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/utils.sh"
+
+print_banner
+
+log_step "S3 Connection Test"
+echo ""
+
+# Load .env
+load_env
+
+# Validate S3 configuration
+if [ -z "${S3_BUCKET:-}" ]; then
+    log_error "S3_BUCKET not set in .env"
+    exit 1
+fi
+
+if [ -z "${S3_ENDPOINT:-}" ]; then
+    log_error "S3_ENDPOINT not set in .env"
+    exit 1
+fi
+
+if [ -z "${S3_ACCESS_KEY:-}" ]; then
+    log_error "S3_ACCESS_KEY not set in .env"
+    exit 1
+fi
+
+if [ -z "${S3_SECRET_KEY:-}" ]; then
+    log_error "S3_SECRET_KEY not set in .env"
+    exit 1
+fi
+
+echo -e "${GREEN}S3 Configuration:${NC}"
+echo "  Bucket: ${S3_BUCKET}"
+echo "  Endpoint: ${S3_ENDPOINT}"
+echo "  Region: ${S3_REGION:-auto}"
+echo "  Access Key: ${S3_ACCESS_KEY:0:20}..."
+echo ""
+
+# Check if aws-cli is installed
+if ! command -v aws &> /dev/null; then
+    log_warning "AWS CLI not installed. Installing via pip..."
+    python3 -m pip install --break-system-packages awscli-local awscli 2>/dev/null || {
+        log_error "Failed to install AWS CLI"
+        echo ""
+        echo "Install manually:"
+        echo "  brew install awscli"
+        echo "or"
+        echo "  python3 -m pip install --user awscli"
+        exit 1
+    }
+fi
+
+log_success "AWS CLI found: $(aws --version)"
+echo ""
+
+# Configure AWS CLI for this endpoint
+export AWS_ACCESS_KEY_ID="${S3_ACCESS_KEY}"
+export AWS_SECRET_ACCESS_KEY="${S3_SECRET_KEY}"
+export AWS_DEFAULT_REGION="${S3_REGION:-us-east-1}"
+
+# Detect provider
+PROVIDER="Unknown"
+if [[ "${S3_ENDPOINT}" == *"sss.pigsty"* ]]; then
+    PROVIDER="MinIO (Local)"
+elif [[ "${S3_ENDPOINT}" == *"backblazeb2.com"* ]]; then
+    PROVIDER="Backblaze B2"
+elif [[ "${S3_ENDPOINT}" == *"amazonaws.com"* ]]; then
+    PROVIDER="AWS S3"
+fi
+
+log_info "Detected provider: ${PROVIDER}"
+echo ""
+
+# Test 1: List buckets
+log_step "Test 1: List Buckets"
+echo ""
+
+if aws s3 ls --endpoint-url "${S3_ENDPOINT}" 2>&1 | grep -q "${S3_BUCKET}"; then
+    log_success "✓ Bucket '${S3_BUCKET}' found"
+    BUCKET_EXISTS=true
+else
+    log_warning "Bucket '${S3_BUCKET}' not found in listing"
+    BUCKET_EXISTS=false
+fi
+echo ""
+
+# Test 2: Access specific bucket
+log_step "Test 2: Access Bucket '${S3_BUCKET}'"
+echo ""
+
+if aws s3 ls "s3://${S3_BUCKET}" --endpoint-url "${S3_ENDPOINT}" 2>&1 | head -5; then
+    log_success "✓ Bucket is accessible"
+    BUCKET_ACCESSIBLE=true
+else
+    log_error "✗ Cannot access bucket"
+    BUCKET_ACCESSIBLE=false
+fi
+echo ""
+
+# Test 3: Upload test file
+log_step "Test 3: Upload Test File"
+echo ""
+
+TEST_FILE="/tmp/supabase-test-$(date +%s).txt"
+echo "Supabase Storage Test - $(date)" > "$TEST_FILE"
+
+if aws s3 cp "$TEST_FILE" "s3://${S3_BUCKET}/test-connection.txt" --endpoint-url "${S3_ENDPOINT}" 2>&1; then
+    log_success "✓ File uploaded successfully"
+    UPLOAD_SUCCESS=true
+else
+    log_error "✗ Upload failed"
+    UPLOAD_SUCCESS=false
+fi
+echo ""
+
+# Test 4: Download test file
+if [ "$UPLOAD_SUCCESS" = true ]; then
+    log_step "Test 4: Download Test File"
+    echo ""
+
+    DOWNLOAD_FILE="/tmp/supabase-download-$(date +%s).txt"
+    if aws s3 cp "s3://${S3_BUCKET}/test-connection.txt" "$DOWNLOAD_FILE" --endpoint-url "${S3_ENDPOINT}" 2>&1; then
+        log_success "✓ File downloaded successfully"
+        DOWNLOAD_SUCCESS=true
+
+        # Verify content
+        if diff "$TEST_FILE" "$DOWNLOAD_FILE" > /dev/null; then
+            log_success "✓ File integrity verified"
+        else
+            log_warning "File content differs (may be OK for some providers)"
+        fi
+    else
+        log_error "✗ Download failed"
+        DOWNLOAD_SUCCESS=false
+    fi
+    echo ""
+
+    # Cleanup
+    log_step "Cleanup"
+    aws s3 rm "s3://${S3_BUCKET}/test-connection.txt" --endpoint-url "${S3_ENDPOINT}" > /dev/null 2>&1 || true
+    rm -f "$TEST_FILE" "$DOWNLOAD_FILE"
+    log_info "Test files removed"
+    echo ""
+fi
+
+# Summary
+log_step "Test Summary"
+echo ""
+
+echo -e "${GREEN}Provider:${NC} ${PROVIDER}"
+echo -e "${GREEN}Endpoint:${NC} ${S3_ENDPOINT}"
+echo -e "${GREEN}Bucket:${NC} ${S3_BUCKET}"
+echo -e "${GREEN}Region:${NC} ${S3_REGION:-auto}"
+echo ""
+
+echo -e "${BLUE}Results:${NC}"
+[ "$BUCKET_EXISTS" = true ] && echo "  ✓ Bucket exists" || echo "  ✗ Bucket not found"
+[ "$BUCKET_ACCESSIBLE" = true ] && echo "  ✓ Bucket accessible" || echo "  ✗ Bucket not accessible"
+[ "$UPLOAD_SUCCESS" = true ] && echo "  ✓ Upload works" || echo "  ✗ Upload failed"
+[ "${DOWNLOAD_SUCCESS:-false}" = true ] && echo "  ✓ Download works" || echo "  - Download not tested"
+echo ""
+
+# Final verdict
+# Note: BUCKET_EXISTS may be false if the key doesn't have listAllBucketNames permission
+# This is OK as long as we can access, upload, and download from the specific bucket
+if [ "$BUCKET_ACCESSIBLE" = true ] && [ "$UPLOAD_SUCCESS" = true ]; then
+    echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${GREEN}✓ S3 CONNECTION TEST PASSED${NC}"
+    echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    echo -e "${GREEN}Your S3 configuration is ready for deployment!${NC}"
+    echo ""
+    echo "Next step:"
+    echo "  ${CYAN}./scripts/deploy all${NC}"
+    echo ""
+    exit 0
+else
+    echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${RED}✗ S3 CONNECTION TEST FAILED${NC}"
+    echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    echo "Please check:"
+    echo "  1. S3_ACCESS_KEY and S3_SECRET_KEY are correct"
+    echo "  2. Bucket '${S3_BUCKET}' exists"
+    echo "  3. Credentials have read/write permissions"
+    echo "  4. S3_ENDPOINT is correct for your region"
+    echo ""
+    exit 1
+fi

@@ -47,9 +47,10 @@ Este proyecto sigue las mejores prácticas de **Infraestructura como Código (Ia
 - **Supabase** full stack (Auth, Storage, Realtime, Functions)
 - **High Availability** with Patroni
 - **Monitoring** with Prometheus + Grafana (26 dashboards)
-- **Backups** with pgBackRest + PITR
-- **Storage**: MinIO (local) or **Backblaze B2** (cloud S3)
+- **Backups** with pgBackRest + PITR to Backblaze B2
+- **Storage**: MinIO (local S3) + Backblaze B2 (cloud backups)
 - **100% automated** from your Mac
+- **Point-in-Time Recovery** with automated daily backups to cloud
 
 ---
 
@@ -271,7 +272,8 @@ pigsty-supabase-deployment/
 | PostgreSQL | `VPS_IP:5436` | `supabase_admin` / `your_POSTGRES_PASSWORD` |
 | MinIO (if used) | `http://VPS_IP:9000` | `minioadmin` / `your_MINIO_PASSWORD` |
 
-> **💡 Storage Note**: You can use local MinIO or cloud Backblaze B2. See [Backblaze Setup Guide](docs/BACKBLAZE_SETUP.md) for S3 cloud storage.
+> **💾 Storage Architecture**: Uses **MinIO** (local) for Supabase Storage and **Backblaze B2** (cloud) for PostgreSQL backups. See [Storage Architecture](docs/STORAGE_ARCHITECTURE.md) for details.  
+> **📦 Backups**: Automated daily PostgreSQL backups to Backblaze B2 with Point-in-Time Recovery. See [pgBackRest Guide](docs/PGBACKREST_BACKUP.md) for backup configuration.
 
 ---
 

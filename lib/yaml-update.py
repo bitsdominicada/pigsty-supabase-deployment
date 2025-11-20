@@ -42,8 +42,31 @@ def update_pigsty_config(pigsty_file, env_vars):
     if env_vars.get("POSTGRES_PASSWORD"):
         all_vars["pg_dbsu_password"] = env_vars["POSTGRES_PASSWORD"]
 
+        # Also update Supabase user passwords (replace 'DBUser.Supa')
+        # These are in pg-meta.pg_users section
+        if "children" in config["all"] and "pg-meta" in config["all"]["children"]:
+            pg_meta = config["all"]["children"]["pg-meta"]
+            if "vars" in pg_meta and "pg_users" in pg_meta["vars"]:
+                for user in pg_meta["vars"]["pg_users"]:
+                    if isinstance(user, dict) and user.get("password") == "DBUser.Supa":
+                        user["password"] = env_vars["POSTGRES_PASSWORD"]
+
     if env_vars.get("MINIO_ROOT_PASSWORD"):
         all_vars["minio_secret_key"] = env_vars["MINIO_ROOT_PASSWORD"]
+
+    # Update other hardcoded passwords from base template
+    # These are security-critical and should not use default values
+    if env_vars.get("PG_MONITOR_PASSWORD"):
+        all_vars["pg_monitor_password"] = env_vars["PG_MONITOR_PASSWORD"]
+
+    if env_vars.get("PG_REPLICATION_PASSWORD"):
+        all_vars["pg_replication_password"] = env_vars["PG_REPLICATION_PASSWORD"]
+
+    if env_vars.get("PATRONI_PASSWORD"):
+        all_vars["patroni_password"] = env_vars["PATRONI_PASSWORD"]
+
+    if env_vars.get("HAPROXY_ADMIN_PASSWORD"):
+        all_vars["haproxy_admin_password"] = env_vars["HAPROXY_ADMIN_PASSWORD"]
 
     # 2. Update infra_portal with SSL domain
     if env_vars.get("USE_LETSENCRYPT") == "true" and env_vars.get("SUPABASE_DOMAIN"):
@@ -128,6 +151,15 @@ def update_pigsty_config(pigsty_file, env_vars):
     if env_vars.get("S3_PROTOCOL"):
         supa_conf["S3_PROTOCOL"] = env_vars["S3_PROTOCOL"]
 
+    # TUS_ALLOW_S3_TAGS: Disable S3 tagging for Backblaze B2 compatibility
+    # Set to 'false' for S3-compatible providers that don't support x-amz-tagging
+    if env_vars.get("TUS_ALLOW_S3_TAGS"):
+        # Convert string "true"/"false" to boolean
+        supa_conf["TUS_ALLOW_S3_TAGS"] = env_vars["TUS_ALLOW_S3_TAGS"].lower() == "true"
+    elif "backblazeb2.com" in env_vars.get("S3_ENDPOINT", ""):
+        # Auto-set to false for Backblaze B2
+        supa_conf["TUS_ALLOW_S3_TAGS"] = False
+
     # MINIO_DOMAIN_IP only needed if using MinIO (sss.pigsty domain)
     if env_vars.get("VPS_HOST") and "sss.pigsty" in env_vars.get("S3_ENDPOINT", ""):
         supa_conf["MINIO_DOMAIN_IP"] = env_vars["VPS_HOST"]
@@ -149,6 +181,111 @@ def update_pigsty_config(pigsty_file, env_vars):
             supa_conf["SMTP_PASS"] = env_vars["SMTP_PASSWORD"]
         if env_vars.get("SMTP_SENDER_NAME"):
             supa_conf["SMTP_SENDER_NAME"] = env_vars["SMTP_SENDER_NAME"]
+
+    # 4. Update pgBackRest configuration for pg-meta cluster
+    if env_vars.get("PGBACKREST_ENABLED") == "true":
+        # Ensure pg-meta cluster configuration exists
+        if "children" not in config["all"]:
+            config["all"]["children"] = {}
+        if "pg-meta" not in config["all"]["children"]:
+            config["all"]["children"]["pg-meta"] = {}
+        if "vars" not in config["all"]["children"]["pg-meta"]:
+            config["all"]["children"]["pg-meta"]["vars"] = {}
+
+        pg_meta_vars = config["all"]["children"]["pg-meta"]["vars"]
+
+        # Enable pgBackRest
+        all_vars["pgbackrest_enabled"] = True
+        all_vars["pgbackrest_clean"] = True
+        all_vars["pgbackrest_log_dir"] = "/pg/log/pgbackrest"
+        all_vars["pgbackrest_ssl_dir"] = "/etc/pki"
+
+        # Set backup method
+        backup_method = env_vars.get("PGBACKREST_METHOD", "s3")
+        all_vars["pgbackrest_method"] = backup_method
+
+        # Initialize pgbackrest_repo (clear any existing config from template)
+        all_vars["pgbackrest_repo"] = {}
+
+        # Configure local repository if enabled
+        if env_vars.get("PGBACKREST_LOCAL_ENABLED", "true") == "true":
+            all_vars["pgbackrest_repo"]["local"] = {
+                "path": "/pg/backup",
+                "retention_full_type": "count",
+                "retention_full": int(
+                    env_vars.get("PGBACKREST_LOCAL_RETENTION_FULL", "2")
+                ),
+            }
+
+        # Configure S3 repository (Backblaze B2 or other S3-compatible)
+        if backup_method == "s3" and env_vars.get("PGBACKREST_S3_BUCKET"):
+            # Use pgBackRest-specific S3 config if provided, otherwise fall back to Supabase S3 config
+            s3_bucket = env_vars.get("PGBACKREST_S3_BUCKET") or env_vars.get(
+                "S3_BUCKET"
+            )
+            s3_endpoint = env_vars.get("PGBACKREST_S3_ENDPOINT") or env_vars.get(
+                "S3_ENDPOINT"
+            )
+            s3_region = env_vars.get("PGBACKREST_S3_REGION") or env_vars.get(
+                "S3_REGION"
+            )
+            s3_key = env_vars.get("PGBACKREST_S3_ACCESS_KEY") or env_vars.get(
+                "S3_ACCESS_KEY"
+            )
+            s3_secret = env_vars.get("PGBACKREST_S3_SECRET_KEY") or env_vars.get(
+                "S3_SECRET_KEY"
+            )
+
+            # Extract hostname from endpoint URL (remove https://)
+            s3_host = s3_endpoint.replace("https://", "").replace("http://", "")
+
+            # Determine if this is MinIO or cloud S3
+            is_minio = "sss.pigsty" in s3_endpoint
+
+            s3_repo = {
+                "type": "s3",
+                "s3_bucket": s3_bucket,
+                "s3_region": s3_region,
+                "s3_key": s3_key,
+                "s3_key_secret": s3_secret,
+                "path": "/pgbackrest",
+                "bundle": "y",
+                "bundle_limit": "20MiB",
+                "bundle_size": "128MiB",
+                "retention_full_type": "time",
+                "retention_full": int(env_vars.get("PGBACKREST_RETENTION_FULL", "14")),
+            }
+
+            # Add endpoint configuration based on provider
+            if is_minio:
+                # MinIO configuration
+                s3_repo["s3_endpoint"] = "sss.pigsty"
+                s3_repo["s3_uri_style"] = "path"
+                s3_repo["storage_port"] = 9000
+                s3_repo["storage_ca_file"] = "/etc/pki/ca.crt"
+                s3_repo["block"] = "y"
+            else:
+                # Cloud S3 (Backblaze B2, AWS S3, etc.)
+                s3_repo["s3_endpoint"] = s3_host
+                s3_repo["s3_uri_style"] = "host"  # Backblaze uses host-style
+
+            # Add encryption if cipher password is provided
+            if env_vars.get("PGBACKREST_CIPHER_PASS"):
+                s3_repo["cipher_type"] = "aes-256-cbc"
+                s3_repo["cipher_pass"] = env_vars["PGBACKREST_CIPHER_PASS"]
+
+            # Use 's3' or 'minio' as repo key based on provider
+            repo_key = "minio" if is_minio else "s3"
+            all_vars["pgbackrest_repo"][repo_key] = s3_repo
+
+        # Add scheduled backup cron job
+        if "node_crontab" not in pg_meta_vars:
+            pg_meta_vars["node_crontab"] = []
+
+        # Check if backup cron job already exists
+        backup_cron = "00 01 * * * postgres /pg/bin/pg-backup full"
+        if backup_cron not in pg_meta_vars["node_crontab"]:
+            pg_meta_vars["node_crontab"].append(backup_cron)
 
     # Save back to file
     with open(pigsty_file, "w") as f:
@@ -197,6 +334,18 @@ def main():
         "SMTP_USER": os.getenv("SMTP_USER"),
         "SMTP_PASSWORD": os.getenv("SMTP_PASSWORD"),
         "SMTP_SENDER_NAME": os.getenv("SMTP_SENDER_NAME"),
+        # pgBackRest configuration
+        "PGBACKREST_ENABLED": os.getenv("PGBACKREST_ENABLED"),
+        "PGBACKREST_METHOD": os.getenv("PGBACKREST_METHOD"),
+        "PGBACKREST_S3_BUCKET": os.getenv("PGBACKREST_S3_BUCKET"),
+        "PGBACKREST_S3_ENDPOINT": os.getenv("PGBACKREST_S3_ENDPOINT"),
+        "PGBACKREST_S3_REGION": os.getenv("PGBACKREST_S3_REGION"),
+        "PGBACKREST_S3_ACCESS_KEY": os.getenv("PGBACKREST_S3_ACCESS_KEY"),
+        "PGBACKREST_S3_SECRET_KEY": os.getenv("PGBACKREST_S3_SECRET_KEY"),
+        "PGBACKREST_CIPHER_PASS": os.getenv("PGBACKREST_CIPHER_PASS"),
+        "PGBACKREST_RETENTION_FULL": os.getenv("PGBACKREST_RETENTION_FULL"),
+        "PGBACKREST_LOCAL_ENABLED": os.getenv("PGBACKREST_LOCAL_ENABLED"),
+        "PGBACKREST_LOCAL_RETENTION_FULL": os.getenv("PGBACKREST_LOCAL_RETENTION_FULL"),
     }
 
     update_pigsty_config(pigsty_file, env_vars)

@@ -67,83 +67,72 @@ REMOTE
         -o StrictHostKeyChecking=no \
         -o LogLevel=ERROR \
         "${DEPLOY_USER}@${VPS_HOST}:~/pigsty/pigsty.yml" \
-        /tmp/pigsty.yml.original
+        /tmp/pigsty.yml
 
-    # Apply patches
-    log_info "Applying custom patches..."
-    patch_config
+    # Apply patches using Python script (handles special characters in passwords)
+    log_info "Applying custom patches with yaml-update.py..."
+
+    # Export all environment variables needed by yaml-update.py
+    export GRAFANA_ADMIN_PASSWORD
+    export PG_ADMIN_PASSWORD
+    export PG_MONITOR_PASSWORD
+    export PG_REPLICATION_PASSWORD
+    export PATRONI_PASSWORD
+    export HAPROXY_ADMIN_PASSWORD
+    export POSTGRES_PASSWORD
+    export MINIO_ROOT_PASSWORD
+    export JWT_SECRET
+    export ANON_KEY
+    export SERVICE_ROLE_KEY
+    export DASHBOARD_USERNAME
+    export DASHBOARD_PASSWORD
+    export LOGFLARE_PUBLIC_ACCESS_TOKEN
+    export LOGFLARE_PRIVATE_ACCESS_TOKEN
+    export S3_BUCKET
+    export S3_ENDPOINT
+    export S3_REGION
+    export S3_ACCESS_KEY
+    export S3_SECRET_KEY
+    export S3_FORCE_PATH_STYLE
+    export S3_PROTOCOL
+    export VPS_HOST
+    export SUPABASE_DOMAIN
+    export USE_LETSENCRYPT
+    export LETSENCRYPT_EMAIL
+    export SMTP_HOST
+    export SMTP_PORT
+    export SMTP_USER
+    export SMTP_PASSWORD
+    export SMTP_SENDER_NAME
+    export PGBACKREST_ENABLED
+    export PGBACKREST_METHOD
+    export PGBACKREST_S3_BUCKET
+    export PGBACKREST_S3_ENDPOINT
+    export PGBACKREST_S3_REGION
+    export PGBACKREST_S3_ACCESS_KEY
+    export PGBACKREST_S3_SECRET_KEY
+    export PGBACKREST_CIPHER_PASS
+    export PGBACKREST_RETENTION_FULL
+    export PGBACKREST_LOCAL_ENABLED
+    export PGBACKREST_LOCAL_RETENTION_FULL
+
+    # Run Python script to update configuration
+    python3 "${PROJECT_ROOT}/lib/yaml-update.py" /tmp/pigsty.yml
+
+    log_success "Configuration patched"
 
     # Upload patched config
     log_info "Uploading patched configuration..."
     scp -i ~/.ssh/pigsty_deploy \
         -o StrictHostKeyChecking=no \
         -o LogLevel=ERROR \
-        /tmp/pigsty.yml.patched \
+        /tmp/pigsty.yml \
         "${DEPLOY_USER}@${VPS_HOST}:~/pigsty/pigsty.yml"
 
     log_success "Configuration completed"
 }
 
-patch_config() {
-    local input="/tmp/pigsty.yml.original"
-    local output="/tmp/pigsty.yml.patched"
 
-    # Copy original
-    cp "$input" "$output"
-
-    # Use sed to patch critical values
-    # Replace passwords
-    sed -i.bak "s/grafana_admin_password: .*/grafana_admin_password: ${GRAFANA_ADMIN_PASSWORD}/" "$output"
-    sed -i.bak "s/pg_admin_password: .*/pg_admin_password: ${PG_ADMIN_PASSWORD}/" "$output"
-    sed -i.bak "s/minio_secret_key: .*/minio_secret_key: ${MINIO_ROOT_PASSWORD}/" "$output"
-
-    # Replace PostgreSQL password in pg_users section
-    sed -i.bak "s/password: 'DBUser\.Supa'/password: '${POSTGRES_PASSWORD}'/" "$output"
-
-    # Replace JWT secrets in app config
-    if grep -q "JWT_SECRET:" "$output"; then
-        sed -i.bak "s|JWT_SECRET: .*|JWT_SECRET: \"${JWT_SECRET}\"|" "$output"
-        sed -i.bak "s|ANON_KEY: .*|ANON_KEY: \"${ANON_KEY}\"|" "$output"
-        sed -i.bak "s|SERVICE_ROLE_KEY: .*|SERVICE_ROLE_KEY: \"${SERVICE_ROLE_KEY}\"|" "$output"
-    else
-        # Add Supabase app config if not present
-        cat >> "$output" << APPCONFIG
-
-# Supabase App Configuration
-app_list:
-  - { name: supabase, state: enabled }
-
-app_supabase:
-  JWT_SECRET: "${JWT_SECRET}"
-  ANON_KEY: "${ANON_KEY}"
-  SERVICE_ROLE_KEY: "${SERVICE_ROLE_KEY}"
-  SITE_URL: "${SUPABASE_API_EXTERNAL_URL:-http://${VPS_HOST}:8000}"
-  API_EXTERNAL_URL: "${SUPABASE_API_EXTERNAL_URL:-http://${VPS_HOST}:8000}"
-  POSTGRES_HOST: "${VPS_HOST}"
-  POSTGRES_PORT: "5436"
-  POSTGRES_DB: "supa"
-  POSTGRES_USER: "supabase_admin"
-  POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
-APPCONFIG
-    fi
-
-    # Optional: SMTP configuration
-    if [ -n "${SMTP_HOST:-}" ]; then
-        log_info "Adding SMTP configuration..."
-        cat >> "$output" << SMTP
-  SMTP_HOST: "${SMTP_HOST}"
-  SMTP_PORT: "${SMTP_PORT:-587}"
-  SMTP_USER: "${SMTP_USER:-}"
-  SMTP_PASS: "${SMTP_PASSWORD:-}"
-  SMTP_SENDER_NAME: "${SMTP_SENDER_NAME:-Supabase}"
-SMTP
-    fi
-
-    # Cleanup backup files
-    rm -f /tmp/pigsty.yml.*.bak
-
-    log_success "Configuration patched"
-}
 
 # Run if executed directly
 if [ "${BASH_SOURCE[0]}" = "${0}" ]; then

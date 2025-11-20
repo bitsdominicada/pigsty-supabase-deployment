@@ -55,6 +55,13 @@ ${GREEN}SSL Management:${NC}
   ${BLUE}ssl:status${NC}    - Check certificate status
   ${BLUE}ssl:renew${NC}     - Renew SSL certificate
 
+${GREEN}Storage Management:${NC}
+  ${BLUE}storage:b2${NC}    - Configure Backblaze B2 for Supabase Storage
+  ${BLUE}storage:test${NC}  - Test storage upload/download
+
+${GREEN}Updates:${NC}
+  ${BLUE}update:supabase${NC} - Update Supabase to latest official versions
+
 ${GREEN}Other:${NC}
   ${BLUE}help${NC}          - Show this help message
 
@@ -93,8 +100,20 @@ case "${1:-all}" in
         source "${SCRIPT_DIR}/modules/03-install.sh"
         install_stack
 
-        # Check if SSL is configured in .env
+        # Post-deployment fixes for Supabase
+        log_info "Running post-deployment fixes..."
+        source "${SCRIPT_DIR}/modules/06-post-supabase.sh"
+        main
+
+        # Check if Backblaze B2 is configured
         load_env
+        if [ -n "${S3_BUCKET:-}" ] && [[ "${S3_ENDPOINT:-}" == *"backblazeb2.com"* ]]; then
+            log_info "Backblaze B2 detected, configuring storage..."
+            source "${SCRIPT_DIR}/modules/09-configure-b2-storage.sh"
+            configure_b2_storage
+        fi
+
+        # Check if SSL is configured in .env
         if [ "${USE_LETSENCRYPT:-false}" = "true" ] && [ -n "${SUPABASE_DOMAIN:-}" ]; then
             log_info "SSL enabled in .env, setting up HTTPS..."
             "${SCRIPT_DIR}/modules/08-ssl-setup.sh" setup
@@ -205,6 +224,33 @@ case "${1:-all}" in
     ssl:renew)
         print_banner
         "${SCRIPT_DIR}/modules/08-ssl-setup.sh" renew
+        ;;
+
+    # Storage Management
+    storage:b2|storage:backblaze)
+        print_banner
+        source "${SCRIPT_DIR}/modules/09-configure-b2-storage.sh"
+        configure_b2_storage
+        ;;
+
+    storage:test)
+        print_banner
+        log_step "Testing Storage Upload/Download"
+        if [ ! -f "${PROJECT_ROOT}/test-storage-simple.sh" ]; then
+            log_error "Test script not found: test-storage-simple.sh"
+            exit 1
+        fi
+        "${PROJECT_ROOT}/test-storage-simple.sh"
+        ;;
+
+    # Update Supabase versions
+    update:supabase|update:versions)
+        print_banner
+        if [ ! -f "${PROJECT_ROOT}/update-supabase-versions.sh" ]; then
+            log_error "Update script not found: update-supabase-versions.sh"
+            exit 1
+        fi
+        "${PROJECT_ROOT}/update-supabase-versions.sh"
         ;;
 
     help|--help|-h)

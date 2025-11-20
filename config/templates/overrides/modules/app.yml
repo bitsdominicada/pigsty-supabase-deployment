@@ -23,13 +23,25 @@ app_supabase:
   POSTGRES_USER: "supabase_admin"
   # POSTGRES_PASSWORD: <from .env>
 
-  # S3 Storage (MinIO)
-  S3_PROTOCOL: "http"
-  S3_ENDPOINT: "http://${admin_ip}:9000"
-  S3_BUCKET: "supabase"
-  S3_REGION: "us-east-1"
+  # S3 Storage (Backblaze B2 or MinIO)
+  # NOTE: S3 configuration injected from .env
+  # For Backblaze B2:
+  #   S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
+  #   S3_BUCKET: bits-supabase-storage
+  #   S3_FORCE_PATH_STYLE: false
+  #   TUS_ALLOW_S3_TAGS: false (required for B2 compatibility)
+  # For MinIO:
+  #   S3_ENDPOINT: http://${admin_ip}:9000
+  #   S3_BUCKET: data
+  #   S3_FORCE_PATH_STYLE: true
+  # S3_PROTOCOL: <from .env>
+  # S3_ENDPOINT: <from .env>
+  # S3_BUCKET: <from .env>
+  # S3_REGION: <from .env>
   # S3_ACCESS_KEY: <from .env>
   # S3_SECRET_KEY: <from .env>
+  # S3_FORCE_PATH_STYLE: <from .env>
+  # TUS_ALLOW_S3_TAGS: <from .env> (set to 'false' for Backblaze B2)
 
   # JWT Configuration
   # JWT_SECRET: <from .env>
