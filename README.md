@@ -48,7 +48,7 @@ Este proyecto sigue las mejores prácticas de **Infraestructura como Código (Ia
 - **High Availability** with Patroni
 - **Monitoring** with Prometheus + Grafana (26 dashboards)
 - **Backups** with pgBackRest + PITR
-- **MinIO** S3-compatible storage
+- **Storage**: MinIO (local) or **Backblaze B2** (cloud S3)
 - **100% automated** from your Mac
 
 ---
@@ -266,10 +266,12 @@ pigsty-supabase-deployment/
 
 | Service | URL | Default Credentials |
 |---------|-----|---------------------|
-| Supabase Studio | `http://VPS_IP:8000` | `supabase` / `pigsty` |
+| Supabase Studio | `http://VPS_IP:8000` | From `.env`: `DASHBOARD_USERNAME` / `DASHBOARD_PASSWORD` |
 | Grafana | `http://VPS_IP` | `admin` / `your_GRAFANA_PASSWORD` |
 | PostgreSQL | `VPS_IP:5436` | `supabase_admin` / `your_POSTGRES_PASSWORD` |
-| MinIO | `http://VPS_IP:9000` | `minioadmin` / `your_MINIO_PASSWORD` |
+| MinIO (if used) | `http://VPS_IP:9000` | `minioadmin` / `your_MINIO_PASSWORD` |
+
+> **💡 Storage Note**: You can use local MinIO or cloud Backblaze B2. See [Backblaze Setup Guide](docs/BACKBLAZE_SETUP.md) for S3 cloud storage.
 
 ---
 

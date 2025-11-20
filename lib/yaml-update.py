@@ -108,20 +108,40 @@ def update_pigsty_config(pigsty_file, env_vars):
     if env_vars.get("POSTGRES_PASSWORD"):
         supa_conf["POSTGRES_PASSWORD"] = env_vars["POSTGRES_PASSWORD"]
 
-    # S3/MinIO Storage configuration
+    # S3 Storage configuration (MinIO or Backblaze)
+    s3_provider = env_vars.get("S3_PROVIDER", "minio").lower()
+
     if env_vars.get("S3_BUCKET"):
         supa_conf["S3_BUCKET"] = env_vars["S3_BUCKET"]
     if env_vars.get("S3_ACCESS_KEY"):
         supa_conf["S3_ACCESS_KEY"] = env_vars["S3_ACCESS_KEY"]
     if env_vars.get("S3_SECRET_KEY"):
         supa_conf["S3_SECRET_KEY"] = env_vars["S3_SECRET_KEY"]
-    if env_vars.get("VPS_HOST"):
-        # S3 endpoint uses sss.pigsty domain that resolves to VPS IP
-        supa_conf["S3_ENDPOINT"] = "https://sss.pigsty:9000"
-        supa_conf["S3_FORCE_PATH_STYLE"] = True
+
+    if s3_provider == "backblaze":
+        # Backblaze B2 configuration
+        if env_vars.get("S3_ENDPOINT"):
+            # User provided full endpoint (e.g., s3.us-west-004.backblazeb2.com)
+            endpoint = env_vars["S3_ENDPOINT"]
+            supa_conf["S3_ENDPOINT"] = (
+                f"https://{endpoint}" if not endpoint.startswith("http") else endpoint
+            )
+        else:
+            # Default Backblaze endpoint (user should override)
+            supa_conf["S3_ENDPOINT"] = "https://s3.us-west-004.backblazeb2.com"
+
+        supa_conf["S3_REGION"] = env_vars.get("S3_REGION", "us-west-004")
+        supa_conf["S3_FORCE_PATH_STYLE"] = False  # Backblaze uses virtual-hosted style
         supa_conf["S3_PROTOCOL"] = "https"
-        supa_conf["S3_REGION"] = "stub"
-        supa_conf["MINIO_DOMAIN_IP"] = env_vars["VPS_HOST"]
+    else:
+        # MinIO configuration (default)
+        if env_vars.get("VPS_HOST"):
+            # S3 endpoint uses sss.pigsty domain that resolves to VPS IP
+            supa_conf["S3_ENDPOINT"] = "https://sss.pigsty:9000"
+            supa_conf["S3_FORCE_PATH_STYLE"] = True
+            supa_conf["S3_PROTOCOL"] = "https"
+            supa_conf["S3_REGION"] = "stub"
+            supa_conf["MINIO_DOMAIN_IP"] = env_vars["VPS_HOST"]
 
     # HTTPS URLs if SSL is enabled
     if env_vars.get("USE_LETSENCRYPT") == "true" and env_vars.get("SUPABASE_DOMAIN"):
@@ -172,7 +192,10 @@ def main():
         "DASHBOARD_PASSWORD": os.getenv("DASHBOARD_PASSWORD"),
         "LOGFLARE_PUBLIC_ACCESS_TOKEN": os.getenv("LOGFLARE_PUBLIC_ACCESS_TOKEN"),
         "LOGFLARE_PRIVATE_ACCESS_TOKEN": os.getenv("LOGFLARE_PRIVATE_ACCESS_TOKEN"),
+        "S3_PROVIDER": os.getenv("S3_PROVIDER"),
         "S3_BUCKET": os.getenv("S3_BUCKET"),
+        "S3_ENDPOINT": os.getenv("S3_ENDPOINT"),
+        "S3_REGION": os.getenv("S3_REGION"),
         "S3_ACCESS_KEY": os.getenv("S3_ACCESS_KEY"),
         "S3_SECRET_KEY": os.getenv("S3_SECRET_KEY"),
         "VPS_HOST": os.getenv("VPS_HOST"),
