@@ -153,6 +153,15 @@ def substitute_line(line, env):
                 r'(:\s*)["\']?UpNVntn3cDxHJpq99YMc1T1AQgQpc8kfYTuRgBiYa15BLrx8etQoXz3gZv1/u2oq["\']?',
                 rf"\g<1>{env.get('SECRET_KEY_BASE', 'UpNVntn3cDxHJpq99YMc1T1AQgQpc8kfYTuRgBiYa15BLrx8etQoXz3gZv1/u2oq')}",
             ),
+            # Studio branding - default to BITS
+            (
+                r"(STUDIO_DEFAULT_PROJECT:\s*)Pigsty",
+                r"\g<1>BITS",
+            ),
+            (
+                r"(STUDIO_DEFAULT_ORGANIZATION:\s*)Pigsty",
+                r"\g<1>BITS",
+            ),
         ]
 
         for pattern, replacement in patterns:
