@@ -201,6 +201,51 @@ def fix_postgres_host(content, env):
     return content
 
 
+def add_backblaze_b2_config(content, env):
+    """
+    Add TUS_ALLOW_S3_TAGS=false for Backblaze B2 compatibility.
+
+    Backblaze B2 doesn't support x-amz-tagging header which causes
+    resumable uploads to fail with 'Unsupported header' error.
+    This setting disables S3 tagging for TUS uploads.
+    """
+    s3_endpoint = env.get("S3_ENDPOINT", "")
+
+    # Detect if using Backblaze B2, Cloudflare R2, or DigitalOcean Spaces
+    needs_tus_fix = any(
+        provider in s3_endpoint.lower()
+        for provider in [
+            "backblazeb2.com",
+            "r2.cloudflarestorage.com",
+            "digitaloceanspaces.com",
+        ]
+    )
+
+    if needs_tus_fix:
+        # Find the S3_FORCE_PATH_STYLE line and add TUS_ALLOW_S3_TAGS after it
+        # Or find any S3_ config line to add after
+        if "TUS_ALLOW_S3_TAGS" not in content:
+            # Add after S3_FORCE_PATH_STYLE or S3_PROTOCOL
+            content = re.sub(
+                r"(\s+S3_FORCE_PATH_STYLE:\s*\w+)",
+                r'\g<1>\n              TUS_ALLOW_S3_TAGS: "false"',
+                content,
+            )
+            # If S3_FORCE_PATH_STYLE not found, try S3_PROTOCOL
+            if "TUS_ALLOW_S3_TAGS" not in content:
+                content = re.sub(
+                    r"(\s+S3_PROTOCOL:\s*\w+)",
+                    r'\g<1>\n              TUS_ALLOW_S3_TAGS: "false"',
+                    content,
+                )
+        print(
+            f"INFO: Detected {s3_endpoint} - Added TUS_ALLOW_S3_TAGS=false for compatibility",
+            file=sys.stderr,
+        )
+
+    return content
+
+
 def remove_inline_comments_from_conf(content):
     """
     Remove inline comments from the apps.supabase.conf section.
@@ -259,6 +304,7 @@ def process_yaml(input_file, env):
     # Apply additional fixes
     content = add_extra_pg_hba_rules(content, env)
     content = fix_postgres_host(content, env)
+    content = add_backblaze_b2_config(content, env)
     content = remove_inline_comments_from_conf(content)
 
     return content
