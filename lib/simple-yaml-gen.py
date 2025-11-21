@@ -206,6 +206,33 @@ def fix_postgres_host(content, env):
     return content
 
 
+def add_pg_meta_crypto_key(content, env):
+    """
+    Add PG_META_CRYPTO_KEY to the conf section.
+    This key encrypts connection strings between Studio and postgres-meta.
+    """
+    pg_meta_key = env.get("PG_META_CRYPTO_KEY", "")
+    secret_key_base = env.get("SECRET_KEY_BASE", "")
+
+    # Add PG_META_CRYPTO_KEY after LOGFLARE_PRIVATE_ACCESS_TOKEN
+    if pg_meta_key and "PG_META_CRYPTO_KEY" not in content:
+        content = re.sub(
+            r"(\s+LOGFLARE_PRIVATE_ACCESS_TOKEN:\s*\S+)",
+            rf"\g<1>\n              PG_META_CRYPTO_KEY: {pg_meta_key}",
+            content,
+        )
+
+    # Add SECRET_KEY_BASE if not present (for Realtime)
+    if secret_key_base and "SECRET_KEY_BASE" not in content:
+        content = re.sub(
+            r"(\s+PG_META_CRYPTO_KEY:\s*\S+)",
+            rf"\g<1>\n              SECRET_KEY_BASE: {secret_key_base}",
+            content,
+        )
+
+    return content
+
+
 def add_backblaze_b2_config(content, env):
     """
     Add TUS_ALLOW_S3_TAGS=false for Backblaze B2 compatibility.
@@ -309,6 +336,7 @@ def process_yaml(input_file, env):
     # Apply additional fixes
     content = add_extra_pg_hba_rules(content, env)
     content = fix_postgres_host(content, env)
+    content = add_pg_meta_crypto_key(content, env)
     content = add_backblaze_b2_config(content, env)
     content = remove_inline_comments_from_conf(content)
 
