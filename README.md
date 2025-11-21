@@ -1,56 +1,34 @@
 # Pigsty Supabase Deployment
 
-Automated deployment of **Supabase** with **PostgreSQL 17 HA** using **Pigsty**, from macOS to VPS.
+Automated deployment of **Supabase** with **PostgreSQL 17** using **Pigsty**, from macOS to VPS.
 
----
+## Quick Start
 
-> 🚀 **[¿Primera vez? Lee la GUÍA RÁPIDA →](QUICK_START.md)**  
-> 3 comandos, 20 minutos, sin editar archivos manualmente.
+```bash
+# 1. Clone
+git clone https://github.com/bitsdominicada/pigsty-supabase-deployment.git
+cd pigsty-supabase-deployment
 
----
+# 2. Generate configuration
+./scripts/generate-secrets
 
-## ⚠️ Principios de Configuración (IMPORTANTE)
+# 3. Deploy (single command)
+./scripts/deploy-simple all
+```
 
-Este proyecto sigue las mejores prácticas de **Infraestructura como Código (IaC)**:
-
-### 1. **NO editar archivos en el VPS manualmente**
-   - ❌ NO editar `/pg/data/pg_hba.conf` directamente
-   - ❌ NO editar `/opt/supabase/.env` directamente
-   - ✅ Toda configuración debe estar en `pigsty.yml`
-   - ✅ Aplicar cambios vía playbooks de Ansible
-
-### 2. **Seguir la secuencia oficial de Pigsty**
-   ```bash
-   ./configure -c app/supa -i <IP> -n  # Generar configuración
-   ./install.yml                        # PostgreSQL, MinIO, infraestructura
-   ./docker.yml                         # Docker y Docker Compose
-   ./app.yml                            # Supabase containers
-   ```
-
-### 3. **pg_hba.conf se gestiona vía pigsty.yml**
-   Las reglas de acceso PostgreSQL están en `pg_hba_rules`:
-   ```yaml
-   pg_hba_rules:
-     - { user: all, db: postgres, addr: intra, auth: pwd, title: 'allow supabase access from intranet' }
-     - { user: all, db: postgres, addr: 172.17.0.0/16, auth: pwd, title: 'allow access from local docker network' }
-   ```
-   Estas reglas son **críticas** para que los contenedores Docker de Supabase puedan conectarse a PostgreSQL.
-
-### 4. **Confiar en la plantilla oficial**
-   La plantilla `conf/supabase.yml` de Pigsty ya está optimizada y probada. No intentes "mejorarla" sin entender completamente las implicaciones.
+**Duration:** ~20 minutes
 
 ---
 
 ## Features
 
-- **PostgreSQL 17** with 423+ extensions
-- **Supabase** full stack (Auth, Storage, Realtime, Functions)
-- **High Availability** with Patroni
-- **Monitoring** with Prometheus + Grafana (26 dashboards)
-- **Backups** with pgBackRest + PITR to Backblaze B2
-- **Storage**: MinIO (local S3) + Backblaze B2 (cloud backups)
-- **100% automated** from your Mac
-- **Point-in-Time Recovery** with automated daily backups to cloud
+- **PostgreSQL 17** with 400+ extensions
+- **Supabase** full stack (Auth, Storage, Realtime, Functions, Studio)
+- **High Availability** with Patroni + etcd
+- **Monitoring** with Prometheus + Grafana
+- **HTTPS** with Let's Encrypt (automatic)
+- **Backblaze B2** support for Supabase Storage
+- **100% automated** from macOS
 
 ---
 
@@ -58,28 +36,26 @@ Este proyecto sigue las mejores prácticas de **Infraestructura como Código (Ia
 
 ```
 ┌─────────────────────────────────┐
-│  Your Mac (Control)             │
-│  ├─ ./scripts/deploy            │
-│  └─ SSH orchestration           │
+│  macOS (Control)                │
+│  └─ ./scripts/deploy-simple    │
 └──────────────┬──────────────────┘
                │ SSH
                ↓
 ┌─────────────────────────────────┐
-│  VPS (Target)                    │
+│  VPS (Ubuntu 24.04)             │
 │                                  │
 │  ┌────────────────────────────┐ │
-│  │ Pigsty (Official Template) │ │
+│  │ Pigsty v3.6.1              │ │
 │  │ ├─ PostgreSQL 17 + Patroni │ │
-│  │ ├─ Pgbouncer + HAProxy     │ │
-│  │ ├─ pgBackRest + ETCD       │ │
+│  │ ├─ HAProxy + pgbouncer     │ │
 │  │ └─ Grafana + Prometheus    │ │
 │  └────────────────────────────┘ │
 │                                  │
 │  ┌────────────────────────────┐ │
-│  │ Supabase (Docker Compose)  │ │
+│  │ Supabase (Docker)          │ │
 │  │ ├─ Kong (API Gateway)      │ │
 │  │ ├─ Auth + Storage          │ │
-│  │ ├─ Realtime + REST API     │ │
+│  │ ├─ Realtime + REST         │ │
 │  │ └─ Studio (Dashboard)      │ │
 │  └────────────────────────────┘ │
 └─────────────────────────────────┘
@@ -87,136 +63,80 @@ Este proyecto sigue las mejores prácticas de **Infraestructura como Código (Ia
 
 ---
 
-## Quick Start
+## Requirements
 
-### 1. Clone & Configure
-
-```bash
-git clone https://github.com/bitsdominicada/pigsty-supabase-deployment.git
-cd pigsty-supabase-deployment
-
-# Auto-generate secure configuration (recommended)
-./scripts/generate-secrets
-
-# OR manually configure
-cp .env.example .env
-vi .env  # Set VPS_HOST, passwords, JWT_SECRET
-```
-
-**For HTTPS (optional but recommended):**
-```bash
-# Add to .env before deployment
-SUPABASE_DOMAIN=your-domain.com
-LETSENCRYPT_EMAIL=your@email.com
-USE_LETSENCRYPT=true
-```
-
-### 2. One-Command Deployment
-
-```bash
-# Full deployment with automatic HTTPS (if configured)
-./scripts/deploy all
-```
-
-**What happens automatically:**
-1. ✅ Prepares VPS (user, SSH, firewall)
-2. ✅ Configures Pigsty with official template
-3. ✅ Installs PostgreSQL 17 + HA stack
-4. ✅ Installs Docker + Supabase
-5. ✅ **Sets up HTTPS** (if domain configured in .env)
-6. ✅ Verifies all services
-
-**Duration:** 15-25 minutes total
-
-**Alternative (step by step):**
-```bash
-./scripts/deploy prepare   # VPS setup
-./scripts/deploy config    # Generate configs
-./scripts/deploy install   # Install stack
-./scripts/deploy ssl:setup # HTTPS (if not auto-configured)
-./scripts/deploy verify    # Health check
-```
-
-### 3. Access
-
-```bash
-# Supabase Studio
-open http://YOUR_VPS_IP:8000
-
-# Grafana
-open http://YOUR_VPS_IP
-```
-
----
-
-## Prerequisites
-
-### On Mac
-- macOS 10.15+
+### macOS
 - Homebrew
-- SSH client
+- `sshpass`: `brew install hudochenkov/sshpass/sshpass`
 
-### VPS Requirements
-- Ubuntu 22.04/24.04, Rocky 8/9, or Debian 12
+### VPS
+- Ubuntu 22.04/24.04
 - 4GB+ RAM (8GB recommended)
-- 2+ CPU cores (4+ recommended)
+- 2+ CPU cores
 - 40GB+ SSD
-- Static IPv4
 - Root SSH access
 
 ---
 
 ## Configuration
 
-### Auto-Generate (Easiest)
+### Interactive (Recommended)
 
 ```bash
 ./scripts/generate-secrets
 ```
 
-This interactive script will:
-- Generate all secure passwords (32+ characters)
-- Create JWT tokens automatically
-- Ask for your VPS IP and credentials
-- Optionally configure domain & SSL
-- Optionally configure SMTP
-- Create `.env` file ready to deploy
+Generates all passwords, JWT tokens, and optionally configures:
+- Domain + Let's Encrypt SSL
+- Backblaze B2 for storage
+- SMTP for emails
 
-### Manual Configuration
-
-If you prefer manual setup:
+### Manual
 
 ```bash
 cp .env.example .env
-vi .env
+# Edit .env with your values
 ```
 
-**Required variables:**
-```bash
-VPS_HOST=1.2.3.4
-VPS_ROOT_PASSWORD=your_password
-DEPLOY_USER_PASSWORD=$(openssl rand -base64 32)
-POSTGRES_PASSWORD=$(openssl rand -base64 32)
-PG_ADMIN_PASSWORD=$(openssl rand -base64 32)
-GRAFANA_ADMIN_PASSWORD=$(openssl rand -base64 32)
-MINIO_ROOT_PASSWORD=$(openssl rand -base64 32)
-JWT_SECRET=$(openssl rand -base64 32)
-```
+---
 
-### Optional Variables
+## Deployment
+
+### Full Deployment
 
 ```bash
-# Domain & SSL
-SUPABASE_DOMAIN=supa.example.com
-USE_LETSENCRYPT=true
-LETSENCRYPT_EMAIL=you@example.com
-
-# SMTP (for email features)
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=your@email.com
-SMTP_PASSWORD=app_password
+./scripts/deploy-simple all
 ```
+
+This will:
+1. Prepare VPS (user, SSH keys, dependencies)
+2. Download and configure Pigsty v3.6.1
+3. Generate `pigsty.yml` with your settings
+4. Run `install.yml` (PostgreSQL, monitoring)
+5. Run `docker.yml` (Docker installation)
+6. Run `app.yml` (Supabase containers)
+7. Apply Backblaze B2 fixes (if configured)
+8. Display access credentials
+
+### Other Commands
+
+```bash
+./scripts/deploy-simple config    # Generate and upload pigsty.yml only
+./scripts/deploy-simple validate  # Validate configuration
+./scripts/deploy-simple verify    # Check deployment status
+```
+
+---
+
+## Access Points
+
+After deployment, you'll see:
+
+| Service | URL | Credentials |
+|---------|-----|-------------|
+| Supabase Studio | `https://your-domain.com` | From `.env` |
+| Grafana | `http://VPS_IP` | `admin` / from `.env` |
+| PostgreSQL | `VPS_IP:5436` | `supabase_admin` / from `.env` |
 
 ---
 
@@ -225,375 +145,89 @@ SMTP_PASSWORD=app_password
 ```
 pigsty-supabase-deployment/
 ├── scripts/
-│   ├── deploy              # Main orchestrator
-│   ├── generate-secrets    # Auto-generate secure config
-│   ├── utils.sh            # Shared utilities
+│   ├── deploy-simple       # Main deployment script
+│   ├── generate-secrets    # Configuration generator
 │   └── modules/
-│       ├── 01-prepare.sh   # VPS setup
-│       ├── 02-configure.sh # Pigsty config (uses official template)
-│       ├── 03-install.sh   # Stack installation
-│       └── 04-verify.sh    # Health checks
-├── ansible/
-│   └── inventory/          # Generated inventory
+│       ├── 01-prepare.sh   # VPS preparation
+│       └── 03-validate.sh  # Configuration validation
+├── lib/
+│   └── simple-yaml-gen.py  # YAML generator with automatic fixes
 ├── .env.example            # Configuration template
-├── .gitignore
 └── README.md
 ```
 
 ---
 
-## Usage
+## How It Works
 
-### Commands
+This project follows **Pigsty's official deployment flow**:
 
 ```bash
-# Generate secure configuration (do this first!)
-./scripts/generate-secrets
-
-# Full deployment
-./scripts/deploy all
-
-# Individual steps
-./scripts/deploy prepare    # Setup VPS
-./scripts/deploy config     # Configure Pigsty
-./scripts/deploy install    # Install stack
-./scripts/deploy verify     # Health check
-
-# Help
-./scripts/deploy help
+# What deploy-simple does internally:
+curl https://repo.pigsty.io/get | bash     # Download Pigsty
+./bootstrap                                  # Install Ansible
+./configure -c supabase                      # Use supabase template
+# Upload customized pigsty.yml
+./install.yml                                # PostgreSQL + infra
+./docker.yml                                 # Docker
+./app.yml                                    # Supabase containers
 ```
 
-### Access Points
+### Automatic Fixes Applied
 
-| Service | URL | Default Credentials |
-|---------|-----|---------------------|
-| Supabase Studio | `http://VPS_IP:8000` | From `.env`: `DASHBOARD_USERNAME` / `DASHBOARD_PASSWORD` |
-| Grafana | `http://VPS_IP` | `admin` / `your_GRAFANA_PASSWORD` |
-| PostgreSQL | `VPS_IP:5436` | `supabase_admin` / `your_POSTGRES_PASSWORD` |
-| MinIO (if used) | `http://VPS_IP:9000` | `minioadmin` / `your_MINIO_PASSWORD` |
+The `simple-yaml-gen.py` script automatically applies fixes learned from production:
 
-> **💾 Storage Architecture**: Uses **MinIO** (local) for Supabase Storage and **Backblaze B2** (cloud) for PostgreSQL backups. See [Storage Architecture](docs/STORAGE_ARCHITECTURE.md) for details.  
-> **📦 Backups**: Automated daily PostgreSQL backups to Backblaze B2 with Point-in-Time Recovery. See [pgBackRest Guide](docs/PGBACKREST_BACKUP.md) for backup configuration.
+1. **pg_hba.conf rules** - Adds VPS IP for HAProxy connections
+2. **Docker gateway IP** - Uses `172.17.0.1` for container connectivity
+3. **Backblaze B2 compatibility** - Adds `TUS_ALLOW_S3_TAGS=false`
+4. **Safe passwords** - Generates alphanumeric-only passwords (no URL encoding issues)
+5. **Inline comments removal** - Prevents Docker from including comments in values
 
 ---
 
-## Maintenance
+## Backblaze B2 Storage
 
-### Backups
+To use Backblaze B2 instead of MinIO:
 
-Backups run automatically at 1:00 AM daily via pgBackRest.
+1. Create a B2 bucket
+2. Create an application key with read/write access
+3. Run `./scripts/generate-secrets` and enter B2 credentials when prompted
 
-```bash
-# Manual backup
-ssh -i ~/.ssh/pigsty_deploy deploy@VPS_IP
-sudo -u postgres /pg/bin/pg-backup full
-
-# Restore
-sudo -u postgres pgbackrest --stanza=pg-meta restore
-```
-
-### SSL/TLS with Let's Encrypt
-
-**Prerequisites:**
-1. Point your domain DNS to VPS IP
-2. Open ports 80 and 443 on VPS
-
-**Configure domain in .env BEFORE deployment:**
-```bash
-SUPABASE_DOMAIN=bitsflaredb.bits.do
-LETSENCRYPT_EMAIL=your@email.com
-USE_LETSENCRYPT=true
-```
-
-**Setup SSL:**
-
-✅ **Automatic** (recommended): If configured in .env, SSL is set up automatically during `./scripts/deploy all`
-
-🔧 **Manual** (if you forgot to configure before): 
-```bash
-# Add domain to .env, then run:
-./scripts/deploy ssl:setup
-```
-
-**What happens internally:**
-
-1. **Sync Configuration**
-   - Updates `pigsty.yml` with domain in `infra_portal.supa`
-   - Configures HTTPS URLs in `apps.supabase.conf`:
-     ```yaml
-     apps:
-       supabase:
-         conf:
-           SITE_URL: https://bitsflaredb.bits.do
-           API_EXTERNAL_URL: https://bitsflaredb.bits.do
-           SUPABASE_PUBLIC_URL: https://bitsflaredb.bits.do
-     ```
-
-2. **Apply Nginx Configuration**
-   - Runs `./infra.yml -t nginx_config,nginx_restart`
-   - Creates `/etc/nginx/conf.d/supa.conf` with:
-     ```nginx
-     server {
-         server_name  bitsflaredb.bits.do;
-         listen       80;
-         listen       443 ssl;
-         location ^~ /.well-known/acme-challenge/ {
-             root /www/acme;  # For Let's Encrypt validation
-         }
-     }
-     ```
-
-3. **Request Let's Encrypt Certificate**
-   - Uses certbot with webroot method:
-     ```bash
-     certbot certonly --webroot \
-       --webroot-path /www/acme \
-       -d bitsflaredb.bits.do
-     ```
-   - Certificates stored in `/etc/letsencrypt/live/bitsflaredb.bits.do/`
-
-4. **Configure Nginx with SSL Certificates**
-   - Updates nginx to use Let's Encrypt certs:
-     ```nginx
-     ssl_certificate     /etc/letsencrypt/live/bitsflaredb.bits.do/fullchain.pem;
-     ssl_certificate_key /etc/letsencrypt/live/bitsflaredb.bits.do/privkey.pem;
-     ```
-   - Reloads nginx
-
-5. **Update Supabase Containers**
-   - Updates `/opt/supabase/.env` with HTTPS URLs
-   - Restarts all Supabase containers
-   - Containers now use HTTPS endpoints
-
-**Check certificate:**
-```bash
-./scripts/deploy ssl:status
-```
-
-**Test renewal:**
-```bash
-./scripts/deploy ssl:renew --dry-run
-```
-
-**Important Notes:**
-- ✅ Certbot pre-installed in Pigsty
-- ✅ Auto-renewal via systemd timer (`certbot.timer`)
-- ✅ 90-day validity, auto-renews at 60 days
-- ✅ Configuration in pigsty.yml survives redeployments
-- ⚠️ Don't manually edit `/etc/nginx/conf.d/supa.conf` - regenerate via `./infra.yml`
-
-### Logs
-
-```bash
-ssh -i ~/.ssh/pigsty_deploy deploy@VPS_IP
-
-# PostgreSQL
-sudo tail -f /pg/log/postgres/*.csv
-
-# Supabase
-sudo docker compose -f ~/pigsty/app/supabase/docker-compose.yml logs -f
-
-# Patroni
-sudo journalctl -u patroni -f
-```
-
-### Updates
-
-```bash
-# Update Supabase containers
-ssh -i ~/.ssh/pigsty_deploy deploy@VPS_IP
-cd ~/pigsty
-./app.yml -t app_pull,app_launch
-```
+The script will automatically configure:
+- S3-compatible endpoint
+- `TUS_ALLOW_S3_TAGS=false` for compatibility
 
 ---
 
 ## Troubleshooting
 
-### SSH Connection Failed
+### SSH Connection Issues
 
 ```bash
-# Test connectivity
-ping YOUR_VPS_IP
+# Remove old host key after VPS reinstall
+ssh-keygen -R YOUR_VPS_IP
 
-# Verify root access
-sshpass -p 'YOUR_PASSWORD' ssh root@YOUR_VPS_IP
-
-# Regenerate SSH keys
-rm ~/.ssh/pigsty_deploy*
-./scripts/deploy prepare
+# Test connection
+source .env && sshpass -p "${VPS_ROOT_PASSWORD}" ssh root@${VPS_HOST} "hostname"
 ```
 
-### Services Not Starting
+### Check Container Status
 
 ```bash
-# Check status
-./scripts/deploy verify
-
-# View logs
-ssh -i ~/.ssh/pigsty_deploy deploy@YOUR_VPS_IP
-sudo docker ps -a
-sudo systemctl status patroni
+source .env && ssh deploy@${VPS_HOST} "docker ps --format 'table {{.Names}}\t{{.Status}}'"
 ```
 
-### PostgreSQL Issues
+### View Container Logs
 
 ```bash
-ssh -i ~/.ssh/pigsty_deploy deploy@YOUR_VPS_IP
-
-# Check Patroni cluster
-sudo -u postgres patronictl -c /pg/bin/patroni.yml list
-
-# Check pgbouncer
-sudo systemctl status pgbouncer
+source .env && ssh deploy@${VPS_HOST} "cd /opt/supabase && docker compose logs storage"
 ```
 
----
-
-## Design Principles
-
-This project follows **best practices**:
-
-1. **Official Template First**: Uses Pigsty's official `app/supa` template
-2. **Minimal Patching**: Only overrides necessary values
-3. **Clean Separation**: Modular scripts with single responsibility
-4. **Idempotent**: Safe to run multiple times
-5. **Production Ready**: HA, monitoring, backups included
-
----
-
-## Comparison: This vs Manual
-
-| Aspect | Manual Deployment | This Project |
-|--------|------------------|--------------|
-| Setup Time | 2-3 hours | 20 minutes |
-| SSH Sessions | Multiple | Zero (automated) |
-| Configuration | Manual editing | Template + .env |
-| Reproducibility | Low | High |
-| Multiple VPS | Tedious | Simple |
-| Updates | Manual tracking | Version controlled |
-
----
-
-## Advanced: Tailscale Integration
-
-For enhanced security with zero-trust networking:
+### PostgreSQL Connection Test
 
 ```bash
-# Install Tailscale on Mac
-brew install tailscale
-
-# Connect VPS to Tailscale
-ssh root@VPS_IP
-curl -fsSL https://tailscale.com/install.sh | sh
-sudo tailscale up
-
-# Update .env with Tailscale IP
-VPS_HOST=100.x.x.x  # Tailscale IP
+source .env && PGPASSWORD="${POSTGRES_PASSWORD}" psql -h ${VPS_HOST} -p 5436 -U supabase_admin -d postgres -c "SELECT version();"
 ```
-
-Benefits:
-- Encrypted P2P connection
-- No exposed SSH port
-- Better for multiple VPS management
-
----
-
-## FAQ
-
-**Q: Can I deploy to multiple VPS?**  
-A: Yes, just change `VPS_HOST` in `.env` and run `./scripts/deploy all`
-
-**Q: How do I change Supabase default password?**  
-A: Access Studio at port 8000, go to Settings → Database → Change password
-
-**Q: Is this production-ready?**  
-A: Yes, includes HA, monitoring, backups. Add SSL and firewall for internet-facing deployments.
-
-**Q: How much does this save vs Supabase Cloud?**  
-A: 90%+ savings. Example: $4GB VPS (~$10/month) vs Supabase Pro ($25/month)
-
----
-
-## Contributing
-
-Contributions welcome! Please:
-
-1. Fork the repository
-2. Create feature branch (`git checkout -b feature/improvement`)
-3. Commit changes (`git commit -m 'Add improvement'`)
-4. Push to branch (`git push origin feature/improvement`)
-5. Open Pull Request
-
----
-
-## 📚 Lecciones Aprendidas
-
-### Problema: Contenedores Supabase no se conectaban a PostgreSQL
-**Síntoma**: `no pg_hba.conf entry for host "194.163.149.70"`
-
-**Causa raíz**: 
-- Los contenedores Docker se conectan vía HAProxy/pgbouncer, que preserva la IP del host
-- Faltaban reglas `pg_hba.conf` para permitir conexión desde la IP del VPS
-
-**Solución correcta**: 
-Las reglas ya están en la plantilla oficial de Pigsty:
-```yaml
-pg_hba_rules:
-  - { user: all, db: postgres, addr: intra, auth: pwd }
-  - { user: all, db: postgres, addr: 172.17.0.0/16, auth: pwd }
-```
-
-**❌ NO hacer**: Editar `/pg/data/pg_hba.conf` manualmente  
-**✅ Hacer**: Asegurar que `pigsty.yml` tenga las reglas y ejecutar `./install.yml`
-
----
-
-### Problema: Secuencia de instalación incorrecta
-**Error**: Instalé Docker manualmente antes de ejecutar `./docker.yml`
-
-**Consecuencia**: Configuración inconsistente, contenedores fantasma
-
-**Secuencia correcta** (documentada en https://pigsty.io/docs/app/supabase/):
-```bash
-1. ./configure -c app/supa -i <IP> -n
-2. ./install.yml    # PostgreSQL, MinIO, infraestructura
-3. ./docker.yml     # Docker (NO instalarlo manualmente)
-4. ./app.yml        # Supabase
-```
-
----
-
-### Problema: Configuración no se aplicaba
-**Síntoma**: Cambios en `.env` no tenían efecto
-
-**Causa raíz**: 
-- `app.yml` sobrescribe `/opt/supabase/.env` desde `apps.supabase.conf` en `pigsty.yml`
-- Editar `.env` directamente es temporal
-
-**Solución**:
-```yaml
-# En pigsty.yml
-apps:
-  supabase:
-    conf:
-      POSTGRES_HOST: 194.163.149.70
-      POSTGRES_PORT: 5436
-      # ... otros valores
-```
-
-Luego ejecutar: `./app.yml -t app_config,app_launch`
-
----
-
-### Lección más importante
-
-> **La plantilla oficial de Pigsty (`conf/supabase.yml`) ya tiene TODO configurado correctamente.**
-> 
-> No intentes "mejorar" o "simplificar" sin leer primero la documentación oficial.  
-> Seguir la guía al pie de la letra es MÁS RÁPIDO que improvisar.
-
-**Documentación oficial**: https://pigsty.io/docs/app/supabase/
 
 ---
 
@@ -605,18 +239,9 @@ AGPLv3 (inherited from Pigsty)
 
 ## Credits
 
-- [Pigsty](https://github.com/pgsty/pigsty) - PostgreSQL platform
-- [Supabase](https://github.com/supabase/supabase) - BaaS framework
-- [PostgreSQL](https://www.postgresql.org/) - Database
+- [Pigsty](https://github.com/pgsty/pigsty) - PostgreSQL distribution
+- [Supabase](https://github.com/supabase/supabase) - Open source Firebase alternative
 
 ---
 
-## Support
-
-Issues: [GitHub Issues](https://github.com/bitsdominicada/pigsty-supabase-deployment/issues)
-
-Documentation: [Pigsty Docs](https://pigsty.io/docs/app/supabase/)
-
----
-
-**Made with ❤️ for the PostgreSQL community**
+**Made with care for the PostgreSQL community**
