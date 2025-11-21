@@ -146,6 +146,13 @@ update_supabase_versions() {
             # Add to meta service (after PG_META_DB_PASSWORD line)
             sed -i '/PG_META_DB_PASSWORD/a\\      CRYPTO_KEY: \${PG_META_CRYPTO_KEY}' docker-compose.yml
             echo 'Added PG_META_CRYPTO_KEY to docker-compose.yml'
+        fi
+
+        # Add missing POSTGRES_* vars to Studio (required for newer versions)
+        # Fix for: Failed to retrieve migration history / Zod validation error
+        if ! grep -q 'POSTGRES_HOST.*POSTGRES_HOST' docker-compose.yml; then
+            sed -i '/POSTGRES_PASSWORD: \\\${POSTGRES_PASSWORD}/a\\      POSTGRES_HOST: \${POSTGRES_HOST}\n      POSTGRES_PORT: \${POSTGRES_PORT}\n      POSTGRES_DB: \${POSTGRES_DB}' docker-compose.yml
+            echo 'Added POSTGRES_HOST/PORT/DB to Studio'
         fi"
 
     log_success "Container versions updated to latest"
