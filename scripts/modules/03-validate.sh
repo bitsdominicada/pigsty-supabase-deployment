@@ -36,14 +36,14 @@ else
 fi
 echo
 
-# 2. Check for old IPs
+# 2. Check for unreplaced IPs
 echo "2. Checking for unreplaced IPs..."
-OLD_IP_COUNT=$(grep -c "10\.10\.10\.10" ~/pigsty/pigsty.yml || echo "0")
-if [ "$OLD_IP_COUNT" -eq 0 ]; then
-    echo "   ✅ No references to 10.10.10.10 found"
-else
+if grep -q "10\.10\.10\.10" ~/pigsty/pigsty.yml; then
+    OLD_IP_COUNT=$(grep -c "10\.10\.10\.10" ~/pigsty/pigsty.yml)
     echo "   ❌ Found $OLD_IP_COUNT references to 10.10.10.10"
     exit 1
+else
+    echo "   ✅ No references to 10.10.10.10 found"
 fi
 echo
 
