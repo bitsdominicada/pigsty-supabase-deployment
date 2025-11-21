@@ -104,6 +104,63 @@ download_pigsty() {
 }
 
 #--------------------------------------------------------------#
+# Update Supabase container versions to latest
+#--------------------------------------------------------------#
+update_supabase_versions() {
+    load_env
+    log_step "Updating Supabase container versions"
+
+    log_info "Patching ~/pigsty/app/supabase/docker-compose.yml with latest versions..."
+
+    # Define version updates (Pigsty -> Official latest)
+    # These are the versions from Supabase official docker-compose.yml as of 2025-11
+    sshpass -p "${DEPLOY_USER_PASSWORD}" ssh \
+        -i ~/.ssh/pigsty_deploy \
+        -o StrictHostKeyChecking=no \
+        -o UserKnownHostsFile=/dev/null \
+        -o LogLevel=ERROR \
+        "${DEPLOY_USER}@${VPS_HOST}" \
+        "cd ~/pigsty/app/supabase && \
+        # Studio: 2025.06.16 -> 2025.11.10
+        sed -i 's|supabase/studio:2025.06.16-sha-c4316c3|supabase/studio:2025.11.10-sha-5291fe3|g' docker-compose.yml && \
+        # Auth (GoTrue): v2.174.0 -> v2.182.1
+        sed -i 's|supabase/gotrue:v2.174.0|supabase/gotrue:v2.182.1|g' docker-compose.yml && \
+        # PostgREST: v12.2.12 -> v13.0.7
+        sed -i 's|postgrest/postgrest:v12.2.12|postgrest/postgrest:v13.0.7|g' docker-compose.yml && \
+        # Realtime: v2.34.47 -> v2.63.0
+        sed -i 's|supabase/realtime:v2.34.47|supabase/realtime:v2.63.0|g' docker-compose.yml && \
+        # Storage: v1.23.0 -> v1.29.0
+        sed -i 's|supabase/storage-api:v1.23.0|supabase/storage-api:v1.29.0|g' docker-compose.yml && \
+        # Meta: v0.89.3 -> v0.93.1
+        sed -i 's|supabase/postgres-meta:v0.89.3|supabase/postgres-meta:v0.93.1|g' docker-compose.yml && \
+        # Edge Functions: v1.67.4 -> v1.69.23
+        sed -i 's|supabase/edge-runtime:v1.67.4|supabase/edge-runtime:v1.69.23|g' docker-compose.yml && \
+        # Analytics (Logflare): 1.15.4 -> 1.22.6
+        sed -i 's|supabase/logflare:1.15.4|supabase/logflare:1.22.6|g' docker-compose.yml && \
+        echo 'Versions updated successfully'
+
+        # Add PG_META_CRYPTO_KEY to studio and meta services if not present
+        if ! grep -q 'PG_META_CRYPTO_KEY' docker-compose.yml; then
+            # Add to studio service (after POSTGRES_PASSWORD line)
+            sed -i '/POSTGRES_PASSWORD.*POSTGRES_PASSWORD/a\\      PG_META_CRYPTO_KEY: \${PG_META_CRYPTO_KEY}' docker-compose.yml
+            # Add to meta service (after PG_META_DB_PASSWORD line)
+            sed -i '/PG_META_DB_PASSWORD/a\\      CRYPTO_KEY: \${PG_META_CRYPTO_KEY}' docker-compose.yml
+            echo 'Added PG_META_CRYPTO_KEY to docker-compose.yml'
+        fi"
+
+    log_success "Container versions updated to latest"
+    log_info "Updated versions:"
+    echo "  studio:    2025.11.10-sha-5291fe3"
+    echo "  gotrue:    v2.182.1"
+    echo "  postgrest: v13.0.7"
+    echo "  realtime:  v2.63.0"
+    echo "  storage:   v1.29.0"
+    echo "  meta:      v0.93.1"
+    echo "  functions: v1.69.23"
+    echo "  logflare:  1.22.6"
+}
+
+#--------------------------------------------------------------#
 # Bootstrap Ansible
 #--------------------------------------------------------------#
 bootstrap_ansible() {
@@ -339,6 +396,7 @@ deploy_all() {
 
     prepare_vps
     download_pigsty
+    update_supabase_versions
     generate_pigsty_config
     bootstrap_ansible
 

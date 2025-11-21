@@ -148,6 +148,11 @@ def substitute_line(line, env):
                 r'(:\s*)["\']?DBUser\.Replicator["\']?',
                 rf"\g<1>{env.get('PG_REPLICATION_PASSWORD', 'DBUser.Replicator')}",
             ),
+            # SECRET_KEY_BASE for Realtime
+            (
+                r'(:\s*)["\']?UpNVntn3cDxHJpq99YMc1T1AQgQpc8kfYTuRgBiYa15BLrx8etQoXz3gZv1/u2oq["\']?',
+                rf"\g<1>{env.get('SECRET_KEY_BASE', 'UpNVntn3cDxHJpq99YMc1T1AQgQpc8kfYTuRgBiYa15BLrx8etQoXz3gZv1/u2oq')}",
+            ),
         ]
 
         for pattern, replacement in patterns:
