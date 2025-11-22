@@ -216,6 +216,15 @@ def inject_variables(pigsty_yml, env):
         content = re.sub(r"(certbot:\s*)supa\.pigsty", rf"\1{domain}", content)
         print(f"  ✓ Domain configured: {domain}", file=sys.stderr)
 
+    # Add pg_hba rule to allow connections from VPS IP (for supabase-analytics container)
+    if "VPS_HOST" in env:
+        vps_ip = env["VPS_HOST"]
+        # Find pg_hba_rules section and add rule for VPS IP if not already there
+        hba_pattern = r"(pg_hba_rules:.*?addr: 172\.17\.0\.0/16.*?title:.*?\n)"
+        new_hba_rule = rf"\1          - {{ user: all ,db: postgres  ,addr: {vps_ip}/32 ,auth: pwd ,title: 'allow supabase access from host IP' }}\n"
+        content = re.sub(hba_pattern, new_hba_rule, content, flags=re.DOTALL)
+        print(f"  ✓ Added pg_hba rule for {vps_ip}/32", file=sys.stderr)
+
     # Update passwords for Pigsty services
     password_mappings = [
         ("GRAFANA_ADMIN_PASSWORD", "grafana_admin_password"),
