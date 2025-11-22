@@ -139,6 +139,28 @@ def add_tus_s3_tags_fix(content, env):
     return content
 
 
+def add_pg_meta_crypto_key(content, env):
+    """
+    Add PG_META_CRYPTO_KEY to apps.supabase.conf
+
+    This key is required by supabase-meta but not included in Pigsty's template.
+    """
+    pg_meta_key = env.get("PG_META_CRYPTO_KEY", "")
+
+    if not pg_meta_key:
+        return content
+
+    # Add after POSTGRES_PASSWORD
+    crypto_key_line = f"              PG_META_CRYPTO_KEY: {pg_meta_key}"
+    pattern = r"(\s+POSTGRES_PASSWORD:.*\n)"
+    replacement = rf"\1{crypto_key_line}\n"
+    content = re.sub(pattern, replacement, content)
+
+    print(f"  ✓ Added PG_META_CRYPTO_KEY", file=sys.stderr)
+
+    return content
+
+
 def inject_variables(pigsty_yml, env):
     """
     Inject all variables from .env into pigsty.yml
@@ -159,7 +181,6 @@ def inject_variables(pigsty_yml, env):
         ("JWT_SECRET", "JWT_SECRET"),
         ("ANON_KEY", "ANON_KEY"),
         ("SERVICE_ROLE_KEY", "SERVICE_ROLE_KEY"),
-        ("PG_META_CRYPTO_KEY", "PG_META_CRYPTO_KEY"),
         # Dashboard
         ("DASHBOARD_USERNAME", "DASHBOARD_USERNAME"),
         ("DASHBOARD_PASSWORD", "DASHBOARD_PASSWORD"),
@@ -191,6 +212,9 @@ def inject_variables(pigsty_yml, env):
 
     # Add TUS_ALLOW_S3_TAGS fix for Backblaze B2 / S3-compatible providers
     content = add_tus_s3_tags_fix(content, env)
+
+    # Add PG_META_CRYPTO_KEY (not in Pigsty template)
+    content = add_pg_meta_crypto_key(content, env)
 
     # Also update non-conf variables (outside apps.supabase.conf)
     # These are in the global vars section
