@@ -123,6 +123,19 @@ def substitute_line(line, env):
                 r'(:\s*)["\']?https://supa\.pigsty["\']?',
                 rf"\g<1>https://{env.get('SUPABASE_DOMAIN', 'supa.pigsty')}",
             ),
+            # Update all SITE_URL, API_EXTERNAL_URL, SUPABASE_PUBLIC_URL
+            (
+                r"(SITE_URL:\s*)https://supa\.pigsty",
+                rf"\g<1>{env.get('SUPABASE_API_EXTERNAL_URL', 'https://supa.pigsty')}",
+            ),
+            (
+                r"(API_EXTERNAL_URL:\s*)https://supa\.pigsty",
+                rf"\g<1>{env.get('SUPABASE_API_EXTERNAL_URL', 'https://supa.pigsty')}",
+            ),
+            (
+                r"(SUPABASE_PUBLIC_URL:\s*)https://supa\.pigsty",
+                rf"\g<1>{env.get('SUPABASE_API_EXTERNAL_URL', 'https://supa.pigsty')}",
+            ),
             (
                 r'(:\s*)["\']?your@email\.com["\']?',
                 rf"\g<1>{env.get('LETSENCRYPT_EMAIL', 'your@email.com')}",
@@ -131,6 +144,21 @@ def substitute_line(line, env):
             (
                 r"^(\s*certbot_sign:\s*)false",
                 rf"\g<1>{env.get('USE_LETSENCRYPT', 'false').lower()}",
+            ),
+            # Update certbot_email
+            (
+                r"(certbot_email:\s*)your@email\.com",
+                rf"\g<1>{env.get('LETSENCRYPT_EMAIL', 'your@email.com')}",
+            ),
+            # Update infra_portal supa domain
+            (
+                r"(supa.*\n\s*domain:\s*)supa\.pigsty",
+                rf"\g<1>{env.get('SUPABASE_DOMAIN', 'supa.pigsty')}",
+            ),
+            # Update infra_portal supa certbot
+            (
+                r"(certbot:\s*)supa\.pigsty",
+                rf"\g<1>{env.get('SUPABASE_DOMAIN', 'supa.pigsty')}",
             ),
             (
                 r'(:\s*)["\']?DBUser\.Supa["\']?',
