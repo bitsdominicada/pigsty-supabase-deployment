@@ -283,20 +283,22 @@ fix_vault_pgsodium() {
 
     # The supabase_vault extension has its own C functions that don't share
     # the server key with pgsodium. We replace them with pgsodium native functions.
+
+    # Create SQL patch file on VPS
     sshpass -p "${DEPLOY_USER_PASSWORD}" ssh \
         -i ~/.ssh/pigsty_deploy \
         -o StrictHostKeyChecking=no \
         -o UserKnownHostsFile=/dev/null \
         -o LogLevel=ERROR \
         "${DEPLOY_USER}@${VPS_HOST}" \
-        "sudo -u postgres psql -d postgres << 'EOSQL'
+        "cat > /tmp/vault_fix.sql << 'EOF'
 -- Fix vault.create_secret to use pgsodium native function
 CREATE OR REPLACE FUNCTION vault.create_secret(new_secret text, new_name text DEFAULT NULL::text, new_description text DEFAULT ''::text, new_key_id uuid DEFAULT NULL::uuid)
  RETURNS uuid
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO ''
-AS \\\$function\\\$
+AS \$function\$
 DECLARE
   rec record;
 BEGIN
@@ -314,7 +316,7 @@ BEGIN
   WHERE id = rec.id;
   RETURN rec.id;
 END
-\\\$function\\\$;
+\$function\$;
 
 -- Fix vault.decrypted_secrets view to use pgsodium native function
 CREATE OR REPLACE VIEW vault.decrypted_secrets AS
@@ -323,7 +325,7 @@ CREATE OR REPLACE VIEW vault.decrypted_secrets AS
         message => decode(secret, 'base64'::text),
         additional => convert_to(id::text, 'utf8'::name),
         key_id => 0::bigint,
-        context => '\\\\x7067736f6469756d'::bytea,
+        context => '\x7067736f6469756d'::bytea,
         nonce => nonce
     ), 'utf8'::name) AS decrypted_secret,
     key_id, nonce, created_at, updated_at
@@ -335,7 +337,7 @@ CREATE OR REPLACE FUNCTION vault.update_secret(secret_id uuid, new_secret text D
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO ''
-AS \\\$function\\\$
+AS \$function\$
 DECLARE
   decrypted_secret text := (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE id = secret_id);
 BEGIN
@@ -354,9 +356,18 @@ BEGIN
     updated_at = now()
   WHERE s.id = secret_id;
 END
-\\\$function\\\$;
-EOSQL
+\$function\$;
+EOF
 "
+
+    # Apply the SQL patch
+    sshpass -p "${DEPLOY_USER_PASSWORD}" ssh \
+        -i ~/.ssh/pigsty_deploy \
+        -o StrictHostKeyChecking=no \
+        -o UserKnownHostsFile=/dev/null \
+        -o LogLevel=ERROR \
+        "${DEPLOY_USER}@${VPS_HOST}" \
+        "sudo -u postgres psql -d postgres -f /tmp/vault_fix.sql && rm /tmp/vault_fix.sql"
 
     log_success "Vault functions patched to use pgsodium server key"
 }
