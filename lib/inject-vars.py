@@ -249,14 +249,18 @@ def inject_variables(pigsty_yml, env):
         content = re.sub(hba_pattern, new_hba_rule, content, flags=re.DOTALL)
         print(f"  ✓ Added pg_hba rule for {vps_ip}/32 (all databases)", file=sys.stderr)
 
-    # Add DBUser.Supa variable for Supabase users (insert after grafana_admin_password)
+    # Replace 'DBUser.Supa' password in all Supabase pg_users with actual password
+    # Pigsty does NOT resolve variables - it uses literal strings as passwords
     if "POSTGRES_PASSWORD" in env:
-        dbuser_supa_line = f"    DBUser.Supa: {env['POSTGRES_PASSWORD']}"
-        # Insert after grafana_admin_password line
+        password = env["POSTGRES_PASSWORD"]
+        # Replace all instances of "password: 'DBUser.Supa'" with actual password
         content = re.sub(
-            r"(grafana_admin_password:.*\n)", rf"\1{dbuser_supa_line}\n", content
+            r"password:\s*'DBUser\.Supa'", f"password: '{password}'", content
         )
-        print(f"  ✓ DBUser.Supa added/updated", file=sys.stderr)
+        print(
+            f"  ✓ Replaced all 'DBUser.Supa' passwords with actual value",
+            file=sys.stderr,
+        )
 
     # Update passwords for Pigsty services
     password_mappings = [
