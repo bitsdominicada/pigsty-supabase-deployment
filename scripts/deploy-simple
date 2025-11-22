@@ -404,6 +404,16 @@ launch_supabase() {
     # Fix Vault to use pgsodium server key
     fix_vault_pgsodium
 
+    # Restart auth container to pick up SMTP configuration
+    log_info "Restarting auth container to apply SMTP configuration..."
+    sshpass -p "${DEPLOY_USER_PASSWORD}" ssh \
+        -i ~/.ssh/pigsty_deploy \
+        -o StrictHostKeyChecking=no \
+        -o UserKnownHostsFile=/dev/null \
+        -o LogLevel=ERROR \
+        "${DEPLOY_USER}@${VPS_HOST}" \
+        "cd /opt/supabase && sudo docker compose restart auth"
+
     # Wait a bit for containers to start
     log_info "Waiting for services to start..."
     sleep 15
