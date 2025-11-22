@@ -159,6 +159,7 @@ def inject_variables(pigsty_yml, env):
         ("JWT_SECRET", "JWT_SECRET"),
         ("ANON_KEY", "ANON_KEY"),
         ("SERVICE_ROLE_KEY", "SERVICE_ROLE_KEY"),
+        ("PG_META_CRYPTO_KEY", "PG_META_CRYPTO_KEY"),
         # Dashboard
         ("DASHBOARD_USERNAME", "DASHBOARD_USERNAME"),
         ("DASHBOARD_PASSWORD", "DASHBOARD_PASSWORD"),
@@ -209,6 +210,8 @@ def inject_variables(pigsty_yml, env):
         content = re.sub(
             r"(supa\s*:\s*\n\s*domain:\s*)supa\.pigsty", rf"\1{domain}", content
         )
+        # Replace in /etc/hosts line (keep other pigsty domains, only replace supa.pigsty)
+        content = re.sub(r"(\s+)supa\.pigsty(\s|$)", rf"\1{domain}\2", content)
         # Replace certbot domain
         content = re.sub(r"(certbot:\s*)supa\.pigsty", rf"\1{domain}", content)
         print(f"  ✓ Domain configured: {domain}", file=sys.stderr)
