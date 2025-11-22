@@ -221,9 +221,9 @@ def inject_variables(pigsty_yml, env):
         vps_ip = env["VPS_HOST"]
         # Find pg_hba_rules section and add rule for VPS IP if not already there
         hba_pattern = r"(pg_hba_rules:.*?addr: 172\.17\.0\.0/16.*?title:.*?\n)"
-        new_hba_rule = rf"\1          - {{ user: all ,db: postgres  ,addr: {vps_ip}/32 ,auth: pwd ,title: 'allow supabase access from host IP' }}\n"
+        new_hba_rule = rf"\1          - {{ user: all ,db: all  ,addr: {vps_ip}/32 ,auth: pwd ,title: 'allow supabase access from host IP' }}\n"
         content = re.sub(hba_pattern, new_hba_rule, content, flags=re.DOTALL)
-        print(f"  ✓ Added pg_hba rule for {vps_ip}/32", file=sys.stderr)
+        print(f"  ✓ Added pg_hba rule for {vps_ip}/32 (all databases)", file=sys.stderr)
 
     # Update passwords for Pigsty services
     password_mappings = [
