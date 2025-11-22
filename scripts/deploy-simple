@@ -153,6 +153,13 @@ update_supabase_versions() {
         if ! grep -q 'POSTGRES_HOST.*POSTGRES_HOST' docker-compose.yml; then
             sed -i '/POSTGRES_PASSWORD: \\\${POSTGRES_PASSWORD}/a\\      POSTGRES_HOST: \${POSTGRES_HOST}\n      POSTGRES_PORT: \${POSTGRES_PORT}\n      POSTGRES_DB: \${POSTGRES_DB}' docker-compose.yml
             echo 'Added POSTGRES_HOST/PORT/DB to Studio'
+        fi
+
+        # Add SMTP configuration to auth service (GoTrue)
+        if ! grep -q 'SMTP_HOST' docker-compose.yml; then
+            # Find the auth service and add SMTP vars after GOTRUE_EXTERNAL_EMAIL_ENABLED
+            sed -i '/GOTRUE_EXTERNAL_EMAIL_ENABLED/a\\      SMTP_HOST: \${SMTP_HOST}\n      SMTP_PORT: \${SMTP_PORT}\n      SMTP_USER: \${SMTP_USER}\n      SMTP_PASS: \${SMTP_PASSWORD}\n      SMTP_SENDER_NAME: \${SMTP_SENDER_NAME}\n      SMTP_ADMIN_EMAIL: \${SMTP_ADMIN_EMAIL}' docker-compose.yml
+            echo 'Added SMTP configuration to auth service'
         fi"
 
     log_success "Container versions updated to latest"
