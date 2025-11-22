@@ -98,6 +98,47 @@ def add_smtp_config(content, env):
     return content
 
 
+def add_tus_s3_tags_fix(content, env):
+    """
+    Add TUS_ALLOW_S3_TAGS=false for Backblaze B2, Cloudflare R2, DigitalOcean Spaces
+
+    These S3-compatible providers don't support x-amz-tagging header which causes
+    resumable uploads to fail. Setting this to false disables S3 tagging for TUS uploads.
+    """
+    s3_endpoint = env.get("S3_ENDPOINT", "")
+
+    # Detect if using S3-compatible provider that needs this fix
+    needs_fix = any(
+        provider in s3_endpoint.lower()
+        for provider in [
+            "backblazeb2.com",
+            "r2.cloudflarestorage.com",
+            "digitaloceanspaces.com",
+        ]
+    )
+
+    if not needs_fix:
+        return content
+
+    # Add TUS_ALLOW_S3_TAGS after SMTP config (or after S3_REGION if no SMTP)
+    tus_config = "              TUS_ALLOW_S3_TAGS: false"
+
+    # Try to add after SMTP_SENDER_NAME
+    pattern = r"(\s+SMTP_SENDER_NAME:.*\n)"
+    if re.search(pattern, content):
+        replacement = rf"\1{tus_config}\n"
+        content = re.sub(pattern, replacement, content)
+    else:
+        # If no SMTP, add after S3_REGION
+        pattern = r"(\s+S3_REGION:.*\n)"
+        replacement = rf"\1{tus_config}\n"
+        content = re.sub(pattern, replacement, content)
+
+    print(f"  ✓ Added TUS_ALLOW_S3_TAGS=false for {s3_endpoint}", file=sys.stderr)
+
+    return content
+
+
 def inject_variables(pigsty_yml, env):
     """
     Inject all variables from .env into pigsty.yml
@@ -146,6 +187,9 @@ def inject_variables(pigsty_yml, env):
 
     # Add SMTP configuration
     content = add_smtp_config(content, env)
+
+    # Add TUS_ALLOW_S3_TAGS fix for Backblaze B2 / S3-compatible providers
+    content = add_tus_s3_tags_fix(content, env)
 
     # Also update non-conf variables (outside apps.supabase.conf)
     # These are in the global vars section

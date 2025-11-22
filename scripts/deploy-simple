@@ -263,39 +263,6 @@ install_docker() {
 #--------------------------------------------------------------#
 # Apply Backblaze B2 / S3-compatible fixes
 #--------------------------------------------------------------#
-apply_s3_fixes() {
-    load_env
-
-    # Check if using Backblaze B2, Cloudflare R2, or DigitalOcean Spaces
-    if [[ "${S3_ENDPOINT:-}" == *"backblazeb2.com"* ]] || \
-       [[ "${S3_ENDPOINT:-}" == *"r2.cloudflarestorage.com"* ]] || \
-       [[ "${S3_ENDPOINT:-}" == *"digitaloceanspaces.com"* ]]; then
-
-        log_step "Applying S3-compatible storage fixes"
-        log_info "Detected S3-compatible provider that doesn't support x-amz-tagging"
-
-        # Add TUS_ALLOW_S3_TAGS to docker-compose.yml if not present
-        sshpass -p "${DEPLOY_USER_PASSWORD}" ssh \
-            -i ~/.ssh/pigsty_deploy \
-            -o StrictHostKeyChecking=no \
-            -o UserKnownHostsFile=/dev/null \
-            -o LogLevel=ERROR \
-            "${DEPLOY_USER}@${VPS_HOST}" \
-            "if ! grep -q 'TUS_ALLOW_S3_TAGS' /opt/supabase/docker-compose.yml; then
-                sudo sed -i '/GLOBAL_S3_FORCE_PATH_STYLE/a\\      TUS_ALLOW_S3_TAGS: \${TUS_ALLOW_S3_TAGS:-true}' /opt/supabase/docker-compose.yml
-                echo 'Added TUS_ALLOW_S3_TAGS to docker-compose.yml'
-            fi
-            if ! grep -q 'TUS_ALLOW_S3_TAGS' /opt/supabase/.env; then
-                echo 'TUS_ALLOW_S3_TAGS=false' | sudo tee -a /opt/supabase/.env > /dev/null
-                echo 'Added TUS_ALLOW_S3_TAGS=false to .env'
-            fi
-            # Recreate storage container to apply changes
-            cd /opt/supabase && docker compose up -d --force-recreate storage"
-
-        log_success "S3-compatible fixes applied and storage container restarted"
-    fi
-}
-
 #--------------------------------------------------------------#
 # Fix Vault functions to use pgsodium server key
 #--------------------------------------------------------------#
@@ -415,28 +382,12 @@ launch_supabase() {
 
     log_success "Supabase launched"
 
-    # Apply S3-compatible fixes if needed
-    apply_s3_fixes
-
     # Fix Vault to use pgsodium server key
     fix_vault_pgsodium
 
     # Wait a bit for containers to start
     log_info "Waiting for services to start..."
     sleep 15
-
-    # Restart auth container to ensure SMTP config is loaded
-    # Note: Even though SMTP vars are in .env, auth sometimes starts before they're available
-    log_info "Restarting auth container to ensure SMTP configuration is loaded..."
-    sshpass -p "${DEPLOY_USER_PASSWORD}" ssh \
-        -i ~/.ssh/pigsty_deploy \
-        -o StrictHostKeyChecking=no \
-        -o UserKnownHostsFile=/dev/null \
-        -o LogLevel=ERROR \
-        "${DEPLOY_USER}@${VPS_HOST}" \
-        "cd /opt/supabase && sudo docker compose restart auth"
-
-    sleep 5
 
     # Check container status
     log_info "Checking container status..."
