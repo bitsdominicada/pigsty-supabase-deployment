@@ -242,6 +242,44 @@ def add_pg_meta_crypto_key(content, env):
     return content
 
 
+def add_smtp_configuration(content, env):
+    """
+    Add SMTP configuration from .env to the conf section.
+    Replaces commented SMTP lines with actual values from environment.
+    """
+    smtp_host = env.get("SMTP_HOST", "")
+    smtp_port = env.get("SMTP_PORT", "")
+    smtp_user = env.get("SMTP_USER", "")
+    smtp_password = env.get("SMTP_PASSWORD", "")
+    smtp_admin_email = env.get("SMTP_ADMIN_EMAIL", "")
+    smtp_sender_name = env.get("SMTP_SENDER_NAME", "")
+
+    # Only add SMTP config if at least host is defined
+    if smtp_host:
+        # Find the commented SMTP section and replace with actual values
+        # Pattern: lines starting with #SMTP_
+        smtp_config = f"""              SMTP_ADMIN_EMAIL: {smtp_admin_email}
+              SMTP_HOST: {smtp_host}
+              SMTP_PORT: {smtp_port}
+              SMTP_USER: {smtp_user}
+              SMTP_PASS: {smtp_password}
+              SMTP_SENDER_NAME: {smtp_sender_name}"""
+
+        # Replace the commented SMTP section
+        content = re.sub(
+            r"(\s+# if using SMTP \(optional\)\s*\n)(\s+#SMTP_ADMIN_EMAIL:.*\n\s+#SMTP_HOST:.*\n\s+#SMTP_PORT:.*\n\s+#SMTP_USER:.*\n\s+#SMTP_PASS:.*\n\s+#SMTP_SENDER_NAME:.*)",
+            rf"\g<1>{smtp_config}",
+            content,
+        )
+
+        print(
+            f"INFO: Added SMTP configuration: {smtp_host}:{smtp_port} ({smtp_admin_email})",
+            file=sys.stderr,
+        )
+
+    return content
+
+
 def add_backblaze_b2_config(content, env):
     """
     Add TUS_ALLOW_S3_TAGS=false for Backblaze B2 compatibility.
@@ -346,6 +384,7 @@ def process_yaml(input_file, env):
     content = add_extra_pg_hba_rules(content, env)
     content = fix_postgres_host(content, env)
     content = add_pg_meta_crypto_key(content, env)
+    content = add_smtp_configuration(content, env)
     content = add_backblaze_b2_config(content, env)
     content = remove_inline_comments_from_conf(content)
 
@@ -393,9 +432,10 @@ def main():
             "  1. Adds pg_hba rules for VPS IP and 'supabase' database", file=sys.stderr
         )
         print("  2. Sets POSTGRES_HOST to 172.17.0.1 (Docker gateway)", file=sys.stderr)
-        print("  3. Removes inline comments from conf values", file=sys.stderr)
+        print("  3. Adds SMTP configuration from .env", file=sys.stderr)
+        print("  4. Removes inline comments from conf values", file=sys.stderr)
         print(
-            "  4. Warns about passwords with URL-problematic characters",
+            "  5. Warns about passwords with URL-problematic characters",
             file=sys.stderr,
         )
         sys.exit(1)
