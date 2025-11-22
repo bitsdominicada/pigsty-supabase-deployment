@@ -408,6 +408,19 @@ launch_supabase() {
     log_info "Waiting for services to start..."
     sleep 15
 
+    # Restart auth container to ensure SMTP config is loaded
+    # Note: Even though SMTP vars are in .env, auth sometimes starts before they're available
+    log_info "Restarting auth container to ensure SMTP configuration is loaded..."
+    sshpass -p "${DEPLOY_USER_PASSWORD}" ssh \
+        -i ~/.ssh/pigsty_deploy \
+        -o StrictHostKeyChecking=no \
+        -o UserKnownHostsFile=/dev/null \
+        -o LogLevel=ERROR \
+        "${DEPLOY_USER}@${VPS_HOST}" \
+        "cd /opt/supabase && sudo docker compose restart auth"
+
+    sleep 5
+
     # Check container status
     log_info "Checking container status..."
     sshpass -p "${DEPLOY_USER_PASSWORD}" ssh \
