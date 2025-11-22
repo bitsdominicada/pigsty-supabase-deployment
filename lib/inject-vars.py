@@ -225,9 +225,17 @@ def inject_variables(pigsty_yml, env):
         content = re.sub(hba_pattern, new_hba_rule, content, flags=re.DOTALL)
         print(f"  ✓ Added pg_hba rule for {vps_ip}/32 (all databases)", file=sys.stderr)
 
+    # Add DBUser.Supa variable for Supabase users (insert after grafana_admin_password)
+    if "POSTGRES_PASSWORD" in env:
+        dbuser_supa_line = f"    DBUser.Supa: {env['POSTGRES_PASSWORD']}"
+        # Insert after grafana_admin_password line
+        content = re.sub(
+            r"(grafana_admin_password:.*\n)", rf"\1{dbuser_supa_line}\n", content
+        )
+        print(f"  ✓ DBUser.Supa added/updated", file=sys.stderr)
+
     # Update passwords for Pigsty services
     password_mappings = [
-        ("POSTGRES_PASSWORD", "DBUser.Supa"),  # Supabase users password
         ("GRAFANA_ADMIN_PASSWORD", "grafana_admin_password"),
         ("PG_ADMIN_PASSWORD", "pg_admin_passwd"),
         ("PG_MONITOR_PASSWORD", "pg_monitor_passwd"),
