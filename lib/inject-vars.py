@@ -227,6 +227,7 @@ def inject_variables(pigsty_yml, env):
 
     # Update passwords for Pigsty services
     password_mappings = [
+        ("POSTGRES_PASSWORD", "DBUser.Supa"),  # Supabase users password
         ("GRAFANA_ADMIN_PASSWORD", "grafana_admin_password"),
         ("PG_ADMIN_PASSWORD", "pg_admin_passwd"),
         ("PG_MONITOR_PASSWORD", "pg_monitor_passwd"),
