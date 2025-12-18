@@ -1,0 +1,12 @@
+Backup created: 2025-12-18
+Source: 167.114.2.209
+Domain: miltontroche.bitsneura.com
+Client: Milton Troche ERP
+
+Files:
+- globals.sql (10KB) - Database roles and users
+- postgres.dump (15MB) - Main Supabase database  
+- supabase.dump (767KB) - Analytics database
+
+This backup was created with --no-owner --no-privileges flags
+and can be restored cleanly to any Pigsty+Supabase installation.

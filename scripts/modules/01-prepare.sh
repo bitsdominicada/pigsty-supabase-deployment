@@ -4,6 +4,7 @@
 # MODULE: VPS Preparation
 # ============================================
 # Sets up VPS: user, SSH keys, dependencies
+# Supports both SSH key (ubuntu/debian) and password (root) auth
 
 set -euo pipefail
 
@@ -14,22 +15,49 @@ prepare_vps() {
     log_step "VPS Preparation"
 
     load_env
-    ensure_sshpass
 
     log_info "Target: ${VPS_HOST}"
+    log_info "Auth method: ${AUTH_METHOD}"
     log_info "Deploy user: ${DEPLOY_USER}"
 
-    # Test root connection
-    log_info "Testing root SSH connection..."
-    if ! ssh_root "echo 'Root access verified'" &>/dev/null; then
-        log_error "Cannot connect as root. Check VPS_HOST and VPS_ROOT_PASSWORD"
+    # Test admin connection (ubuntu with key or root with password)
+    log_info "Testing admin SSH connection..."
+    if ! test_admin_ssh; then
+        if [ "$AUTH_METHOD" = "key" ]; then
+            log_error "Cannot connect to ${SSH_USER}@${VPS_HOST}"
+            log_info "Make sure your SSH key is authorized on the VPS"
+            log_info "Try: ssh ${SSH_USER}@${VPS_HOST}"
+        else
+            log_error "Cannot connect as root. Check VPS_HOST and VPS_ROOT_PASSWORD"
+        fi
         exit 1
     fi
-    log_success "Root access verified"
+    log_success "Admin access verified"
 
     # Create deploy user
     log_info "Creating deploy user..."
-    ssh_root << SETUP
+
+    if [ "$AUTH_METHOD" = "key" ]; then
+        # SSH Key mode - use sudo
+        ssh_admin << SETUP
+set -e
+
+# Create user if doesn't exist
+if ! id -u ${DEPLOY_USER} &>/dev/null; then
+    sudo useradd -m -s /bin/bash ${DEPLOY_USER}
+    echo "${DEPLOY_USER}:${DEPLOY_USER_PASSWORD}" | sudo chpasswd
+fi
+
+# Add to sudo group
+sudo usermod -aG sudo ${DEPLOY_USER} 2>/dev/null || sudo usermod -aG wheel ${DEPLOY_USER} 2>/dev/null || true
+
+# Passwordless sudo
+echo "${DEPLOY_USER} ALL=(ALL) NOPASSWD:ALL" | sudo tee /etc/sudoers.d/${DEPLOY_USER} > /dev/null
+sudo chmod 0440 /etc/sudoers.d/${DEPLOY_USER}
+SETUP
+    else
+        # Password mode - direct root
+        ssh_root << SETUP
 set -e
 
 # Create user if doesn't exist
@@ -45,29 +73,44 @@ usermod -aG sudo ${DEPLOY_USER} 2>/dev/null || usermod -aG wheel ${DEPLOY_USER} 
 echo "${DEPLOY_USER} ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/${DEPLOY_USER}
 chmod 0440 /etc/sudoers.d/${DEPLOY_USER}
 SETUP
+    fi
     log_success "Deploy user configured"
 
-    # Setup SSH key
-    log_info "Configuring SSH key authentication..."
+    # Setup SSH key for deploy user
+    log_info "Configuring SSH key authentication for deploy user..."
     if [ ! -f ~/.ssh/pigsty_deploy ]; then
         ssh-keygen -t ed25519 -f ~/.ssh/pigsty_deploy -N "" -C "pigsty-deploy"
     fi
 
-    ssh_root << SSHKEY
+    local pubkey=$(cat ~/.ssh/pigsty_deploy.pub)
+
+    if [ "$AUTH_METHOD" = "key" ]; then
+        ssh_admin << SSHKEY
+set -e
+sudo mkdir -p /home/${DEPLOY_USER}/.ssh
+sudo chmod 700 /home/${DEPLOY_USER}/.ssh
+echo '${pubkey}' | sudo tee /home/${DEPLOY_USER}/.ssh/authorized_keys > /dev/null
+sudo chmod 600 /home/${DEPLOY_USER}/.ssh/authorized_keys
+sudo chown -R ${DEPLOY_USER}:${DEPLOY_USER} /home/${DEPLOY_USER}/.ssh
+SSHKEY
+    else
+        ssh_root << SSHKEY
 set -e
 mkdir -p /home/${DEPLOY_USER}/.ssh
 chmod 700 /home/${DEPLOY_USER}/.ssh
 cat > /home/${DEPLOY_USER}/.ssh/authorized_keys << 'EOF'
-$(cat ~/.ssh/pigsty_deploy.pub)
+${pubkey}
 EOF
 chmod 600 /home/${DEPLOY_USER}/.ssh/authorized_keys
 chown -R ${DEPLOY_USER}:${DEPLOY_USER} /home/${DEPLOY_USER}/.ssh
 SSHKEY
-    log_success "SSH key installed"
+    fi
+    log_success "SSH key installed for deploy user"
 
-    # Test key authentication
+    # Test deploy user key authentication
+    sleep 1
     if ! test_ssh; then
-        log_error "SSH key authentication failed"
+        log_error "SSH key authentication failed for deploy user"
         exit 1
     fi
 
@@ -120,8 +163,8 @@ DEPS
 
     # Create Ansible inventory
     log_info "Creating Ansible inventory..."
-    mkdir -p ansible/inventory
-    cat > ansible/inventory/hosts.ini << INV
+    mkdir -p "${SCRIPT_DIR}/../ansible/inventory"
+    cat > "${SCRIPT_DIR}/../ansible/inventory/hosts.ini" << INV
 [pigsty]
 ${VPS_HOST} ansible_user=${DEPLOY_USER} ansible_ssh_private_key_file=~/.ssh/pigsty_deploy
 

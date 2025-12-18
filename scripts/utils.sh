@@ -3,6 +3,7 @@
 # ============================================
 # PIGSTY SUPABASE - SHARED UTILITIES
 # ============================================
+# Supports both SSH key (professional) and password auth (legacy)
 
 # Prevent double-sourcing
 if [ -n "${PIGSTY_UTILS_LOADED:-}" ]; then
@@ -20,7 +21,89 @@ readonly BLUE='\033[0;34m'
 readonly CYAN='\033[0;36m'
 readonly NC='\033[0m'
 
-# Load environment variables
+# ============================================
+# SSH KEY AUTO-DETECTION
+# ============================================
+
+# Auto-detect SSH key path
+detect_ssh_key() {
+    # If explicitly set in .env, use that
+    if [ -n "${SSH_KEY_PATH:-}" ] && [ -f "${SSH_KEY_PATH}" ]; then
+        echo "${SSH_KEY_PATH}"
+        return 0
+    fi
+
+    # Auto-detect in order of preference
+    local key_paths=(
+        "${HOME}/.ssh/id_ed25519"      # Most modern and secure
+        "${HOME}/.ssh/id_rsa"          # Classic
+        "${HOME}/.ssh/pigsty_deploy"   # Project-specific
+    )
+
+    for key in "${key_paths[@]}"; do
+        if [ -f "$key" ]; then
+            echo "$key"
+            return 0
+        fi
+    done
+
+    # No key found
+    return 1
+}
+
+# Auto-detect SSH user by testing connection
+detect_ssh_user() {
+    local host="$1"
+    local key="$2"
+
+    # If explicitly set in .env, use that
+    if [ -n "${SSH_USER:-}" ]; then
+        echo "${SSH_USER}"
+        return 0
+    fi
+
+    # Common cloud users to try
+    local users=("ubuntu" "debian" "admin" "root" "ec2-user" "centos")
+
+    for user in "${users[@]}"; do
+        if ssh -i "$key" \
+            -o StrictHostKeyChecking=no \
+            -o UserKnownHostsFile=/dev/null \
+            -o LogLevel=ERROR \
+            -o ConnectTimeout=5 \
+            -o BatchMode=yes \
+            "${user}@${host}" "echo ok" &>/dev/null; then
+            echo "$user"
+            return 0
+        fi
+    done
+
+    # No user found
+    return 1
+}
+
+# Determine authentication method
+# Returns: "key" or "password"
+detect_auth_method() {
+    # If SSH_KEY_PATH is set or a key exists, prefer key auth
+    if detect_ssh_key &>/dev/null; then
+        # Check if we also need password (legacy mode)
+        if [ -n "${VPS_ROOT_PASSWORD:-}" ] && [ -z "${SSH_USER:-}" ]; then
+            echo "password"
+        else
+            echo "key"
+        fi
+    elif [ -n "${VPS_ROOT_PASSWORD:-}" ]; then
+        echo "password"
+    else
+        echo "none"
+    fi
+}
+
+# ============================================
+# ENVIRONMENT LOADING
+# ============================================
+
 load_env() {
     if [ ! -f .env ]; then
         echo -e "${RED}Error: .env file not found${NC}"
@@ -31,11 +114,39 @@ load_env() {
     # shellcheck disable=SC1091
     source .env
 
-    # Validate required variables
+    # Determine auth method
+    AUTH_METHOD=$(detect_auth_method)
+
+    if [ "$AUTH_METHOD" = "key" ]; then
+        # SSH Key mode - auto-detect key and user
+        SSH_KEY_PATH=$(detect_ssh_key) || {
+            log_error "No SSH key found. Create one with: ssh-keygen -t ed25519"
+            exit 1
+        }
+
+        # Set default SSH_USER if not specified
+        SSH_USER="${SSH_USER:-ubuntu}"
+
+        log_info "Using SSH key authentication"
+        log_info "  Key: ${SSH_KEY_PATH}"
+        log_info "  User: ${SSH_USER}"
+
+    elif [ "$AUTH_METHOD" = "password" ]; then
+        # Legacy password mode
+        ensure_sshpass
+        log_info "Using password authentication (legacy mode)"
+
+    else
+        log_error "No authentication method available"
+        log_info "Either set SSH_USER + have an SSH key, or set VPS_ROOT_PASSWORD"
+        exit 1
+    fi
+
+    # Validate required variables (common to both methods)
     local required_vars=(
         "VPS_HOST"
-        "VPS_ROOT_PASSWORD"
         "DEPLOY_USER"
+        "DEPLOY_USER_PASSWORD"
         "POSTGRES_PASSWORD"
         "GRAFANA_ADMIN_PASSWORD"
         "JWT_SECRET"
@@ -47,9 +158,15 @@ load_env() {
             exit 1
         fi
     done
+
+    # Export for use in other scripts
+    export AUTH_METHOD SSH_KEY_PATH SSH_USER
 }
 
-# Log functions
+# ============================================
+# LOG FUNCTIONS
+# ============================================
+
 log_info() {
     echo -e "${BLUE}[INFO]${NC} $*"
 }
@@ -74,7 +191,45 @@ log_step() {
     echo ""
 }
 
-# SSH helper
+# ============================================
+# SSH HELPERS (Support both key and password)
+# ============================================
+
+# SSH to VPS as the initial user (ubuntu, root, etc.) with sudo
+ssh_admin() {
+    if [ "${AUTH_METHOD:-key}" = "key" ]; then
+        ssh -i "${SSH_KEY_PATH}" \
+            -o StrictHostKeyChecking=no \
+            -o UserKnownHostsFile=/dev/null \
+            -o LogLevel=ERROR \
+            "${SSH_USER}@${VPS_HOST}" "$@"
+    else
+        sshpass -p "${VPS_ROOT_PASSWORD}" \
+            ssh -o StrictHostKeyChecking=no \
+            -o UserKnownHostsFile=/dev/null \
+            -o LogLevel=ERROR \
+            "root@${VPS_HOST}" "$@"
+    fi
+}
+
+# SSH to VPS as the initial user and run command with sudo
+ssh_sudo() {
+    if [ "${AUTH_METHOD:-key}" = "key" ]; then
+        ssh -i "${SSH_KEY_PATH}" \
+            -o StrictHostKeyChecking=no \
+            -o UserKnownHostsFile=/dev/null \
+            -o LogLevel=ERROR \
+            "${SSH_USER}@${VPS_HOST}" "sudo bash -c '$*'"
+    else
+        sshpass -p "${VPS_ROOT_PASSWORD}" \
+            ssh -o StrictHostKeyChecking=no \
+            -o UserKnownHostsFile=/dev/null \
+            -o LogLevel=ERROR \
+            "root@${VPS_HOST}" "$@"
+    fi
+}
+
+# SSH as deploy user (after setup)
 ssh_exec() {
     ssh -i ~/.ssh/pigsty_deploy \
         -o StrictHostKeyChecking=no \
@@ -83,13 +238,55 @@ ssh_exec() {
         "${DEPLOY_USER}@${VPS_HOST}" "$@"
 }
 
+# Legacy: SSH as root with password (for backward compatibility)
 ssh_root() {
-    sshpass -p "${VPS_ROOT_PASSWORD}" \
-        ssh -o StrictHostKeyChecking=no \
+    if [ "${AUTH_METHOD:-key}" = "key" ]; then
+        # In key mode, use ssh_sudo instead
+        ssh_sudo "$@"
+    else
+        sshpass -p "${VPS_ROOT_PASSWORD}" \
+            ssh -o StrictHostKeyChecking=no \
+            -o UserKnownHostsFile=/dev/null \
+            -o LogLevel=ERROR \
+            "root@${VPS_HOST}" "$@"
+    fi
+}
+
+# SCP file to VPS as admin user
+scp_admin() {
+    local src="$1"
+    local dest="$2"
+
+    if [ "${AUTH_METHOD:-key}" = "key" ]; then
+        scp -i "${SSH_KEY_PATH}" \
+            -o StrictHostKeyChecking=no \
+            -o UserKnownHostsFile=/dev/null \
+            -o LogLevel=ERROR \
+            "$src" "${SSH_USER}@${VPS_HOST}:${dest}"
+    else
+        sshpass -p "${VPS_ROOT_PASSWORD}" \
+            scp -o StrictHostKeyChecking=no \
+            -o UserKnownHostsFile=/dev/null \
+            -o LogLevel=ERROR \
+            "$src" "root@${VPS_HOST}:${dest}"
+    fi
+}
+
+# SCP file to VPS as deploy user
+scp_deploy() {
+    local src="$1"
+    local dest="$2"
+
+    scp -i ~/.ssh/pigsty_deploy \
+        -o StrictHostKeyChecking=no \
         -o UserKnownHostsFile=/dev/null \
         -o LogLevel=ERROR \
-        root@"${VPS_HOST}" "$@"
+        "$src" "${DEPLOY_USER}@${VPS_HOST}:${dest}"
 }
+
+# ============================================
+# UTILITY FUNCTIONS
+# ============================================
 
 # Check if command exists
 require_command() {
@@ -102,7 +299,7 @@ require_command() {
     fi
 }
 
-# Install sshpass if needed
+# Install sshpass if needed (only for password mode)
 ensure_sshpass() {
     if ! command -v sshpass &> /dev/null; then
         log_info "Installing sshpass..."
@@ -123,6 +320,18 @@ test_ssh() {
         return 0
     else
         log_error "SSH connection failed"
+        return 1
+    fi
+}
+
+# Test admin SSH connection (before deploy user is created)
+test_admin_ssh() {
+    log_info "Testing admin SSH connection to ${VPS_HOST}..."
+    if ssh_admin "echo 'Connected'" &>/dev/null; then
+        log_success "Admin SSH connection successful"
+        return 0
+    else
+        log_error "Admin SSH connection failed"
         return 1
     fi
 }
