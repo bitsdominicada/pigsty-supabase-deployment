@@ -227,18 +227,42 @@ def inject_variables(pigsty_yml, env):
         )
         print(f"  ✓ Enabled certbot for HTTPS", file=sys.stderr)
 
-    # Update domain in infra_portal.supa
+    # Update domain in infra_portal for multi-domain architecture
+    # Main domain -> Flutter App
+    # api.domain -> Supabase API (Kong)
+    # studio.domain -> Supabase Studio
     if "SUPABASE_DOMAIN" in env:
         domain = env["SUPABASE_DOMAIN"]
-        # Replace domain in infra_portal supa section
+        api_domain = f"api.{domain}"
+        studio_domain = f"studio.{domain}"
+
+        # Replace supa.pigsty with api subdomain for Supabase API
         content = re.sub(
-            r"(supa\s*:\s*\n\s*domain:\s*)supa\.pigsty", rf"\1{domain}", content
+            r"(supa\s*:\s*\{[^}]*domain:\s*)supa\.pigsty", rf"\1{api_domain}", content
         )
-        # Replace in /etc/hosts line (keep other pigsty domains, only replace supa.pigsty)
-        content = re.sub(r"(\s+)supa\.pigsty(\s|$)", rf"\1{domain}\2", content)
-        # Replace certbot domain
-        content = re.sub(r"(certbot:\s*)supa\.pigsty", rf"\1{domain}", content)
-        print(f"  ✓ Domain configured: {domain}", file=sys.stderr)
+        # Alternative pattern if different format
+        content = re.sub(
+            r"(supa\s*:\s*\n\s*domain:\s*)supa\.pigsty", rf"\1{api_domain}", content
+        )
+
+        # Replace in /etc/hosts line
+        content = re.sub(
+            r"(\s+)supa\.pigsty(\s|$)",
+            rf"\1{api_domain} {studio_domain} {domain}\2",
+            content,
+        )
+
+        # Replace certbot domain to include all domains
+        content = re.sub(
+            r"(certbot:\s*)supa\.pigsty",
+            rf"\1{domain},{api_domain},{studio_domain}",
+            content,
+        )
+
+        print(f"  ✓ Domain configured:", file=sys.stderr)
+        print(f"      Main app: {domain}", file=sys.stderr)
+        print(f"      API: {api_domain}", file=sys.stderr)
+        print(f"      Studio: {studio_domain}", file=sys.stderr)
 
     # Add pg_hba rule to allow connections from VPS IP (for supabase-analytics container)
     if "VPS_HOST" in env:

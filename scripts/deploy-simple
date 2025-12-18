@@ -360,18 +360,25 @@ verify_deployment() {
 print_deployment_summary() {
     load_env
 
+    local protocol="http"
+    if [ "${USE_LETSENCRYPT:-false}" = "true" ]; then
+        protocol="https"
+    fi
+
     echo ""
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo "  Deployment Complete!"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo ""
-    echo "Supabase:"
-    if [ "${USE_LETSENCRYPT:-false}" = "true" ]; then
-        echo "   URL:      https://${SUPABASE_DOMAIN}"
-    else
-        echo "   URL:      http://${VPS_HOST}:8000"
-    fi
-    echo "   User:     supabase"
+    echo "Flutter App:"
+    echo "   URL:      ${protocol}://${SUPABASE_DOMAIN}"
+    echo ""
+    echo "Supabase API:"
+    echo "   URL:      ${protocol}://api.${SUPABASE_DOMAIN}"
+    echo ""
+    echo "Supabase Studio:"
+    echo "   URL:      ${protocol}://studio.${SUPABASE_DOMAIN}"
+    echo "   User:     ${DASHBOARD_USERNAME:-supabase}"
     echo "   Password: ${DASHBOARD_PASSWORD:-pigsty}"
     echo ""
     echo "Grafana:"
@@ -393,6 +400,14 @@ print_deployment_summary() {
         echo ""
     fi
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+}
+
+#--------------------------------------------------------------#
+# Configure Multi-Domain Architecture
+#--------------------------------------------------------------#
+configure_domains() {
+    log_step "Configuring Multi-Domain Architecture"
+    "${SCRIPT_DIR}/modules/13-configure-domains.sh"
 }
 
 #--------------------------------------------------------------#
@@ -432,6 +447,9 @@ deploy_all() {
         "${SCRIPT_DIR}/modules/10-restore-backup.sh"
     fi
 
+    # Configure multi-domain architecture (main domain -> Flutter, api.domain -> Supabase)
+    configure_domains
+
     # Deploy Flutter Web if project is configured
     if [ -n "${FLUTTER_PROJECT_PATH:-}" ] || [ -d "/Users/andymelo/Projects/bits_flare_platform/apps/neura_core_app" ]; then
         log_info "Flutter project found, deploying web app..."
@@ -465,6 +483,10 @@ main() {
             load_env
             deploy_flutter
             ;;
+        domains)
+            load_env
+            configure_domains
+            ;;
         backup)
             "${SCRIPT_DIR}/modules/11-create-backup.sh"
             ;;
@@ -473,20 +495,27 @@ main() {
             ;;
         *)
             print_banner
-            echo "Usage: $0 {all|config|validate|verify|flutter|backup|restore}"
+            echo "Usage: $0 {all|config|validate|verify|domains|flutter|backup|restore}"
             echo ""
             echo "Commands:"
             echo "  all      - Full deployment (recommended)"
             echo "  config   - Generate and upload pigsty.yml only"
             echo "  validate - Validate pigsty.yml configuration"
             echo "  verify   - Verify deployment status"
+            echo "  domains  - Configure multi-domain Nginx + SSL"
             echo "  flutter  - Build and deploy Flutter Web app"
             echo "  backup   - Create database backup from VPS"
             echo "  restore  - Restore database backup to VPS"
             echo ""
+            echo "Domain Architecture:"
+            echo "  domain.com       -> Flutter Web App"
+            echo "  api.domain.com   -> Supabase API"
+            echo "  studio.domain.com -> Supabase Studio"
+            echo ""
             echo "Example:"
             echo "  $0 all       # Full deployment with Flutter"
             echo "  $0 flutter   # Only deploy Flutter app"
+            echo "  $0 domains   # Reconfigure domains/SSL"
             ;;
     esac
 }
