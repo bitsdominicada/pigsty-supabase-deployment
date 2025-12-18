@@ -74,16 +74,19 @@ deploy_flutter_web() {
         ssh_key="$HOME/.ssh/id_rsa"
     fi
 
+    # Get SSH user (ubuntu for admin access)
+    local ssh_user="${SSH_USER:-ubuntu}"
+
     # Create app directory on VPS
     log_info "Preparing VPS for deployment..."
-    ssh_exec "sudo mkdir -p /var/www/app && sudo chown deploy:deploy /var/www/app"
+    ssh_exec "sudo mkdir -p /var/www/app && sudo chown ${ssh_user}:${ssh_user} /var/www/app"
 
-    # Upload build files
+    # Upload build files using the admin SSH user
     log_info "Uploading Flutter Web build to VPS..."
     rsync -avz --delete \
         -e "ssh -i ${ssh_key} -o StrictHostKeyChecking=no" \
         "${FLUTTER_PROJECT}/${FLUTTER_APP}/build/web/" \
-        "deploy@${VPS_HOST}:/var/www/app/"
+        "${ssh_user}@${VPS_HOST}:/var/www/app/"
 
     log_success "Flutter Web deployed successfully!"
     echo ""
