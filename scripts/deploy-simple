@@ -396,6 +396,14 @@ print_deployment_summary() {
 }
 
 #--------------------------------------------------------------#
+# Deploy Flutter Web Application
+#--------------------------------------------------------------#
+deploy_flutter() {
+    log_step "Deploying Flutter Web Application"
+    "${SCRIPT_DIR}/modules/12-deploy-flutter-web.sh"
+}
+
+#--------------------------------------------------------------#
 # Full deployment
 #--------------------------------------------------------------#
 deploy_all() {
@@ -424,6 +432,12 @@ deploy_all() {
         "${SCRIPT_DIR}/modules/10-restore-backup.sh"
     fi
 
+    # Deploy Flutter Web if project is configured
+    if [ -n "${FLUTTER_PROJECT_PATH:-}" ] || [ -d "/Users/andymelo/Projects/bits_flare_platform/apps/neura_core_app" ]; then
+        log_info "Flutter project found, deploying web app..."
+        deploy_flutter
+    fi
+
     verify_deployment
 
     log_success "Deployment completed successfully!"
@@ -447,18 +461,32 @@ main() {
         verify)
             verify_deployment
             ;;
+        flutter)
+            load_env
+            deploy_flutter
+            ;;
+        backup)
+            "${SCRIPT_DIR}/modules/11-create-backup.sh"
+            ;;
+        restore)
+            "${SCRIPT_DIR}/modules/10-restore-backup.sh"
+            ;;
         *)
             print_banner
-            echo "Usage: $0 {all|config|validate|verify}"
+            echo "Usage: $0 {all|config|validate|verify|flutter|backup|restore}"
             echo ""
             echo "Commands:"
             echo "  all      - Full deployment (recommended)"
             echo "  config   - Generate and upload pigsty.yml only"
             echo "  validate - Validate pigsty.yml configuration"
             echo "  verify   - Verify deployment status"
+            echo "  flutter  - Build and deploy Flutter Web app"
+            echo "  backup   - Create database backup from VPS"
+            echo "  restore  - Restore database backup to VPS"
             echo ""
             echo "Example:"
-            echo "  $0 all"
+            echo "  $0 all       # Full deployment with Flutter"
+            echo "  $0 flutter   # Only deploy Flutter app"
             ;;
     esac
 }
