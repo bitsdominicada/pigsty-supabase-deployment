@@ -54,7 +54,7 @@ restore_backups() {
         -o UserKnownHostsFile=/dev/null \
         -o LogLevel=ERROR \
         "${BACKUP_DIR}"/*.dump "${BACKUP_DIR}"/*.sql \
-        "deploy@${VPS_HOST}:/tmp/db_restore/" 2>/dev/null
+        "${SSH_USER}@${VPS_HOST}:/tmp/db_restore/" 2>/dev/null
 
     log_success "Backups uploaded"
 

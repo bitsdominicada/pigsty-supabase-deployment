@@ -139,6 +139,12 @@ update_supabase_versions() {
             # Find the auth service and add SMTP vars after GOTRUE_EXTERNAL_EMAIL_ENABLED
             sed -i '/GOTRUE_EXTERNAL_EMAIL_ENABLED/a\\      SMTP_HOST: \${SMTP_HOST}\n      SMTP_PORT: \${SMTP_PORT}\n      SMTP_USER: \${SMTP_USER}\n      SMTP_PASS: \${SMTP_PASSWORD}\n      SMTP_SENDER_NAME: \${SMTP_SENDER_NAME}\n      SMTP_ADMIN_EMAIL: \${SMTP_ADMIN_EMAIL}' docker-compose.yml
             echo 'Added SMTP configuration to auth service'
+        fi
+
+        # Add port mapping for Studio (3001:3000) since Grafana uses port 3000
+        if ! grep -q '3001:3000' docker-compose.yml; then
+            sed -i '/container_name: supabase-studio/a\\    ports:\\n      - \"3001:3000\"' docker-compose.yml
+            echo 'Added port 3001:3000 mapping to Studio'
         fi"
 
     log_success "Container versions updated to latest"
@@ -201,7 +207,17 @@ install_docker() {
 
     ssh_exec "cd ~/pigsty && ./docker.yml"
 
-    log_success "Docker installed"
+    # Ensure Docker daemon is running (docker.yml installs but may not start it)
+    log_info "Ensuring Docker daemon is running..."
+    ssh_exec "sudo systemctl enable docker && sudo systemctl start docker && sleep 3"
+
+    # Verify Docker is working
+    ssh_exec "sudo docker ps" || {
+        log_error "Docker daemon failed to start"
+        exit 1
+    }
+
+    log_success "Docker installed and running"
 }
 
 #--------------------------------------------------------------#
@@ -293,6 +309,106 @@ EOF
 }
 
 #--------------------------------------------------------------#
+# Fix Schema Ownership for Supabase
+#--------------------------------------------------------------#
+fix_schema_ownership() {
+    log_step "Fixing Schema Ownership"
+
+    log_info "Setting correct ownership for auth and storage schemas..."
+
+    ssh_exec "sudo -u postgres psql -d postgres << 'EOF'
+-- Fix auth schema ownership (schema, tables, sequences, functions)
+ALTER SCHEMA auth OWNER TO supabase_auth_admin;
+DO \$\$
+DECLARE r RECORD;
+BEGIN
+    FOR r IN SELECT tablename FROM pg_tables WHERE schemaname = 'auth'
+    LOOP EXECUTE 'ALTER TABLE auth.' || quote_ident(r.tablename) || ' OWNER TO supabase_auth_admin'; END LOOP;
+    FOR r IN SELECT sequence_name FROM information_schema.sequences WHERE sequence_schema = 'auth'
+    LOOP EXECUTE 'ALTER SEQUENCE auth.' || quote_ident(r.sequence_name) || ' OWNER TO supabase_auth_admin'; END LOOP;
+    FOR r IN SELECT p.proname, pg_get_function_identity_arguments(p.oid) as args
+             FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = 'auth'
+    LOOP EXECUTE 'ALTER FUNCTION auth.' || quote_ident(r.proname) || '(' || r.args || ') OWNER TO supabase_auth_admin'; END LOOP;
+END\$\$;
+
+-- Fix storage schema ownership (schema, tables, sequences, functions)
+ALTER SCHEMA storage OWNER TO supabase_storage_admin;
+DO \$\$
+DECLARE r RECORD;
+BEGIN
+    FOR r IN SELECT tablename FROM pg_tables WHERE schemaname = 'storage'
+    LOOP EXECUTE 'ALTER TABLE storage.' || quote_ident(r.tablename) || ' OWNER TO supabase_storage_admin'; END LOOP;
+    FOR r IN SELECT sequence_name FROM information_schema.sequences WHERE sequence_schema = 'storage'
+    LOOP EXECUTE 'ALTER SEQUENCE storage.' || quote_ident(r.sequence_name) || ' OWNER TO supabase_storage_admin'; END LOOP;
+    FOR r IN SELECT p.proname, pg_get_function_identity_arguments(p.oid) as args
+             FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = 'storage'
+    LOOP EXECUTE 'ALTER FUNCTION storage.' || quote_ident(r.proname) || '(' || r.args || ') OWNER TO supabase_storage_admin'; END LOOP;
+END\$\$;
+
+-- Grant full permissions on auth schema
+GRANT ALL ON SCHEMA auth TO supabase_auth_admin;
+GRANT CREATE ON SCHEMA auth TO supabase_auth_admin;
+GRANT ALL ON ALL TABLES IN SCHEMA auth TO supabase_auth_admin;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA auth TO supabase_auth_admin;
+GRANT ALL ON ALL FUNCTIONS IN SCHEMA auth TO supabase_auth_admin;
+ALTER DEFAULT PRIVILEGES IN SCHEMA auth GRANT ALL ON TABLES TO supabase_auth_admin;
+ALTER DEFAULT PRIVILEGES IN SCHEMA auth GRANT ALL ON SEQUENCES TO supabase_auth_admin;
+
+-- Grant full permissions on storage schema
+GRANT ALL ON SCHEMA storage TO supabase_storage_admin;
+GRANT CREATE ON SCHEMA storage TO supabase_storage_admin;
+GRANT ALL ON ALL TABLES IN SCHEMA storage TO supabase_storage_admin;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA storage TO supabase_storage_admin;
+GRANT ALL ON ALL FUNCTIONS IN SCHEMA storage TO supabase_storage_admin;
+ALTER DEFAULT PRIVILEGES IN SCHEMA storage GRANT ALL ON TABLES TO supabase_storage_admin;
+ALTER DEFAULT PRIVILEGES IN SCHEMA storage GRANT ALL ON SEQUENCES TO supabase_storage_admin;
+
+-- Grant CREATE on public schema (needed for auth migrations)
+GRANT CREATE ON SCHEMA public TO supabase_auth_admin;
+GRANT CREATE ON SCHEMA public TO supabase_storage_admin;
+EOF" 2>/dev/null
+
+    log_success "Schema ownership fixed"
+}
+
+#--------------------------------------------------------------#
+# Fix Storage Search Path
+# Creates views in public schema so storage API can find tables
+# when using connection pooling that doesn't respect search_path
+#--------------------------------------------------------------#
+fix_storage_search_path() {
+    log_step "Fixing Storage Search Path"
+
+    log_info "Creating views in public schema for storage tables..."
+
+    ssh_exec "sudo -u postgres psql -d postgres << 'EOF'
+-- Create views in public schema that reference storage tables
+-- This fixes the issue where connection pooling doesn't apply the role's search_path
+CREATE OR REPLACE VIEW public.buckets AS SELECT * FROM storage.buckets;
+CREATE OR REPLACE VIEW public.buckets_analytics AS SELECT * FROM storage.buckets_analytics;
+CREATE OR REPLACE VIEW public.objects AS SELECT * FROM storage.objects;
+CREATE OR REPLACE VIEW public.migrations AS SELECT * FROM storage.migrations;
+CREATE OR REPLACE VIEW public.s3_multipart_uploads AS SELECT * FROM storage.s3_multipart_uploads;
+CREATE OR REPLACE VIEW public.s3_multipart_uploads_parts AS SELECT * FROM storage.s3_multipart_uploads_parts;
+CREATE OR REPLACE VIEW public.prefixes AS SELECT * FROM storage.prefixes;
+
+-- Grant permissions to storage admin
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.buckets TO supabase_storage_admin;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.buckets_analytics TO supabase_storage_admin;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.objects TO supabase_storage_admin;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.migrations TO supabase_storage_admin;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.s3_multipart_uploads TO supabase_storage_admin;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.s3_multipart_uploads_parts TO supabase_storage_admin;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.prefixes TO supabase_storage_admin;
+
+-- Also set search_path for the role in this database (belt and suspenders)
+ALTER ROLE supabase_storage_admin IN DATABASE postgres SET search_path TO storage, public, extensions;
+EOF" 2>/dev/null
+
+    log_success "Storage search path fixed"
+}
+
+#--------------------------------------------------------------#
 # Launch Supabase
 #--------------------------------------------------------------#
 launch_supabase() {
@@ -308,9 +424,19 @@ launch_supabase() {
     # Fix Vault to use pgsodium server key
     fix_vault_pgsodium
 
-    # Wait a bit for containers to start
+    # Fix schema ownership for supabase_auth_admin and supabase_storage_admin
+    fix_schema_ownership
+
+    # Fix storage search_path (create views in public schema)
+    fix_storage_search_path
+
+    # Restart auth and storage containers to apply ownership changes
+    log_info "Restarting auth and storage containers..."
+    ssh_exec "cd /opt/supabase && sudo docker compose restart auth storage" || true
+
+    # Wait for containers to start
     log_info "Waiting for services to start..."
-    sleep 15
+    sleep 20
 
     # Check container status
     log_info "Checking container status..."
@@ -411,6 +537,47 @@ configure_domains() {
 }
 
 #--------------------------------------------------------------#
+# Sync All: Schema + Flutter to Staging
+#--------------------------------------------------------------#
+sync_all_to_staging() {
+    print_banner
+
+    local ORIGEN_IP="${ORIGEN_IP:-194.163.149.70}"
+    local STAGING_IP="${VPS_HOST:-167.114.2.209}"
+
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "  SYNC ALL TO STAGING"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    echo "  Origen:  ${ORIGEN_IP}"
+    echo "  Staging: ${STAGING_IP}"
+    echo ""
+
+    # Step 1: Sync schema from origen
+    log_step "Step 1/3: Syncing schema from origen"
+    "${SCRIPT_DIR}/modules/14-sync-app-schema.sh" "${ORIGEN_IP}"
+
+    # Step 2: Apply schema to staging
+    log_step "Step 2/3: Applying schema to staging"
+    "${SCRIPT_DIR}/modules/15-apply-app-schema.sh" "${STAGING_IP}"
+
+    # Step 3: Build and deploy Flutter
+    log_step "Step 3/3: Building and deploying Flutter Web"
+    deploy_flutter_web
+
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "  SYNC COMPLETE!"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    echo "  Schema:  Synced from ${ORIGEN_IP} -> ${STAGING_IP}"
+    echo "  Flutter: Deployed to https://${SUPABASE_DOMAIN}"
+    echo "  API:     https://api.${SUPABASE_DOMAIN}"
+    echo ""
+}
+
+#--------------------------------------------------------------#
 # Deploy Flutter Web Application
 #--------------------------------------------------------------#
 deploy_flutter() {
@@ -424,10 +591,14 @@ deploy_flutter() {
 deploy_all() {
     print_banner
 
-    log_info "Starting simplified Pigsty deployment..."
-    log_info "Using official Pigsty configuration with automated substitutions"
+    load_env
+
+    log_info "Starting Pigsty + Supabase deployment..."
+    log_info "Target: ${VPS_HOST}"
+    log_info "Domain: ${SUPABASE_DOMAIN:-not set}"
     echo ""
 
+    # Phase 1: Prepare VPS and download Pigsty
     prepare_vps
     download_pigsty
     update_supabase_versions
@@ -437,23 +608,94 @@ deploy_all() {
     # Validate configuration before proceeding
     "${SCRIPT_DIR}/modules/03-validate.sh"
 
-    install_pigsty
+    # Phase 2: Wait for apt locks (Ubuntu automatic updates on fresh install)
+    log_step "Waiting for system to be ready"
+    log_info "Checking for apt locks (unattended-upgrades may be running on fresh Ubuntu)..."
+    ssh_exec "
+        max_wait=600  # 10 minutes max
+        wait_time=0
+        interval=10
+
+        while sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || \
+              sudo fuser /var/lib/dpkg/lock >/dev/null 2>&1 || \
+              sudo fuser /var/lib/apt/lists/lock >/dev/null 2>&1; do
+
+            if [ \$wait_time -ge \$max_wait ]; then
+                echo 'ERROR: apt lock still held after 10 minutes'
+                exit 1
+            fi
+
+            echo \"Waiting for apt locks... (\${wait_time}s / \${max_wait}s)\"
+            sleep \$interval
+            wait_time=\$((wait_time + interval))
+        done
+
+        echo 'System ready - apt locks released'
+    "
+    log_success "System ready for installation"
+
+    # Phase 3: Install complete Pigsty stack
+    # Use install.yml which runs: node.yml (configures repos) -> infra.yml -> pgsql.yml
+    log_step "Installing Pigsty Stack (this takes 15-25 minutes)"
+
+    log_info "Running install.yml - this configures repos, installs PostgreSQL, etcd, MinIO, nginx, Docker..."
+    ssh_exec "cd ~/pigsty && ./install.yml" || {
+        log_warning "install.yml had some warnings, checking status..."
+    }
+
+    # Phase 3: Install Docker (required before app.yml)
+    # According to Pigsty docs: docker.yml must run AFTER install.yml and BEFORE app.yml
     install_docker
+
+    # Phase 4: Fix nginx SSL config if needed (single domain for cert)
+    log_info "Fixing nginx SSL configuration..."
+    ssh_exec "
+        # Ensure cert directory exists
+        sudo mkdir -p /etc/nginx/conf.d/cert
+
+        # Generate self-signed cert if not exists
+        if [ ! -f /etc/nginx/conf.d/cert/${SUPABASE_DOMAIN}.crt ]; then
+            sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+                -keyout /etc/nginx/conf.d/cert/${SUPABASE_DOMAIN}.key \
+                -out /etc/nginx/conf.d/cert/${SUPABASE_DOMAIN}.crt \
+                -subj '/CN=${SUPABASE_DOMAIN}' 2>/dev/null
+        fi
+
+        # Fix supa.conf if it has multiple domains in ssl_certificate path
+        if grep -q 'ssl_certificate.*api\.' /etc/nginx/conf.d/supa.conf 2>/dev/null; then
+            sudo sed -i 's|ssl_certificate.*/etc/nginx/conf.d/cert/api\..*\.crt;|ssl_certificate /etc/nginx/conf.d/cert/${SUPABASE_DOMAIN}.crt;|' /etc/nginx/conf.d/supa.conf
+            sudo sed -i 's|ssl_certificate_key.*/etc/nginx/conf.d/cert/api\..*\.key;|ssl_certificate_key /etc/nginx/conf.d/cert/${SUPABASE_DOMAIN}.key;|' /etc/nginx/conf.d/supa.conf
+        fi
+
+        # Test and start nginx
+        sudo nginx -t && sudo systemctl restart nginx || true
+    " || log_warning "Nginx fix had warnings"
+
+    # Phase 5: Launch Supabase containers (app.yml)
     launch_supabase
 
-    # Restore database backups if available
+    # Phase 5: Configure pgBackRest for Backblaze B2
+    if [ "${PGBACKREST_ENABLED:-false}" = "true" ]; then
+        configure_pgbackrest_b2
+    fi
+
+    # Phase 6: Restore database backups if available
     if [ -d "${PROJECT_ROOT}/db_backup" ] && [ -f "${PROJECT_ROOT}/db_backup/postgres.dump" ]; then
         log_info "Database backups found, will restore after deployment..."
         "${SCRIPT_DIR}/modules/10-restore-backup.sh"
     fi
 
-    # Configure multi-domain architecture (main domain -> Flutter, api.domain -> Supabase)
+    # Phase 7: Configure multi-domain architecture + SSL
     configure_domains
 
-    # Deploy Flutter Web if project is configured
-    if [ -n "${FLUTTER_PROJECT_PATH:-}" ] || [ -d "/Users/andymelo/Projects/bits_flare_platform/apps/neura_core_app" ]; then
-        log_info "Flutter project found, deploying web app..."
-        deploy_flutter
+    # Phase 8: Deploy Flutter Web if project is configured
+    if [ -n "${FLUTTER_PROJECT_PATH:-}" ]; then
+        if [ -d "${FLUTTER_PROJECT_PATH}" ]; then
+            log_info "Flutter project found at ${FLUTTER_PROJECT_PATH}, deploying web app..."
+            deploy_flutter
+        else
+            log_warning "FLUTTER_PROJECT_PATH set but directory not found: ${FLUTTER_PROJECT_PATH}"
+        fi
     fi
 
     verify_deployment
@@ -462,12 +704,149 @@ deploy_all() {
 }
 
 #--------------------------------------------------------------#
+# Configure pgBackRest for Backblaze B2
+#--------------------------------------------------------------#
+configure_pgbackrest_b2() {
+    load_env
+    log_step "Configuring pgBackRest for Backblaze B2"
+
+    # Check if B2 credentials are configured
+    if [ -z "${PGBACKREST_S3_BUCKET:-}" ] || [ -z "${PGBACKREST_S3_ACCESS_KEY:-}" ]; then
+        log_warning "Backblaze B2 not configured in .env, skipping pgBackRest setup"
+        return 0
+    fi
+
+    log_info "Setting up pgBackRest with Backblaze B2..."
+
+    # Create pgbackrest config for B2
+    ssh_exec "sudo tee /etc/pgbackrest/pgbackrest.conf > /dev/null << 'EOF'
+#==============================================================#
+# pgBackRest Configuration - Backblaze B2
+#==============================================================#
+
+[pg-meta]
+pg1-path=/pg/data
+pg1-port=5432
+
+[global]
+# Archive settings
+archive-async=y
+
+# Backup settings
+annotation=pg_cluster=pg-meta
+start-fast=y
+expire-auto=y
+
+# Compression
+compress-type=lz4
+spool-path=/pg/spool
+
+# Logging
+log-level-console=info
+log-level-file=info
+log-path=/pg/log/pgbackrest
+
+# Backblaze B2 Repository (S3-compatible)
+repo1-type=s3
+repo1-s3-endpoint=${PGBACKREST_S3_ENDPOINT#https://}
+repo1-s3-region=${PGBACKREST_S3_REGION}
+repo1-s3-bucket=${PGBACKREST_S3_BUCKET}
+repo1-s3-key=${PGBACKREST_S3_ACCESS_KEY}
+repo1-s3-key-secret=${PGBACKREST_S3_SECRET_KEY}
+repo1-s3-uri-style=host
+repo1-path=/pgbackrest/${VPS_HOST}
+repo1-block=y
+repo1-bundle=y
+repo1-bundle-limit=20MiB
+repo1-bundle-size=128MiB
+repo1-cipher-type=aes-256-cbc
+repo1-cipher-pass=${PGBACKREST_CIPHER_PASS}
+repo1-retention-full-type=time
+repo1-retention-full=${PGBACKREST_RETENTION_FULL:-14}
+
+# Restore settings
+delta=y
+archive-mode=off
+
+# Parallel processing
+[global:restore]
+process-max=8
+
+[global:archive-push]
+process-max=4
+
+[global:archive-get]
+process-max=2
+EOF"
+
+    # Create stanza
+    log_info "Creating pgBackRest stanza..."
+    ssh_exec "sudo -u postgres pgbackrest --stanza=pg-meta stanza-create" || {
+        log_warning "Stanza creation failed (may already exist)"
+    }
+
+    # Verify stanza
+    log_info "Verifying pgBackRest configuration..."
+    if ssh_exec "sudo -u postgres pgbackrest --stanza=pg-meta check" 2>/dev/null; then
+        log_success "pgBackRest configured and working with Backblaze B2"
+    else
+        log_warning "pgBackRest check failed - may need manual verification"
+    fi
+
+    # Run initial backup
+    log_info "Running initial full backup to Backblaze B2..."
+    ssh_exec "sudo -u postgres pgbackrest --stanza=pg-meta --type=full backup" && {
+        log_success "Initial backup completed successfully"
+    } || {
+        log_warning "Initial backup failed - check logs at /pg/log/pgbackrest/"
+    }
+
+    # Configure automatic daily backups
+    log_info "Configuring automatic daily backups at 2 AM..."
+    ssh_exec "sudo -u postgres crontab -l 2>/dev/null | grep -v pgbackrest > /tmp/postgres_cron || true
+echo '# pgBackRest automatic backup to Backblaze B2' >> /tmp/postgres_cron
+echo '0 2 * * * /usr/bin/pgbackrest --stanza=pg-meta --type=full backup >> /pg/log/pgbackrest/cron.log 2>&1' >> /tmp/postgres_cron
+sudo -u postgres crontab /tmp/postgres_cron
+rm /tmp/postgres_cron"
+
+    log_success "Automatic daily backups configured"
+
+    # Show backup info
+    log_info "pgBackRest status:"
+    ssh_exec "sudo -u postgres pgbackrest --stanza=pg-meta info" || true
+}
+
+#--------------------------------------------------------------#
+# Check and run interactive setup if needed
+#--------------------------------------------------------------#
+check_env_or_setup() {
+    cd "${PROJECT_ROOT}"
+
+    if [ ! -f ".env" ]; then
+        echo ""
+        echo -e "${YELLOW}No .env file found. Starting interactive setup...${NC}"
+        echo ""
+        "${SCRIPT_DIR}/setup-interactive.sh"
+
+        # Verify .env was created
+        if [ ! -f ".env" ]; then
+            log_error "Setup was cancelled or failed. Cannot continue."
+            exit 1
+        fi
+    fi
+}
+
+#--------------------------------------------------------------#
 # Main
 #--------------------------------------------------------------#
 main() {
     case "${1:-help}" in
         all)
+            check_env_or_setup
             deploy_all
+            ;;
+        setup)
+            "${SCRIPT_DIR}/setup-interactive.sh"
             ;;
         config)
             load_env
@@ -493,29 +872,46 @@ main() {
         restore)
             "${SCRIPT_DIR}/modules/10-restore-backup.sh"
             ;;
+        sync-schema)
+            "${SCRIPT_DIR}/modules/14-sync-app-schema.sh" "${2:-}"
+            ;;
+        apply-schema)
+            load_env
+            "${SCRIPT_DIR}/modules/15-apply-app-schema.sh" "${2:-${VPS_HOST}}"
+            ;;
+        sync-all)
+            load_env
+            sync_all_to_staging
+            ;;
         *)
             print_banner
-            echo "Usage: $0 {all|config|validate|verify|domains|flutter|backup|restore}"
+            echo "Usage: $0 {all|setup|config|validate|verify|domains|flutter|backup|restore}"
             echo ""
             echo "Commands:"
-            echo "  all      - Full deployment (recommended)"
-            echo "  config   - Generate and upload pigsty.yml only"
-            echo "  validate - Validate pigsty.yml configuration"
-            echo "  verify   - Verify deployment status"
-            echo "  domains  - Configure multi-domain Nginx + SSL"
-            echo "  flutter  - Build and deploy Flutter Web app"
-            echo "  backup   - Create database backup from VPS"
-            echo "  restore  - Restore database backup to VPS"
+            echo "  all          - Full deployment (runs setup if no .env)"
+            echo "  setup        - Interactive configuration wizard"
+            echo "  config       - Generate and upload pigsty.yml only"
+            echo "  validate     - Validate pigsty.yml configuration"
+            echo "  verify       - Verify deployment status"
+            echo "  domains      - Configure multi-domain Nginx + SSL"
+            echo "  flutter      - Build and deploy Flutter Web app"
+            echo "  backup       - Create database backup from VPS"
+            echo "  restore      - Restore database backup to VPS"
             echo ""
-            echo "Domain Architecture:"
-            echo "  domain.com       -> Flutter Web App"
-            echo "  api.domain.com   -> Supabase API"
-            echo "  studio.domain.com -> Supabase Studio"
+            echo "Quick Start:"
+            echo "  $0 all       # Interactive setup + full deployment"
             echo ""
-            echo "Example:"
-            echo "  $0 all       # Full deployment with Flutter"
-            echo "  $0 flutter   # Only deploy Flutter app"
-            echo "  $0 domains   # Reconfigure domains/SSL"
+            echo "After deployment, your URLs will be:"
+            echo "  https://yourdomain.com       -> Flutter App"
+            echo "  https://api.yourdomain.com   -> Supabase API"
+            echo "  https://studio.yourdomain.com -> Supabase Studio"
+            echo ""
+            echo "Features:"
+            echo "  • PostgreSQL 18 with Patroni HA"
+            echo "  • Supabase (Auth, Storage, Realtime, Edge Functions)"
+            echo "  • Automatic backups to Backblaze B2"
+            echo "  • Let's Encrypt SSL certificates"
+            echo "  • Grafana monitoring"
             ;;
     esac
 }

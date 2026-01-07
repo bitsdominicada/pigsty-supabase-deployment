@@ -185,7 +185,11 @@ all:
             pg17-olap,
           ]
         pg_parameters:
-          { cron.database_name: postgres, cron.use_background_workers: true }
+          cron.database_name: postgres
+          cron.use_background_workers: true
+          # WAL Slot Protection - prevents disk fill from stuck replication slots
+          max_slot_wal_keep_size: 20GB # Limit WAL retention per slot (invalidates if exceeded)
+          idle_replication_slot_timeout: 1h # Invalidate idle slots after 1 hour (PG17+)
         pg_hba_rules: # supabase hba rules, require access from docker network
           - {
               user: all,
@@ -361,20 +365,36 @@ all:
     #----------------------------------------------#
     # BACKUP : https://doc.pgsty.com/pgsql/backup
     #----------------------------------------------#
-    minio_endpoint: https://sss.pigsty:9000 # explicit overwrite minio endpoint with haproxy port
-    pgbackrest_method: minio # pgbackrest repo method: local,minio,[user-defined...]
+    pgbackrest_method: backblaze # pgbackrest repo method: local,minio,backblaze,s3
     pgbackrest_repo: # pgbackrest repo: https://pgbackrest.org/configuration.html#section-repository
       local: # default pgbackrest repo with local posix fs
         path: /pg/backup # local backup directory, `/pg/backup` by default
         retention_full_type: count # retention full backups by count
         retention_full: 2 # keep 2, at most 3 full backups when using local fs repo
-      minio: # optional minio repo for pgbackrest
+      backblaze: # Backblaze B2 cloud storage (recommended)
+        type: s3 # Backblaze B2 is S3-compatible
+        s3_endpoint: s3.us-east-005.backblazeb2.com # Backblaze B2 endpoint (change region as needed)
+        s3_region: us-east-005 # Backblaze B2 region
+        s3_bucket: "{{ PGBACKREST_S3_BUCKET }}" # from .env: PGBACKREST_S3_BUCKET
+        s3_key: "{{ PGBACKREST_S3_ACCESS_KEY }}" # from .env: PGBACKREST_S3_ACCESS_KEY
+        s3_key_secret: "{{ PGBACKREST_S3_SECRET_KEY }}" # from .env: PGBACKREST_S3_SECRET_KEY
+        s3_uri_style: host # Backblaze uses host style URIs
+        path: /pgbackrest # backup path in bucket
+        block: y # Enable block incremental backup
+        bundle: y # bundle small files into a single file
+        bundle_limit: 20MiB # Limit for file bundles
+        bundle_size: 128MiB # Target size for file bundles
+        cipher_type: aes-256-cbc # enable AES encryption for remote backup repo
+        cipher_pass: "{{ PGBACKREST_CIPHER_PASS }}" # from .env: PGBACKREST_CIPHER_PASS
+        retention_full_type: time # retention full backup by time
+        retention_full: "{{ PGBACKREST_RETENTION_FULL | default(14) }}" # days to keep backups
+      minio: # optional minio repo for pgbackrest (local S3)
         type: s3 # minio is s3-compatible, so s3 is used
         s3_endpoint: sss.pigsty # minio endpoint domain name, `sss.pigsty` by default
         s3_region: us-east-1 # minio region, us-east-1 by default, useless for minio
         s3_bucket: pgsql # minio bucket name, `pgsql` by default
         s3_key: pgbackrest # minio user access key for pgbackrest
-        s3_key_secret: S3User.Backup # minio user secret key for pgbackrest <------------------ HEY, DID YOU CHANGE THIS?
+        s3_key_secret: S3User.Backup # minio user secret key for pgbackrest
         s3_uri_style: path # use path style uri for minio rather than host style
         path: /pgbackrest # minio backup path, default is `/pgbackrest`
         storage_port: 9000 # minio port, 9000 by default
@@ -384,10 +404,10 @@ all:
         bundle_limit: 20MiB # Limit for file bundles, 20MiB for object storage
         bundle_size: 128MiB # Target size for file bundles, 128MiB for object storage
         cipher_type: aes-256-cbc # enable AES encryption for remote backup repo
-        cipher_pass: pgBackRest # AES encryption password, default is 'pgBackRest'  <----- HEY, DID YOU CHANGE THIS?
+        cipher_pass: pgBackRest # AES encryption password, default is 'pgBackRest'
         retention_full_type: time # retention full backup by time on minio repo
         retention_full: 14 # keep full backup for the last 14 days
-      s3: # you can use cloud object storage as backup repo
+      s3: # generic S3-compatible cloud storage
         type: s3 # Add your object storage credentials here!
         s3_endpoint: oss-cn-beijing-internal.aliyuncs.com
         s3_region: oss-cn-beijing

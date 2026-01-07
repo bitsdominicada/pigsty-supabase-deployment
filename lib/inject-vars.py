@@ -227,51 +227,126 @@ def inject_variables(pigsty_yml, env):
         )
         print(f"  ✓ Enabled certbot for HTTPS", file=sys.stderr)
 
-    # Update domain in infra_portal for multi-domain architecture
-    # Main domain -> Flutter App
-    # api.domain -> Supabase API (Kong)
-    # studio.domain -> Supabase Studio
+    # Configure domains for Supabase with multiple infra_portal entries
+    # According to Pigsty docs, each domain needs its own entry in infra_portal
+    # See: https://pigsty.io/docs/app/supabase/
+    #
+    # We need three entries:
+    #   - api.domain -> Kong API (port 8000)
+    #   - studio.domain -> Supabase Studio (port 3000)
+    #   - domain -> Main app/Kong (port 8000)
     if "SUPABASE_DOMAIN" in env:
         domain = env["SUPABASE_DOMAIN"]
         api_domain = f"api.{domain}"
         studio_domain = f"studio.{domain}"
+        vps_ip = env.get("VPS_HOST", "10.10.10.10")
 
-        # Replace supa.pigsty with api subdomain for Supabase API
-        content = re.sub(
-            r"(supa\s*:\s*\{[^}]*domain:\s*)supa\.pigsty", rf"\1{api_domain}", content
-        )
-        # Alternative pattern if different format
-        content = re.sub(
-            r"(supa\s*:\s*\n\s*domain:\s*)supa\.pigsty", rf"\1{api_domain}", content
-        )
+        # Replace the single 'supa' entry with three separate entries
+        # The supa entry in pigsty.yml can be either:
+        # 1. Single line: supa: { domain: supa.pigsty, ... }
+        # 2. Multi-line:
+        #      supa: # comment
+        #        domain: supa.pigsty
+        #        endpoint: "..."
+        #        websocket: true
+        #        certbot: supa.pigsty
 
-        # Replace in /etc/hosts line
+        # New multi-domain configuration (multi-line format to match template style)
+        new_portal_entries = f"""supa: # API endpoint (Kong)
+        domain: {api_domain}
+        endpoint: "{vps_ip}:8000"
+        websocket: true
+        certbot: {api_domain}
+      studio: # Supabase Studio
+        domain: {studio_domain}
+        endpoint: "{vps_ip}:3000"
+        websocket: true
+        certbot: {studio_domain}
+      app: # Main app domain (Kong)
+        domain: {domain}
+        endpoint: "{vps_ip}:8000"
+        websocket: true
+        certbot: {domain}"""
+
+        # Try multi-line format first (more common in templates)
+        # Pattern: supa: # comment\n + indented lines until next entry at same level
+        multiline_pattern = r"(\s*)supa:\s*#[^\n]*\n(?:\1\s+\w+:[^\n]*\n)+"
+        if re.search(multiline_pattern, content):
+            content = re.sub(
+                multiline_pattern,
+                f"      {new_portal_entries}\n",
+                content,
+            )
+        else:
+            # Fallback: single-line format { ... }
+            content = re.sub(
+                r"^\s*supa\s*:\s*\{[^}]+\}\s*$",
+                f"      {new_portal_entries}",
+                content,
+                flags=re.MULTILINE,
+            )
+
+        # Also update endpoint IP in case it uses 10.10.10.10 placeholder
         content = re.sub(
-            r"(\s+)supa\.pigsty(\s|$)",
-            rf"\1{api_domain} {studio_domain} {domain}\2",
+            r'endpoint:\s*"10\.10\.10\.10:',
+            f'endpoint: "{vps_ip}:',
             content,
         )
 
-        # Replace certbot domain to include all domains
+        # Replace in /etc/hosts line - add all three domains
+        # Pattern in node_etc_hosts: "- 10.10.10.10 i.pigsty sss.pigsty supa.pigsty"
         content = re.sub(
-            r"(certbot:\s*)supa\.pigsty",
-            rf"\1{domain},{api_domain},{studio_domain}",
+            r"(node_etc_hosts:.*?- [0-9.]+\s+[^\n]*?)supa\.pigsty",
+            rf"\1{api_domain} {studio_domain} {domain}",
             content,
+            flags=re.DOTALL,
         )
 
-        print(f"  ✓ Domain configured:", file=sys.stderr)
-        print(f"      Main app: {domain}", file=sys.stderr)
-        print(f"      API: {api_domain}", file=sys.stderr)
-        print(f"      Studio: {studio_domain}", file=sys.stderr)
+        print(f"  ✓ Multi-domain infra_portal configured:", file=sys.stderr)
+        print(f"      API:    {api_domain} -> {vps_ip}:8000 (Kong)", file=sys.stderr)
+        print(f"      Studio: {studio_domain} -> {vps_ip}:3000", file=sys.stderr)
+        print(f"      App:    {domain} -> {vps_ip}:8000 (Kong)", file=sys.stderr)
 
     # Add pg_hba rule to allow connections from VPS IP (for supabase-analytics container)
+    # Supabase containers connect from host IP when using host networking or POSTGRES_HOST=<public_ip>
     if "VPS_HOST" in env:
         vps_ip = env["VPS_HOST"]
-        # Find pg_hba_rules section and add rule for VPS IP if not already there
-        hba_pattern = r"(pg_hba_rules:.*?addr: 172\.17\.0\.0/16.*?title:.*?\n)"
-        new_hba_rule = rf"\1          - {{ user: all ,db: all  ,addr: {vps_ip}/32 ,auth: pwd ,title: 'allow supabase access from host IP' }}\n"
-        content = re.sub(hba_pattern, new_hba_rule, content, flags=re.DOTALL)
-        print(f"  ✓ Added pg_hba rule for {vps_ip}/32 (all databases)", file=sys.stderr)
+
+        # Pigsty v3.7.0 uses compact single-line format for pg_hba_rules:
+        # pg_hba_rules:
+        #   - { user: all ,db: postgres  ,addr: 172.17.0.0/16 ,auth: pwd ,title: 'allow access from local docker network' }
+
+        # Pattern: Match the docker network rule line and add our rule after it
+        hba_pattern = r"(-\s*\{\s*user:\s*all\s*,\s*db:\s*postgres\s*,\s*addr:\s*172\.17\.0\.0/16\s*,\s*auth:\s*pwd\s*,\s*title:\s*'allow access from local docker network'\s*\})"
+        new_hba_rule = rf"\1\n          - {{ user: all ,db: all ,addr: {vps_ip}/32 ,auth: pwd ,title: 'allow supabase access from host IP' }}"
+
+        if re.search(hba_pattern, content):
+            content = re.sub(hba_pattern, new_hba_rule, content)
+            print(
+                f"  ✓ Added pg_hba rule for {vps_ip}/32 (all databases)",
+                file=sys.stderr,
+            )
+        else:
+            # Fallback: Try to find any pg_hba_rules section and append
+            # Match the last rule in pg_hba_rules (any format)
+            fallback_pattern = r"(pg_hba_rules:[^\n]*\n(?:\s+-[^\n]+\n)*?)(\s+-\s*\{[^}]+\}\s*\n)(\s*(?:node_crontab|[a-z_]+:|\n\s*#))"
+            match = re.search(fallback_pattern, content, flags=re.DOTALL)
+            if match:
+                # Get indentation from existing rule
+                existing_rule = match.group(2)
+                indent_match = re.match(r"(\s+)", existing_rule)
+                indent = indent_match.group(1) if indent_match else "          "
+                new_rule = f"{indent}- {{ user: all ,db: all ,addr: {vps_ip}/32 ,auth: pwd ,title: 'allow supabase access from host IP' }}\n"
+                content = content[: match.end(2)] + new_rule + content[match.start(3) :]
+                print(
+                    f"  ✓ Added pg_hba rule for {vps_ip}/32 (fallback method)",
+                    file=sys.stderr,
+                )
+            else:
+                print(
+                    f"  ⚠ Could not find pg_hba_rules section to add host IP rule",
+                    file=sys.stderr,
+                )
 
     # Replace 'DBUser.Supa' password in all Supabase pg_users with actual password
     # Pigsty does NOT resolve variables - it uses literal strings as passwords
@@ -298,6 +373,29 @@ def inject_variables(pigsty_yml, env):
         if env_key in env:
             content = replace_global_var(content, yml_key, env[env_key])
             print(f"  ✓ {yml_key} updated", file=sys.stderr)
+
+    # Ensure node_repo_modules includes 'docker' for Docker repository
+    # Default in Pigsty supabase.yml is 'node,pgsql,infra' which doesn't include docker
+    # Without this, docker-ce package won't be found on Ubuntu
+    if "node_repo_modules:" in content:
+        # Check if docker is already included
+        if not re.search(r"node_repo_modules:.*docker", content):
+            # Add docker to existing modules
+            content = re.sub(
+                r"(node_repo_modules:\s*)([^\n]+)",
+                r"\1\2,docker",
+                content,
+            )
+            print(f"  ✓ Added 'docker' to node_repo_modules", file=sys.stderr)
+    else:
+        # Add node_repo_modules if not present
+        # Find the all: vars section and add it
+        content = re.sub(
+            r"(all:\s*\n\s*vars:\s*\n)",
+            r"\1    node_repo_modules: node,pgsql,infra,docker\n",
+            content,
+        )
+        print(f"  ✓ Added node_repo_modules with docker", file=sys.stderr)
 
     # Write modified pigsty.yml
     with open(pigsty_yml, "w") as f:

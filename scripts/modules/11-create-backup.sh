@@ -73,7 +73,7 @@ create_backup() {
         -o StrictHostKeyChecking=no \
         -o UserKnownHostsFile=/dev/null \
         -o LogLevel=ERROR \
-        "deploy@${VPS_HOST}:/tmp/db_backup/*" \
+        "${SSH_USER}@${VPS_HOST}:/tmp/db_backup/*" \
         "${BACKUP_DIR}/" 2>/dev/null
 
     # Create manifest

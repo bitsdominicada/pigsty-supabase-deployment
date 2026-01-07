@@ -229,13 +229,16 @@ ssh_sudo() {
     fi
 }
 
-# SSH as deploy user (after setup)
+# SSH as admin user (uses SSH_USER and SSH_KEY_PATH from .env)
 ssh_exec() {
-    ssh -i ~/.ssh/pigsty_deploy \
+    local ssh_key="${SSH_KEY_PATH:-$HOME/.ssh/id_ed25519}"
+    local ssh_user="${SSH_USER:-ubuntu}"
+
+    ssh -i "${ssh_key}" \
         -o StrictHostKeyChecking=no \
         -o UserKnownHostsFile=/dev/null \
         -o LogLevel=ERROR \
-        "${DEPLOY_USER}@${VPS_HOST}" "$@"
+        "${ssh_user}@${VPS_HOST}" "$@"
 }
 
 # Legacy: SSH as root with password (for backward compatibility)
@@ -272,16 +275,18 @@ scp_admin() {
     fi
 }
 
-# SCP file to VPS as deploy user
+# SCP file to VPS as admin user
 scp_deploy() {
     local src="$1"
     local dest="$2"
+    local ssh_key="${SSH_KEY_PATH:-$HOME/.ssh/id_ed25519}"
+    local ssh_user="${SSH_USER:-ubuntu}"
 
-    scp -i ~/.ssh/pigsty_deploy \
+    scp -i "${ssh_key}" \
         -o StrictHostKeyChecking=no \
         -o UserKnownHostsFile=/dev/null \
         -o LogLevel=ERROR \
-        "$src" "${DEPLOY_USER}@${VPS_HOST}:${dest}"
+        "$src" "${ssh_user}@${VPS_HOST}:${dest}"
 }
 
 # ============================================
