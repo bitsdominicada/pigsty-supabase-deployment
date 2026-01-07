@@ -698,9 +698,20 @@ deploy_all() {
         fi
     fi
 
+    # Phase 9: Security hardening (firewall, fail2ban, SSH)
+    configure_security
+
     verify_deployment
 
     log_success "Deployment completed successfully!"
+}
+
+#--------------------------------------------------------------#
+# Security Hardening
+#--------------------------------------------------------------#
+configure_security() {
+    log_step "Security Hardening"
+    "${SCRIPT_DIR}/modules/16-security-hardening.sh"
 }
 
 #--------------------------------------------------------------#
@@ -883,9 +894,13 @@ main() {
             load_env
             sync_all_to_staging
             ;;
+        security)
+            load_env
+            configure_security
+            ;;
         *)
             print_banner
-            echo "Usage: $0 {all|setup|config|validate|verify|domains|flutter|backup|restore}"
+            echo "Usage: $0 {all|setup|config|validate|verify|domains|flutter|backup|restore|security}"
             echo ""
             echo "Commands:"
             echo "  all          - Full deployment (runs setup if no .env)"
@@ -897,6 +912,7 @@ main() {
             echo "  flutter      - Build and deploy Flutter Web app"
             echo "  backup       - Create database backup from VPS"
             echo "  restore      - Restore database backup to VPS"
+            echo "  security     - Apply security hardening (firewall, fail2ban, SSH)"
             echo ""
             echo "Quick Start:"
             echo "  $0 all       # Interactive setup + full deployment"
