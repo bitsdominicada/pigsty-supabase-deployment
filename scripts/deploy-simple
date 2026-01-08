@@ -701,6 +701,9 @@ deploy_all() {
     # Phase 9: Security hardening (firewall, fail2ban, SSH)
     configure_security
 
+    # Phase 10: Health monitoring setup
+    configure_health_monitoring
+
     verify_deployment
 
     log_success "Deployment completed successfully!"
@@ -712,6 +715,14 @@ deploy_all() {
 configure_security() {
     log_step "Security Hardening"
     "${SCRIPT_DIR}/modules/16-security-hardening.sh"
+}
+
+#--------------------------------------------------------------#
+# Health Monitoring Setup
+#--------------------------------------------------------------#
+configure_health_monitoring() {
+    log_step "Health Monitoring"
+    "${SCRIPT_DIR}/modules/17-health-check.sh"
 }
 
 #--------------------------------------------------------------#
@@ -898,9 +909,13 @@ main() {
             load_env
             configure_security
             ;;
+        health)
+            load_env
+            configure_health_monitoring
+            ;;
         *)
             print_banner
-            echo "Usage: $0 {all|setup|config|validate|verify|domains|flutter|backup|restore|security}"
+            echo "Usage: $0 {all|setup|config|validate|verify|domains|flutter|backup|restore|security|health}"
             echo ""
             echo "Commands:"
             echo "  all          - Full deployment (runs setup if no .env)"
@@ -913,6 +928,7 @@ main() {
             echo "  backup       - Create database backup from VPS"
             echo "  restore      - Restore database backup to VPS"
             echo "  security     - Apply security hardening (firewall, fail2ban, SSH)"
+            echo "  health       - Setup health monitoring (cron + HTTP endpoint)"
             echo ""
             echo "Quick Start:"
             echo "  $0 all       # Interactive setup + full deployment"

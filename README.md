@@ -1,6 +1,6 @@
 # Pigsty Supabase Deployment
 
-Automated deployment of **Supabase** with **PostgreSQL 17** using **Pigsty**, from macOS to VPS.
+Automated **single-command deployment** of **Supabase** with **PostgreSQL 18** using **Pigsty v3.7.0**, from macOS to VPS.
 
 ## Quick Start
 
@@ -9,134 +9,368 @@ Automated deployment of **Supabase** with **PostgreSQL 17** using **Pigsty**, fr
 git clone https://github.com/bitsdominicada/pigsty-supabase-deployment.git
 cd pigsty-supabase-deployment
 
-# 2. Generate configuration
-./scripts/generate-secrets
+# 2. Configure (interactive wizard)
+./scripts/deploy-simple setup
 
-# 3. Deploy (single command)
+# 3. Deploy everything
 ./scripts/deploy-simple all
 ```
 
-**Duration:** ~20 minutes
+**Duration:** ~25 minutes for complete deployment
 
 ---
 
-## Features
+## What You Get
 
-- **PostgreSQL 17** with 400+ extensions
-- **Supabase** full stack (Auth, Storage, Realtime, Functions, Studio)
-- **High Availability** with Patroni + etcd
-- **Monitoring** with Prometheus + Grafana
-- **HTTPS** with Let's Encrypt (automatic)
-- **Backblaze B2** support for Supabase Storage
-- **100% automated** from macOS
+A production-ready Supabase deployment with:
+
+| Component | Description |
+|-----------|-------------|
+| PostgreSQL 18 | Latest version with 400+ extensions |
+| Patroni HA | High availability with automatic failover |
+| Supabase Stack | Auth, Storage, Realtime, Edge Functions, Studio |
+| Backups to B2 | Automated daily backups to Backblaze B2 |
+| SSL Certificates | Let's Encrypt with auto-renewal |
+| Security | UFW Firewall + Fail2ban + SSH hardening |
+| Monitoring | Grafana + Prometheus with alerts |
+| Health Checks | HTTP endpoint + cron-based monitoring |
+| Flutter Web | Automatic deployment of Flutter apps |
+
+---
+
+## Deployment Phases
+
+When you run `./scripts/deploy-simple all`, the following phases execute automatically:
+
+| Phase | Component | Condition |
+|-------|-----------|-----------|
+| 1 | Prepare VPS (user, SSH, dependencies) | Always |
+| 2 | Wait for apt locks | Always |
+| 3 | Install Pigsty (PostgreSQL 18, Patroni, Grafana) | Always |
+| 4 | Install Docker | Always |
+| 5 | Configure nginx SSL | Always |
+| 6 | Launch Supabase (11 containers) | Always |
+| 7 | Configure pgBackRest backups to B2 | If `PGBACKREST_ENABLED=true` |
+| 8 | Restore database backups | If `db_backup/` exists |
+| 9 | Multi-domain architecture + SSL | Always |
+| 10 | Deploy Flutter Web app | If `FLUTTER_PROJECT_PATH` is set |
+| 11 | Security hardening (UFW, Fail2ban, SSH) | Always |
+| 12 | Health monitoring setup | Always |
 
 ---
 
 ## Architecture
 
 ```
-┌─────────────────────────────────┐
-│  macOS (Control)                │
-│  └─ ./scripts/deploy-simple    │
-└──────────────┬──────────────────┘
-               │ SSH
-               ↓
-┌─────────────────────────────────┐
-│  VPS (Ubuntu 24.04)             │
-│                                  │
-│  ┌────────────────────────────┐ │
-│  │ Pigsty v3.6.1              │ │
-│  │ ├─ PostgreSQL 17 + Patroni │ │
-│  │ ├─ HAProxy + pgbouncer     │ │
-│  │ └─ Grafana + Prometheus    │ │
-│  └────────────────────────────┘ │
-│                                  │
-│  ┌────────────────────────────┐ │
-│  │ Supabase (Docker)          │ │
-│  │ ├─ Kong (API Gateway)      │ │
-│  │ ├─ Auth + Storage          │ │
-│  │ ├─ Realtime + REST         │ │
-│  │ └─ Studio (Dashboard)      │ │
-│  └────────────────────────────┘ │
-└─────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│  macOS (Control Machine)                                    │
+│  └─ ./scripts/deploy-simple all                            │
+└──────────────────────────┬──────────────────────────────────┘
+                           │ SSH
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│  VPS (Ubuntu 22.04/24.04)                                   │
+│                                                              │
+│  ┌─────────────────────────────────────────────────────────┐│
+│  │ Pigsty v3.7.0                                           ││
+│  │ ├─ PostgreSQL 18 + Patroni (HA)                         ││
+│  │ ├─ etcd (distributed consensus)                         ││
+│  │ ├─ HAProxy + pgbouncer (connection pooling)             ││
+│  │ └─ Grafana + Prometheus + Alertmanager                  ││
+│  └─────────────────────────────────────────────────────────┘│
+│                                                              │
+│  ┌─────────────────────────────────────────────────────────┐│
+│  │ Supabase (11 Docker Containers)                         ││
+│  │ ├─ Kong (API Gateway) :8000/:8443                       ││
+│  │ ├─ GoTrue (Auth) - JWT authentication                   ││
+│  │ ├─ Storage API - S3-compatible file storage             ││
+│  │ ├─ Realtime - WebSocket subscriptions                   ││
+│  │ ├─ PostgREST - Auto-generated REST API                  ││
+│  │ ├─ Edge Functions (Deno runtime)                        ││
+│  │ ├─ Studio (Dashboard) :3001                             ││
+│  │ ├─ postgres-meta - Database introspection               ││
+│  │ ├─ Logflare (Analytics)                                 ││
+│  │ ├─ Vector (Log aggregation)                             ││
+│  │ └─ Imgproxy (Image transformations)                     ││
+│  └─────────────────────────────────────────────────────────┘│
+│                                                              │
+│  ┌─────────────────────────────────────────────────────────┐│
+│  │ Security                                                 ││
+│  │ ├─ UFW Firewall (ports: 22, 80, 443, 3000, 3001, 8000)  ││
+│  │ ├─ Fail2ban (SSH, nginx brute force protection)         ││
+│  │ └─ SSH hardening (key-only, no root password)           ││
+│  └─────────────────────────────────────────────────────────┘│
+│                                                              │
+│  ┌─────────────────────────────────────────────────────────┐│
+│  │ Backups (pgBackRest → Backblaze B2)                     ││
+│  │ ├─ Daily full backups at 2:00 AM                        ││
+│  │ ├─ WAL archiving (point-in-time recovery)               ││
+│  │ ├─ AES-256-CBC encryption                               ││
+│  │ └─ 14-day retention                                      ││
+│  └─────────────────────────────────────────────────────────┘│
+└─────────────────────────────────────────────────────────────┘
 ```
+
+---
+
+## Multi-Domain Architecture
+
+```
+your-domain.com          → Flutter Web App (nginx)
+api.your-domain.com      → Supabase API (Kong :8000)
+studio.your-domain.com   → Supabase Studio (:3001)
+grafana.your-domain.com  → Grafana Dashboard (:3000)
+```
+
+All domains share a single Let's Encrypt wildcard certificate.
 
 ---
 
 ## Requirements
 
-### macOS
+### macOS (Control Machine)
 - Homebrew
-- `sshpass`: `brew install hudochenkov/sshpass/sshpass`
+- SSH key pair (`~/.ssh/id_ed25519` or `~/.ssh/id_rsa`)
 
 ### VPS
-- Ubuntu 22.04/24.04
+- Ubuntu 22.04 or 24.04
 - 4GB+ RAM (8GB recommended)
 - 2+ CPU cores
 - 40GB+ SSD
-- Root SSH access
+- SSH access (key-based recommended)
 
 ---
 
 ## Configuration
 
-### Interactive (Recommended)
+### Interactive Setup (Recommended)
 
 ```bash
-./scripts/generate-secrets
+./scripts/deploy-simple setup
 ```
 
-Generates all passwords, JWT tokens, and optionally configures:
-- Domain + Let's Encrypt SSL
-- Backblaze B2 for storage
+This wizard configures:
+- VPS connection (IP, SSH user/key)
+- Domain and SSL settings
+- Supabase credentials
+- Backblaze B2 for backups
 - SMTP for emails
+- Flutter project path
 
-### Manual
+### Manual Configuration
 
 ```bash
 cp .env.example .env
 # Edit .env with your values
 ```
 
----
-
-## Deployment
-
-### Full Deployment
+### Key Environment Variables
 
 ```bash
-./scripts/deploy-simple all
+# VPS Connection
+VPS_HOST=your-vps-ip
+SSH_USER=ubuntu
+
+# Domain
+SUPABASE_DOMAIN=your-domain.com
+USE_LETSENCRYPT=true
+LETSENCRYPT_EMAIL=you@email.com
+
+# Backblaze B2 Backups
+PGBACKREST_ENABLED=true
+PGBACKREST_S3_BUCKET=your-bucket
+PGBACKREST_S3_ENDPOINT=https://s3.us-east-005.backblazeb2.com
+PGBACKREST_S3_REGION=us-east-005
+PGBACKREST_S3_ACCESS_KEY=your-key-id
+PGBACKREST_S3_SECRET_KEY=your-secret
+PGBACKREST_CIPHER_PASS=your-encryption-password
+
+# Flutter (optional)
+FLUTTER_PROJECT_PATH=/path/to/your/flutter/app
+
+# Alerts
+ALERT_EMAIL=alerts@your-domain.com
 ```
 
-This will:
-1. Prepare VPS (user, SSH keys, dependencies)
-2. Download and configure Pigsty v3.6.1
-3. Generate `pigsty.yml` with your settings
-4. Run `install.yml` (PostgreSQL, monitoring)
-5. Run `docker.yml` (Docker installation)
-6. Run `app.yml` (Supabase containers)
-7. Apply Backblaze B2 fixes (if configured)
-8. Display access credentials
+---
 
-### Other Commands
+## Commands
+
+### Deployment
 
 ```bash
-./scripts/deploy-simple config    # Generate and upload pigsty.yml only
-./scripts/deploy-simple validate  # Validate configuration
-./scripts/deploy-simple verify    # Check deployment status
+./scripts/deploy-simple all        # Full deployment
+./scripts/deploy-simple setup      # Interactive configuration
+./scripts/deploy-simple verify     # Check deployment status
+```
+
+### Individual Components
+
+```bash
+./scripts/deploy-simple flutter    # Deploy Flutter Web app
+./scripts/deploy-simple domains    # Configure domains + SSL
+./scripts/deploy-simple security   # Apply security hardening
+./scripts/deploy-simple health     # Setup health monitoring
+```
+
+### Backups
+
+```bash
+./scripts/deploy-simple backup     # Create database backup
+./scripts/deploy-simple restore    # Restore database backup
+```
+
+### Schema Sync (Multi-environment)
+
+```bash
+./scripts/deploy-simple sync-schema ORIGIN_IP   # Sync schema from production
+./scripts/deploy-simple apply-schema TARGET_IP  # Apply schema to target
+./scripts/deploy-simple sync-all                # Sync schema + deploy Flutter
 ```
 
 ---
 
 ## Access Points
 
-After deployment, you'll see:
+After deployment:
 
-| Service | URL | Credentials |
-|---------|-----|-------------|
-| Supabase Studio | `https://your-domain.com` | From `.env` |
-| Grafana | `http://VPS_IP` | `admin` / from `.env` |
-| PostgreSQL | `VPS_IP:5436` | `supabase_admin` / from `.env` |
+| Service | URL | Notes |
+|---------|-----|-------|
+| Flutter App | `https://your-domain.com` | Your web application |
+| Supabase API | `https://api.your-domain.com` | REST/Realtime/Auth |
+| Supabase Studio | `https://studio.your-domain.com` | Dashboard |
+| Grafana | `https://grafana.your-domain.com` | Monitoring |
+| Health Check | `http://VPS_IP:8080/health` | JSON status |
+| Health Ping | `http://VPS_IP:8080/health/simple` | Returns "OK" |
+
+### Default Credentials
+
+Credentials are stored in `.env` and displayed after deployment:
+
+- **Supabase Studio**: `DASHBOARD_USERNAME` / `DASHBOARD_PASSWORD`
+- **Grafana**: `admin` / `GRAFANA_ADMIN_PASSWORD`
+- **PostgreSQL**: `supabase_admin` / `POSTGRES_PASSWORD` on port `5436`
+
+---
+
+## Health Monitoring
+
+### HTTP Endpoint
+
+```bash
+curl http://your-vps-ip:8080/health
+```
+
+Response:
+```json
+{
+  "status": "healthy",
+  "timestamp": "2026-01-07T03:04:26+00:00",
+  "checks": {
+    "postgres": "ok",
+    "containers": "ok",
+    "patroni": "ok"
+  }
+}
+```
+
+### Local Health Check
+
+- **Script**: `/opt/supabase/health-check.sh`
+- **Runs**: Every 5 minutes via cron
+- **Logs**: `/var/log/supabase-health.log`
+- **Alerts**: Email on failures (30-min cooldown)
+
+Checks performed:
+- PostgreSQL connectivity
+- Patroni HA status
+- Supabase container health
+- Disk space (warning >80%, critical >90%)
+- Memory usage (warning >85%, critical >95%)
+- SSL certificate expiry (warning <14 days, critical <7 days)
+- Replication lag (warning >1GB)
+
+---
+
+## Backups
+
+### Automatic Backups
+
+- **Schedule**: Daily at 2:00 AM UTC
+- **Destination**: Backblaze B2 (S3-compatible)
+- **Encryption**: AES-256-CBC
+- **Retention**: 14 days
+- **Compression**: LZ4 (~70% reduction)
+
+### Manual Backup Commands
+
+```bash
+# On VPS - check backup status
+sudo -u postgres pgbackrest --stanza=pg-meta info
+
+# Run manual backup
+sudo -u postgres pgbackrest --stanza=pg-meta --type=full backup
+
+# Verify backup integrity
+sudo -u postgres pgbackrest --stanza=pg-meta check
+```
+
+### Restore from Backup
+
+```bash
+# Stop PostgreSQL
+sudo systemctl stop patroni
+
+# Restore latest backup
+sudo -u postgres pgbackrest --stanza=pg-meta --delta restore
+
+# Start PostgreSQL
+sudo systemctl start patroni
+```
+
+---
+
+## Security
+
+### Firewall (UFW)
+
+Open ports:
+- 22 (SSH)
+- 80 (HTTP)
+- 443 (HTTPS)
+- 3000 (Grafana)
+- 3001 (Supabase Studio)
+- 8000 (Supabase API)
+- 8080 (Health Check)
+- 8443 (Supabase HTTPS)
+
+### Fail2ban
+
+Active jails:
+- `sshd` - SSH brute force protection
+- `nginx-http-auth` - HTTP auth failures
+- `nginx-limit-req` - Rate limit violations
+- `nginx-botsearch` - Bot/scanner detection
+
+### SSH Hardening
+
+- Password authentication disabled
+- Root login disabled
+- Key-based authentication only
+
+---
+
+## Grafana Alerts
+
+Pre-configured alerts:
+
+| Alert | Condition | Severity |
+|-------|-----------|----------|
+| PostgreSQL Down | Instance unreachable | Critical |
+| High CPU Usage | >80% for 5 minutes | Warning |
+| Disk Space Low | <20% free | Warning |
+
+Alerts are sent to the configured email address (`ALERT_EMAIL`).
 
 ---
 
@@ -145,57 +379,29 @@ After deployment, you'll see:
 ```
 pigsty-supabase-deployment/
 ├── scripts/
-│   ├── deploy-simple       # Main deployment script
-│   ├── generate-secrets    # Configuration generator
+│   ├── deploy-simple              # Main deployment script
+│   ├── setup-interactive.sh       # Configuration wizard
+│   ├── utils.sh                   # Shared utilities
+│   ├── cloudflare-dns.sh          # DNS automation
 │   └── modules/
-│       ├── 01-prepare.sh   # VPS preparation
-│       └── 03-validate.sh  # Configuration validation
+│       ├── 01-prepare.sh          # VPS preparation
+│       ├── 03-validate.sh         # Configuration validation
+│       ├── 10-restore-backup.sh   # Database restore
+│       ├── 11-create-backup.sh    # Database backup
+│       ├── 12-deploy-flutter-web.sh
+│       ├── 13-configure-domains.sh
+│       ├── 14-sync-app-schema.sh
+│       ├── 15-apply-app-schema.sh
+│       ├── 16-security-hardening.sh
+│       └── 17-health-check.sh
 ├── lib/
-│   └── simple-yaml-gen.py  # YAML generator with automatic fixes
-├── .env.example            # Configuration template
+│   └── inject-vars.py             # YAML variable injection
+├── config/
+│   └── app_schema/                # Schema sync files
+├── db_backup/                     # Local backup storage
+├── .env.example                   # Configuration template
 └── README.md
 ```
-
----
-
-## How It Works
-
-This project follows **Pigsty's official deployment flow**:
-
-```bash
-# What deploy-simple does internally:
-curl https://repo.pigsty.io/get | bash     # Download Pigsty
-./bootstrap                                  # Install Ansible
-./configure -c supabase                      # Use supabase template
-# Upload customized pigsty.yml
-./install.yml                                # PostgreSQL + infra
-./docker.yml                                 # Docker
-./app.yml                                    # Supabase containers
-```
-
-### Automatic Fixes Applied
-
-The `simple-yaml-gen.py` script automatically applies fixes learned from production:
-
-1. **pg_hba.conf rules** - Adds VPS IP for HAProxy connections
-2. **Docker gateway IP** - Uses `172.17.0.1` for container connectivity
-3. **Backblaze B2 compatibility** - Adds `TUS_ALLOW_S3_TAGS=false`
-4. **Safe passwords** - Generates alphanumeric-only passwords (no URL encoding issues)
-5. **Inline comments removal** - Prevents Docker from including comments in values
-
----
-
-## Backblaze B2 Storage
-
-To use Backblaze B2 instead of MinIO:
-
-1. Create a B2 bucket
-2. Create an application key with read/write access
-3. Run `./scripts/generate-secrets` and enter B2 credentials when prompted
-
-The script will automatically configure:
-- S3-compatible endpoint
-- `TUS_ALLOW_S3_TAGS=false` for compatibility
 
 ---
 
@@ -208,25 +414,49 @@ The script will automatically configure:
 ssh-keygen -R YOUR_VPS_IP
 
 # Test connection
-source .env && sshpass -p "${VPS_ROOT_PASSWORD}" ssh root@${VPS_HOST} "hostname"
+ssh -i ~/.ssh/id_ed25519 ubuntu@YOUR_VPS_IP "hostname"
 ```
 
 ### Check Container Status
 
 ```bash
-source .env && ssh deploy@${VPS_HOST} "docker ps --format 'table {{.Names}}\t{{.Status}}'"
+ssh ubuntu@VPS_IP "docker ps --format 'table {{.Names}}\t{{.Status}}' | grep supabase"
 ```
 
 ### View Container Logs
 
 ```bash
-source .env && ssh deploy@${VPS_HOST} "cd /opt/supabase && docker compose logs storage"
+ssh ubuntu@VPS_IP "cd /opt/supabase && docker compose logs -f auth"
 ```
 
 ### PostgreSQL Connection Test
 
 ```bash
-source .env && PGPASSWORD="${POSTGRES_PASSWORD}" psql -h ${VPS_HOST} -p 5436 -U supabase_admin -d postgres -c "SELECT version();"
+PGPASSWORD="your-password" psql -h VPS_IP -p 5436 -U supabase_admin -d postgres -c "SELECT version();"
+```
+
+### Restart Supabase Stack
+
+```bash
+ssh ubuntu@VPS_IP "cd /opt/supabase && docker compose restart"
+```
+
+### Check Patroni Status
+
+```bash
+ssh ubuntu@VPS_IP "curl -s http://\$(hostname -I | awk '{print \$1}'):8008/"
+```
+
+### Verify Backups
+
+```bash
+ssh ubuntu@VPS_IP "sudo -u postgres pgbackrest --stanza=pg-meta info"
+```
+
+### Check Fail2ban Bans
+
+```bash
+ssh ubuntu@VPS_IP "sudo fail2ban-client status sshd"
 ```
 
 ---
@@ -244,4 +474,4 @@ AGPLv3 (inherited from Pigsty)
 
 ---
 
-**Made with care for the PostgreSQL community**
+**Single-command deployment for production-ready Supabase.**
