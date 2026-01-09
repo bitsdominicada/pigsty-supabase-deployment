@@ -1,21 +1,8 @@
--- ============================================
--- APP SCHEMA - Pigsty Supabase Deployment
--- ============================================
--- Este archivo contiene el schema de la aplicación
--- Se aplica DESPUÉS del baseline de Supabase
---
--- Generado automáticamente por: 14-sync-app-schema.sh
--- NO EDITAR MANUALMENTE - Los cambios se perderán
--- ============================================
-
--- Generado: 2025-12-27 15:35:27
--- Origen: 194.163.149.70
-
 --
 -- PostgreSQL database dump
 --
 
-\restrict p12L0QOdpdXbBKr98WuOiwqwK06CIeOtomGGVtCyttI4XMMJhem0frKXDbW7wGu
+\restrict uzj9VT0tCso77MH1m6VOtysBCrTBSH6xNqJrstqDAmOZySUjTa4yblVNbQylbu6
 
 -- Dumped from database version 17.7 (Ubuntu 17.7-3.pgdg24.04+1)
 -- Dumped by pg_dump version 17.7 (Ubuntu 17.7-3.pgdg24.04+1)
@@ -40,13 +27,6 @@ CREATE SCHEMA app;
 
 
 --
--- Name: SCHEMA app; Type: COMMENT; Schema: -; Owner: -
---
-
-COMMENT ON SCHEMA app IS 'Application-specific functions and procedures';
-
-
---
 -- Name: pgmq; Type: SCHEMA; Schema: -; Owner: -
 --
 
@@ -58,20 +38,6 @@ CREATE SCHEMA pgmq;
 --
 
 CREATE SCHEMA public;
-
-
---
--- Name: SCHEMA public; Type: COMMENT; Schema: -; Owner: -
---
-
-COMMENT ON SCHEMA public IS 'standard public schema';
-
-
---
--- Name: tests; Type: SCHEMA; Schema: -; Owner: -
---
-
-CREATE SCHEMA tests;
 
 
 --
@@ -113,7 +79,8 @@ CREATE TYPE public.appointment_client_type AS ENUM (
     'customer',
     'beauty_client',
     'corporate_client',
-    'other'
+    'other',
+    'guest'
 );
 
 
@@ -141,13 +108,6 @@ CREATE TYPE public.appointment_reminder_preference AS ENUM (
     'email_sms',
     'all'
 );
-
-
---
--- Name: TYPE appointment_reminder_preference; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TYPE public.appointment_reminder_preference IS 'Patient preference for appointment reminders.';
 
 
 --
@@ -221,13 +181,6 @@ CREATE TYPE public.blood_type_enum AS ENUM (
     'O-',
     'unknown'
 );
-
-
---
--- Name: TYPE blood_type_enum; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TYPE public.blood_type_enum IS 'Blood type classification (ABO and Rh).';
 
 
 --
@@ -311,13 +264,6 @@ CREATE TYPE public.employment_status_enum AS ENUM (
 
 
 --
--- Name: TYPE employment_status_enum; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TYPE public.employment_status_enum IS 'Employment status for employees - tracks current employment state';
-
-
---
 -- Name: employment_type_enum; Type: TYPE; Schema: public; Owner: -
 --
 
@@ -330,13 +276,6 @@ CREATE TYPE public.employment_type_enum AS ENUM (
     'consultant',
     'seasonal'
 );
-
-
---
--- Name: TYPE employment_type_enum; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TYPE public.employment_type_enum IS 'Type of employment contract - defines working arrangement';
 
 
 --
@@ -400,21 +339,21 @@ CREATE TYPE public.entity_relationship_type AS ENUM (
 
 
 --
--- Name: TYPE entity_relationship_type; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TYPE public.entity_relationship_type IS 'Types of relationships between entities. Bidirectional - create both directions if needed.
-Use custom_fields.relationship_detail for specific nuances.';
-
-
---
 -- Name: entity_status; Type: TYPE; Schema: public; Owner: -
 --
 
 CREATE TYPE public.entity_status AS ENUM (
     'active',
     'inactive',
-    'archived'
+    'archived',
+    'new',
+    'draft',
+    'prospect',
+    'discharged',
+    'deceased',
+    'transferred',
+    'suspended',
+    'deleted'
 );
 
 
@@ -454,13 +393,6 @@ CREATE TYPE public.gender_identity AS ENUM (
     'other',
     'prefer_not_to_say'
 );
-
-
---
--- Name: TYPE gender_identity; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TYPE public.gender_identity IS 'Gender identity (self-identified).';
 
 
 --
@@ -533,13 +465,6 @@ CREATE TYPE public.marital_status AS ENUM (
 
 
 --
--- Name: TYPE marital_status; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TYPE public.marital_status IS 'Marital status.';
-
-
---
 -- Name: notification_method; Type: TYPE; Schema: public; Owner: -
 --
 
@@ -594,13 +519,6 @@ CREATE TYPE public.patient_category AS ENUM (
 
 
 --
--- Name: TYPE patient_category; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TYPE public.patient_category IS 'Patient category for billing/treatment prioritization.';
-
-
---
 -- Name: patient_status; Type: TYPE; Schema: public; Owner: -
 --
 
@@ -618,13 +536,6 @@ CREATE TYPE public.patient_status AS ENUM (
 
 
 --
--- Name: TYPE patient_status; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TYPE public.patient_status IS 'Patient status in the system.';
-
-
---
 -- Name: payment_method_enum; Type: TYPE; Schema: public; Owner: -
 --
 
@@ -635,13 +546,6 @@ CREATE TYPE public.payment_method_enum AS ENUM (
     'mobile_payment',
     'crypto'
 );
-
-
---
--- Name: TYPE payment_method_enum; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TYPE public.payment_method_enum IS 'Payment method for salary disbursement';
 
 
 --
@@ -658,7 +562,8 @@ CREATE TYPE public.person_subtype AS ENUM (
     'admin',
     'receptionist',
     'other_person',
-    'client'
+    'client',
+    'supplier'
 );
 
 
@@ -681,13 +586,6 @@ CREATE TYPE public.preferred_language AS ENUM (
     'hi',
     'other'
 );
-
-
---
--- Name: TYPE preferred_language; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TYPE public.preferred_language IS 'Preferred language for communication (ISO 639-1 codes).';
 
 
 --
@@ -732,13 +630,6 @@ CREATE TYPE public.relationship_status AS ENUM (
 
 
 --
--- Name: TYPE relationship_status; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TYPE public.relationship_status IS 'Status of entity relationship over time.';
-
-
---
 -- Name: salary_period_enum; Type: TYPE; Schema: public; Owner: -
 --
 
@@ -753,13 +644,6 @@ CREATE TYPE public.salary_period_enum AS ENUM (
 
 
 --
--- Name: TYPE salary_period_enum; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TYPE public.salary_period_enum IS 'Salary payment period - defines how salary is calculated';
-
-
---
 -- Name: sex_assigned_at_birth; Type: TYPE; Schema: public; Owner: -
 --
 
@@ -770,13 +654,6 @@ CREATE TYPE public.sex_assigned_at_birth AS ENUM (
     'unknown',
     'prefer_not_to_say'
 );
-
-
---
--- Name: TYPE sex_assigned_at_birth; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TYPE public.sex_assigned_at_birth IS 'Biological sex assigned at birth (for medical purposes).';
 
 
 --
@@ -824,6 +701,39 @@ CREATE TYPE public.skill_execution_status AS ENUM (
     'failed',
     'cancelled',
     'pending_approval'
+);
+
+
+--
+-- Name: supplier_category; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.supplier_category AS ENUM (
+    'strategic',
+    'preferred',
+    'standard',
+    'one_time'
+);
+
+
+--
+-- Name: supplier_risk_level; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.supplier_risk_level AS ENUM (
+    'low',
+    'medium',
+    'high'
+);
+
+
+--
+-- Name: supplier_type; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.supplier_type AS ENUM (
+    'business',
+    'individual'
 );
 
 
@@ -1015,13 +925,6 @@ BEGIN
     RETURN v_stats;
 END;
 $$;
-
-
---
--- Name: FUNCTION calculate_appointment_statistics(p_organization_id uuid, p_start_date date, p_end_date date); Type: COMMENT; Schema: app; Owner: -
---
-
-COMMENT ON FUNCTION app.calculate_appointment_statistics(p_organization_id uuid, p_start_date date, p_end_date date) IS 'Calculates comprehensive appointment statistics for reporting and analytics';
 
 
 --
@@ -1222,13 +1125,6 @@ $$;
 
 
 --
--- Name: FUNCTION check_resource_availability(p_resource_entity_id uuid, p_appointment_date date, p_start_time time without time zone, p_end_time time without time zone, p_exclude_appointment_id uuid); Type: COMMENT; Schema: app; Owner: -
---
-
-COMMENT ON FUNCTION app.check_resource_availability(p_resource_entity_id uuid, p_appointment_date date, p_start_time time without time zone, p_end_time time without time zone, p_exclude_appointment_id uuid) IS 'Checks if a resource is available for booking at specified date/time';
-
-
---
 -- Name: create_default_provider_schedule(uuid, uuid, time without time zone, time without time zone); Type: FUNCTION; Schema: app; Owner: -
 --
 
@@ -1256,13 +1152,6 @@ BEGIN
     END LOOP;
 END;
 $$;
-
-
---
--- Name: FUNCTION create_default_provider_schedule(p_provider_entity_id uuid, p_organization_id uuid, p_start_time time without time zone, p_end_time time without time zone); Type: COMMENT; Schema: app; Owner: -
---
-
-COMMENT ON FUNCTION app.create_default_provider_schedule(p_provider_entity_id uuid, p_organization_id uuid, p_start_time time without time zone, p_end_time time without time zone) IS 'Helper to create Mon-Fri schedule for a provider';
 
 
 --
@@ -1298,13 +1187,6 @@ BEGIN
     );
 END;
 $$;
-
-
---
--- Name: FUNCTION disable_auto_embeddings(p_table_name text); Type: COMMENT; Schema: app; Owner: -
---
-
-COMMENT ON FUNCTION app.disable_auto_embeddings(p_table_name text) IS 'Disable automatic embeddings for a table - drops trigger and marks config as disabled';
 
 
 --
@@ -1397,13 +1279,6 @@ $$;
 
 
 --
--- Name: FUNCTION enable_auto_embeddings(p_table_name text, p_content_columns text[], p_filter_condition text, p_watch_columns text[], p_custom_content_sql text); Type: COMMENT; Schema: app; Owner: -
---
-
-COMMENT ON FUNCTION app.enable_auto_embeddings(p_table_name text, p_content_columns text[], p_filter_condition text, p_watch_columns text[], p_custom_content_sql text) IS 'Enable automatic embeddings for any table - creates config and trigger';
-
-
---
 -- Name: find_available_resources_for_service(uuid, text, date, time without time zone, time without time zone, integer, integer); Type: FUNCTION; Schema: app; Owner: -
 --
 
@@ -1493,37 +1368,6 @@ $$;
 
 
 --
--- Name: FUNCTION find_available_resources_for_service(p_organization_id uuid, p_service_query text, p_date date, p_preferred_time_start time without time zone, p_preferred_time_end time without time zone, p_duration_minutes integer, p_limit integer); Type: COMMENT; Schema: app; Owner: -
---
-
-COMMENT ON FUNCTION app.find_available_resources_for_service(p_organization_id uuid, p_service_query text, p_date date, p_preferred_time_start time without time zone, p_preferred_time_end time without time zone, p_duration_minutes integer, p_limit integer) IS 'Finds available resources for a service using AI semantic search + availability check.
-Combines semantic_search_entities() with get_available_time_slots() to return only resources that:
-1. Match the service semantically (skills, expertise, services offered)
-2. Have actual availability on the requested date/time
-
-Example:
-SELECT * FROM app.find_available_resources_for_service(
-    p_organization_id := ''uuid-org'',
-    p_service_query := ''corte de pelo moderno para hombre'',
-    p_date := ''2025-01-15'',
-    p_preferred_time_start := ''10:00'',
-    p_preferred_time_end := ''18:00'',
-    p_duration_minutes := 45,
-    p_limit := 5
-);
-
-Returns:
-- resource_id: Entity UUID
-- resource_name: Display name
-- semantic_score: AI match score (0-1)
-- available_slots: JSONB array of {start_time, end_time}
-- earliest_slot: First available time
-- total_available_slots: Count of slots
-- ai_match_reasons: Why this resource matched (skills, tags, etc.)
-';
-
-
---
 -- Name: find_employees_by_skills(text[], uuid, text, integer); Type: FUNCTION; Schema: app; Owner: -
 --
 
@@ -1565,13 +1409,6 @@ BEGIN
     LIMIT p_limit;
 END;
 $$;
-
-
---
--- Name: FUNCTION find_employees_by_skills(p_required_skills text[], p_organization_id uuid, p_min_proficiency text, p_limit integer); Type: COMMENT; Schema: app; Owner: -
---
-
-COMMENT ON FUNCTION app.find_employees_by_skills(p_required_skills text[], p_organization_id uuid, p_min_proficiency text, p_limit integer) IS 'Find employees matching required skills with proficiency levels';
 
 
 --
@@ -1726,13 +1563,6 @@ $$;
 
 
 --
--- Name: FUNCTION fuzzy_search_entities(p_org_id uuid, p_domain text, p_search_term text, p_max_distance integer, p_limit integer); Type: COMMENT; Schema: app; Owner: -
---
-
-COMMENT ON FUNCTION app.fuzzy_search_entities(p_org_id uuid, p_domain text, p_search_term text, p_max_distance integer, p_limit integer) IS 'Generic fuzzy search for any entity domain type (service_provider, patient, employee, client, etc.)';
-
-
---
 -- Name: get_available_time_slots(uuid, date, integer, integer); Type: FUNCTION; Schema: app; Owner: -
 --
 
@@ -1808,13 +1638,6 @@ BEGIN
     ORDER BY sa.slot_start;
 END;
 $$;
-
-
---
--- Name: FUNCTION get_available_time_slots(p_resource_entity_id uuid, p_date date, p_duration_minutes integer, p_buffer_minutes integer); Type: COMMENT; Schema: app; Owner: -
---
-
-COMMENT ON FUNCTION app.get_available_time_slots(p_resource_entity_id uuid, p_date date, p_duration_minutes integer, p_buffer_minutes integer) IS 'Returns all available time slots for a resource on a given date';
 
 
 --
@@ -1974,13 +1797,6 @@ $$;
 
 
 --
--- Name: FUNCTION get_booking_availability(p_organization_id uuid, p_catalog_item_ids uuid[], p_provider_entity_id uuid, p_days_ahead integer, p_slot_interval_minutes integer); Type: COMMENT; Schema: app; Owner: -
---
-
-COMMENT ON FUNCTION app.get_booking_availability(p_organization_id uuid, p_catalog_item_ids uuid[], p_provider_entity_id uuid, p_days_ahead integer, p_slot_interval_minutes integer) IS 'Returns real-time availability slots for booking based on provider schedules and existing appointments. Validates that catalog items belong to the specified organization.';
-
-
---
 -- Name: get_direct_reports(uuid); Type: FUNCTION; Schema: app; Owner: -
 --
 
@@ -2005,13 +1821,6 @@ BEGIN
     ORDER BY ent.display_name;
 END;
 $$;
-
-
---
--- Name: FUNCTION get_direct_reports(p_manager_employee_id uuid); Type: COMMENT; Schema: app; Owner: -
---
-
-COMMENT ON FUNCTION app.get_direct_reports(p_manager_employee_id uuid) IS 'Get all direct reports for a given manager';
 
 
 --
@@ -2055,13 +1864,6 @@ $$;
 
 
 --
--- Name: FUNCTION get_embedding_config(p_table_name text); Type: COMMENT; Schema: app; Owner: -
---
-
-COMMENT ON FUNCTION app.get_embedding_config(p_table_name text) IS 'Get embedding configuration for a specific table';
-
-
---
 -- Name: get_employee_tenure(uuid); Type: FUNCTION; Schema: app; Owner: -
 --
 
@@ -2093,13 +1895,6 @@ BEGIN
     RETURN v_tenure;
 END;
 $$;
-
-
---
--- Name: FUNCTION get_employee_tenure(p_employee_id uuid); Type: COMMENT; Schema: app; Owner: -
---
-
-COMMENT ON FUNCTION app.get_employee_tenure(p_employee_id uuid) IS 'Calculate employee tenure (time between hire and termination or current date)';
 
 
 --
@@ -2226,13 +2021,6 @@ $$;
 
 
 --
--- Name: FUNCTION get_resource_schedule(p_resource_entity_id uuid, p_start_date date, p_end_date date); Type: COMMENT; Schema: app; Owner: -
---
-
-COMMENT ON FUNCTION app.get_resource_schedule(p_resource_entity_id uuid, p_start_date date, p_end_date date) IS 'Returns complete schedule for a resource including appointments, availability, and unavailability';
-
-
---
 -- Name: get_smart_booking_data(uuid, uuid); Type: FUNCTION; Schema: app; Owner: -
 --
 
@@ -2309,13 +2097,6 @@ BEGIN
     RETURN v_result;
 END;
 $$;
-
-
---
--- Name: FUNCTION get_smart_booking_data(p_organization_id uuid, p_user_entity_id uuid); Type: COMMENT; Schema: app; Owner: -
---
-
-COMMENT ON FUNCTION app.get_smart_booking_data(p_organization_id uuid, p_user_entity_id uuid) IS 'Returns all data needed for the Smart Booking Form A2UI component including catalog items, providers, categories, and current user info';
 
 
 --
@@ -2466,13 +2247,6 @@ $$;
 
 
 --
--- Name: FUNCTION record_position_change(p_employee_id uuid, p_new_position text, p_new_department character varying, p_new_division character varying, p_reason text, p_effective_date date); Type: COMMENT; Schema: app; Owner: -
---
-
-COMMENT ON FUNCTION app.record_position_change(p_employee_id uuid, p_new_position text, p_new_department character varying, p_new_division character varying, p_reason text, p_effective_date date) IS 'Record position/department change with full history tracking';
-
-
---
 -- Name: record_salary_increase(uuid, numeric, text, uuid, date); Type: FUNCTION; Schema: app; Owner: -
 --
 
@@ -2542,13 +2316,6 @@ $$;
 
 
 --
--- Name: FUNCTION record_salary_increase(p_employee_id uuid, p_new_salary numeric, p_reason text, p_approved_by uuid, p_effective_date date); Type: COMMENT; Schema: app; Owner: -
---
-
-COMMENT ON FUNCTION app.record_salary_increase(p_employee_id uuid, p_new_salary numeric, p_reason text, p_approved_by uuid, p_effective_date date) IS 'Record salary increase with full history tracking and approval';
-
-
---
 -- Name: refresh_employee_analytics(uuid); Type: FUNCTION; Schema: app; Owner: -
 --
 
@@ -2605,13 +2372,6 @@ BEGIN
     );
 END;
 $$;
-
-
---
--- Name: FUNCTION refresh_employee_analytics(p_employee_id uuid); Type: COMMENT; Schema: app; Owner: -
---
-
-COMMENT ON FUNCTION app.refresh_employee_analytics(p_employee_id uuid) IS 'Refresh aggregated analytics snapshot for an employee - should be called daily/weekly via cron';
 
 
 --
@@ -2804,34 +2564,6 @@ $$;
 
 
 --
--- Name: FUNCTION smart_appointment_recommendations(p_client_entity_id uuid, p_service_query text, p_organization_id uuid, p_preferred_date date, p_limit integer); Type: COMMENT; Schema: app; Owner: -
---
-
-COMMENT ON FUNCTION app.smart_appointment_recommendations(p_client_entity_id uuid, p_service_query text, p_organization_id uuid, p_preferred_date date, p_limit integer) IS 'Smart appointment recommendations using AI and client behavioral data.
-Analyzes:
-- Client history (preferred times, days, resources)
-- Resource availability (via find_available_resources_for_service)
-- No-show risk (via calculate_entity_metrics)
-- Semantic match (service type relevance)
-
-Returns JSONB array of recommendations sorted by score, including:
-- resource_id, resource_name
-- date, earliest_slot, available_slots
-- recommendation_score (0-1)
-- reasons (breakdown of scoring factors)
-
-Example:
-SELECT app.smart_appointment_recommendations(
-    p_client_entity_id := ''client-uuid'',
-    p_service_query := ''necesito un corte de pelo'',
-    p_organization_id := ''org-uuid'',
-    p_preferred_date := NULL, -- Search next 7 days
-    p_limit := 5
-);
-';
-
-
---
 -- Name: update_employee_ai_features(uuid, text, jsonb); Type: FUNCTION; Schema: app; Owner: -
 --
 
@@ -2867,13 +2599,6 @@ BEGIN
     );
 END;
 $$;
-
-
---
--- Name: FUNCTION update_employee_ai_features(p_employee_id uuid, p_feature_type text, p_feature_data jsonb); Type: COMMENT; Schema: app; Owner: -
---
-
-COMMENT ON FUNCTION app.update_employee_ai_features(p_employee_id uuid, p_feature_type text, p_feature_data jsonb) IS 'Update specific AI feature for an employee (embeddings, scores, predictions, etc.)';
 
 
 --
@@ -2946,13 +2671,6 @@ BEGIN
     RETURN v_result;
 END;
 $$;
-
-
---
--- Name: FUNCTION update_vacation_balance(p_employee_id uuid, p_days numeric, p_operation character varying, p_notes text); Type: COMMENT; Schema: app; Owner: -
---
-
-COMMENT ON FUNCTION app.update_vacation_balance(p_employee_id uuid, p_days numeric, p_operation character varying, p_notes text) IS 'Add or subtract vacation days and track in leave_history';
 
 
 --
@@ -3167,10 +2885,71 @@ $$;
 
 
 --
--- Name: FUNCTION add_resource_capability(p_organization_id uuid, p_resource_entity_id uuid, p_catalog_item_id uuid, p_proficiency_level public.proficiency_level, p_is_primary boolean, p_custom_duration interval, p_custom_price numeric, p_currency_code character, p_attributes jsonb); Type: COMMENT; Schema: public; Owner: -
+-- Name: add_transaction_line_item(uuid, text, uuid, uuid, text, uuid, numeric, numeric, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
-COMMENT ON FUNCTION public.add_resource_capability(p_organization_id uuid, p_resource_entity_id uuid, p_catalog_item_id uuid, p_proficiency_level public.proficiency_level, p_is_primary boolean, p_custom_duration interval, p_custom_price numeric, p_currency_code character, p_attributes jsonb) IS 'Convenience function to add a capability to a resource with proper proficiency sync.';
+CREATE FUNCTION public.add_transaction_line_item(p_organization_id uuid, p_transaction_type text, p_transaction_id uuid, p_catalog_item_id uuid DEFAULT NULL::uuid, p_catalog_item_name text DEFAULT NULL::text, p_provider_entity_id uuid DEFAULT NULL::uuid, p_quantity numeric DEFAULT 1, p_unit_price numeric DEFAULT NULL::numeric, p_notes text DEFAULT NULL::text) RETURNS json
+    LANGUAGE plpgsql SECURITY DEFINER
+    AS $$
+DECLARE
+    v_item_name TEXT;
+    v_item_price NUMERIC;
+    v_item_duration INTEGER;
+    v_provider_name TEXT;
+    v_line_item_id UUID;
+BEGIN
+    -- Obtener info del catalog item si se provee
+    IF p_catalog_item_id IS NOT NULL THEN
+        SELECT name, base_price, duration_minutes
+        INTO v_item_name, v_item_price, v_item_duration
+        FROM catalog_items
+        WHERE id = p_catalog_item_id;
+    END IF;
+    
+    -- Obtener nombre del provider si se provee
+    IF p_provider_entity_id IS NOT NULL THEN
+        SELECT display_name INTO v_provider_name
+        FROM entities
+        WHERE id = p_provider_entity_id;
+    END IF;
+    
+    -- Insertar line item
+    INSERT INTO transaction_line_items (
+        organization_id,
+        transaction_type,
+        transaction_id,
+        catalog_item_id,
+        catalog_item_name,
+        provider_entity_id,
+        provider_name,
+        quantity,
+        unit_price,
+        estimated_duration_minutes,
+        notes,
+        status
+    ) VALUES (
+        p_organization_id,
+        p_transaction_type,
+        p_transaction_id,
+        p_catalog_item_id,
+        COALESCE(p_catalog_item_name, v_item_name),
+        p_provider_entity_id,
+        v_provider_name,
+        p_quantity,
+        COALESCE(p_unit_price, v_item_price),
+        v_item_duration,
+        p_notes,
+        'pending'
+    )
+    RETURNING id INTO v_line_item_id;
+    
+    RETURN json_build_object(
+        'success', true,
+        'line_item_id', v_line_item_id,
+        'message', 'Item agregado exitosamente'
+    );
+END;
+$$;
 
 
 --
@@ -3257,13 +3036,6 @@ $_$;
 
 
 --
--- Name: FUNCTION ai_generic_queue_embedding(); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.ai_generic_queue_embedding() IS 'Generic trigger function for auto-embedding ANY table based on ai_embedding_configs';
-
-
---
 -- Name: analyze_ai_usage_patterns(uuid, integer); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -3329,13 +3101,6 @@ END;
 $$;
 
 
---
--- Name: FUNCTION analyze_ai_usage_patterns(p_organization_id uuid, p_days integer); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.analyze_ai_usage_patterns(p_organization_id uuid, p_days integer) IS 'Análisis de patrones de uso de IA. Para optimización y billing.';
-
-
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
@@ -3395,177 +3160,11 @@ CREATE TABLE public.appointments (
     is_recurrence_exception boolean DEFAULT false,
     buffer_before_minutes integer DEFAULT 0,
     buffer_after_minutes integer DEFAULT 0,
+    client_name text,
+    metadata jsonb,
     CONSTRAINT appointments_date_not_past CHECK ((appointment_date >= (CURRENT_DATE - '1 year'::interval))),
     CONSTRAINT appointments_time_check CHECK ((end_time > start_time))
 );
-
-
---
--- Name: TABLE appointments; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.appointments IS 'Universal appointments system supporting healthcare, beauty, retail, equipment, and custom verticals';
-
-
---
--- Name: COLUMN appointments.client_entity_id; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.appointments.client_entity_id IS 'Universal client: patient, customer, beauty_client, etc';
-
-
---
--- Name: COLUMN appointments.client_type; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.appointments.client_type IS 'Type of client making appointment';
-
-
---
--- Name: COLUMN appointments.resource_entity_id; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.appointments.resource_entity_id IS 'Primary resource being scheduled (person, equipment, space, vehicle)';
-
-
---
--- Name: COLUMN appointments.resource_type; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.appointments.resource_type IS 'Type of resource: healthcare_provider, medical_equipment, beauty_stylist, delivery_vehicle, etc';
-
-
---
--- Name: COLUMN appointments.resource_subtype; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.appointments.resource_subtype IS 'Granular classification: mri_machine, hair_stylist, delivery_truck, etc';
-
-
---
--- Name: COLUMN appointments.catalog_item_id; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.appointments.catalog_item_id IS 'Reference to catalog_items.id - can be a service, product, bundle, or subscription';
-
-
---
--- Name: COLUMN appointments.catalog_item_name; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.appointments.catalog_item_name IS 'Denormalized name of the catalog item for display purposes';
-
-
---
--- Name: COLUMN appointments.catalog_item_price; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.appointments.catalog_item_price IS 'Price at the time of booking (may differ from current catalog price)';
-
-
---
--- Name: COLUMN appointments.catalog_item_duration_minutes; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.appointments.catalog_item_duration_minutes IS 'Expected duration from catalog item at booking time';
-
-
---
--- Name: COLUMN appointments.location_type; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.appointments.location_type IS 'Appointment location: physical, virtual, mobile, or hybrid';
-
-
---
--- Name: COLUMN appointments.confirmation_received_at; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.appointments.confirmation_received_at IS 'Timestamp cuando el cliente confirmó la cita';
-
-
---
--- Name: COLUMN appointments.ai_no_show_prediction; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.appointments.ai_no_show_prediction IS 'AI prediction: {no_show_probability, risk_level, confidence, factors}';
-
-
---
--- Name: COLUMN appointments.ai_optimal_scheduling; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.appointments.ai_optimal_scheduling IS 'AI optimal scheduling: {recommended_time, day_of_week, reasoning}';
-
-
---
--- Name: COLUMN appointments.ai_duration_prediction; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.appointments.ai_duration_prediction IS 'AI duration prediction: {predicted_minutes, confidence_interval}';
-
-
---
--- Name: COLUMN appointments.ai_resource_optimization; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.appointments.ai_resource_optimization IS 'AI resource optimization: {alternative_resources, cost_savings}';
-
-
---
--- Name: COLUMN appointments.ai_client_preferences; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.appointments.ai_client_preferences IS 'AI client preferences: {preferred_times, preferred_providers}';
-
-
---
--- Name: COLUMN appointments.ai_upsell_opportunities; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.appointments.ai_upsell_opportunities IS 'AI upsell opportunities: {recommended_services, revenue_potential}';
-
-
---
--- Name: COLUMN appointments.reminder_sent_at; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.appointments.reminder_sent_at IS 'Timestamp cuando se envió el recordatorio';
-
-
---
--- Name: COLUMN appointments.recurrence_group_id; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.appointments.recurrence_group_id IS 'Groups all instances of a recurring appointment';
-
-
---
--- Name: COLUMN appointments.recurrence_rule; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.appointments.recurrence_rule IS 'Recurrence pattern: {frequency, interval, daysOfWeek, endDate, occurrences}';
-
-
---
--- Name: COLUMN appointments.is_recurrence_exception; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.appointments.is_recurrence_exception IS 'True if this instance was modified from the series';
-
-
---
--- Name: COLUMN appointments.buffer_before_minutes; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.appointments.buffer_before_minutes IS 'Buffer time before appointment (prep time)';
-
-
---
--- Name: COLUMN appointments.buffer_after_minutes; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.appointments.buffer_after_minutes IS 'Buffer time after appointment (cleanup time)';
 
 
 --
@@ -3708,13 +3307,6 @@ $$;
 
 
 --
--- Name: FUNCTION appointments_embedding_content(appt public.appointments); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.appointments_embedding_content(appt public.appointments) IS 'Generates multi-vertical aware content for appointment embeddings. Includes client, provider, service, date/time, and notes for semantic search.';
-
-
---
 -- Name: appointments_embedding_content_wrapper(uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -3727,17 +3319,246 @@ $$;
 
 
 --
--- Name: FUNCTION appointments_embedding_content_wrapper(p_id uuid); Type: COMMENT; Schema: public; Owner: -
+-- Name: book_appointment_with_resources(uuid, uuid, uuid, date, time without time zone, time without time zone, uuid, text, text, text, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
-COMMENT ON FUNCTION public.appointments_embedding_content_wrapper(p_id uuid) IS 'Wrapper function for appointments_embedding_content that accepts UUID for process_embeddings compatibility.';
+CREATE FUNCTION public.book_appointment_with_resources(p_organization_id uuid, p_client_id uuid, p_catalog_item_id uuid, p_appointment_date date, p_start_time time without time zone, p_end_time time without time zone, p_primary_resource_entity_id uuid DEFAULT NULL::uuid, p_notes text DEFAULT NULL::text, p_client_type text DEFAULT 'existing'::text, p_title text DEFAULT NULL::text, p_status text DEFAULT 'scheduled'::text) RETURNS jsonb
+    LANGUAGE plpgsql SECURITY DEFINER
+    AS $$
+DECLARE
+    v_appointment_id UUID;
+    v_resource_type appointment_resource_type;
+    v_client_type appointment_client_type;
+    v_existing_count INT;
+    v_start_timestamp TIMESTAMPTZ;
+    v_end_timestamp TIMESTAMPTZ;
+BEGIN
+    -- Convert date + time to timestamptz
+    v_start_timestamp := (p_appointment_date || ' ' || p_start_time)::TIMESTAMP AT TIME ZONE 'America/Santiago';
+    v_end_timestamp := (p_appointment_date || ' ' || p_end_time)::TIMESTAMP AT TIME ZONE 'America/Santiago';
+
+    -- Check for conflicts ONLY if a resource is provided
+    IF p_primary_resource_entity_id IS NOT NULL THEN
+        SELECT COUNT(*) INTO v_existing_count
+        FROM appointments a
+        JOIN appointment_resources ar ON ar.appointment_id = a.id
+        WHERE ar.entity_id = p_primary_resource_entity_id
+          AND a.organization_id = p_organization_id
+          AND a.status NOT IN ('cancelled', 'completed', 'no_show')
+          AND a.start_time < v_end_timestamp
+          AND a.end_time > v_start_timestamp;
+
+        IF v_existing_count > 0 THEN
+            RETURN jsonb_build_object(
+                'success', false,
+                'error', 'Horario ocupado: Este recurso ya tiene una cita en este horario',
+                'conflict_count', v_existing_count
+            );
+        END IF;
+    END IF;
+    
+    -- Map client type to enum - use valid enum values
+    v_client_type := CASE p_client_type
+        WHEN 'existing' THEN 'existing'::appointment_client_type
+        WHEN 'new' THEN 'new'::appointment_client_type
+        WHEN 'walkin' THEN 'walkin'::appointment_client_type
+        WHEN 'walk_in' THEN 'walkin'::appointment_client_type
+        WHEN 'guest' THEN 'guest'::appointment_client_type
+        ELSE 'existing'::appointment_client_type
+    END;
+
+    -- Create the appointment
+    INSERT INTO appointments (
+        organization_id,
+        client_id,
+        catalog_item_id,
+        title,
+        start_time,
+        end_time,
+        status,
+        client_type,
+        notes
+    ) VALUES (
+        p_organization_id,
+        p_client_id,
+        p_catalog_item_id,
+        COALESCE(p_title, 'Appointment'),
+        v_start_timestamp,
+        v_end_timestamp,
+        p_status::appointment_status,
+        v_client_type,
+        p_notes
+    )
+    RETURNING id INTO v_appointment_id;
+
+    -- Link the primary resource ONLY if provided
+    IF p_primary_resource_entity_id IS NOT NULL THEN
+        -- Get resource type from entity - map to VALID enum values
+        SELECT CASE 
+            WHEN e.entity_type IN ('staff', 'employee', 'provider', 'user', 'stylist') THEN 'person'::appointment_resource_type
+            WHEN e.entity_type IN ('room', 'space', 'location', 'station') THEN 'space'::appointment_resource_type
+            WHEN e.entity_type IN ('equipment', 'asset', 'tool') THEN 'equipment'::appointment_resource_type
+            ELSE 'person'::appointment_resource_type
+        END INTO v_resource_type
+        FROM entities e
+        WHERE e.id = p_primary_resource_entity_id;
+        
+        -- Default to person if entity not found
+        IF v_resource_type IS NULL THEN
+            v_resource_type := 'person'::appointment_resource_type;
+        END IF;
+
+        INSERT INTO appointment_resources (
+            appointment_id,
+            entity_id,
+            resource_type,
+            is_primary
+        ) VALUES (
+            v_appointment_id,
+            p_primary_resource_entity_id,
+            v_resource_type,
+            true
+        );
+    END IF;
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'appointment_id', v_appointment_id
+    );
+END;
+$$;
 
 
 --
--- Name: book_appointment_with_resources(uuid, uuid, text, uuid, date, time without time zone, time without time zone, uuid, text, jsonb, jsonb); Type: FUNCTION; Schema: public; Owner: -
+-- Name: book_appointment_with_resources(uuid, uuid, uuid, uuid, uuid, date, time without time zone, time without time zone, uuid, text, text, text, text, jsonb); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.book_appointment_with_resources(p_organization_id uuid, p_client_entity_id uuid DEFAULT NULL::uuid, p_client_type text DEFAULT 'customer'::text, p_primary_resource_entity_id uuid DEFAULT NULL::uuid, p_appointment_date date DEFAULT NULL::date, p_start_time time without time zone DEFAULT NULL::time without time zone, p_end_time time without time zone DEFAULT NULL::time without time zone, p_service_id uuid DEFAULT NULL::uuid, p_notes text DEFAULT ''::text, p_service_items jsonb DEFAULT '[]'::jsonb, p_additional_resources jsonb DEFAULT '[]'::jsonb) RETURNS json
+CREATE FUNCTION public.book_appointment_with_resources(p_organization_id uuid, p_client_id uuid DEFAULT NULL::uuid, p_client_entity_id uuid DEFAULT NULL::uuid, p_catalog_item_id uuid DEFAULT NULL::uuid, p_service_id uuid DEFAULT NULL::uuid, p_appointment_date date DEFAULT NULL::date, p_start_time time without time zone DEFAULT NULL::time without time zone, p_end_time time without time zone DEFAULT NULL::time without time zone, p_primary_resource_entity_id uuid DEFAULT NULL::uuid, p_notes text DEFAULT NULL::text, p_client_type text DEFAULT 'existing'::text, p_title text DEFAULT NULL::text, p_status text DEFAULT 'scheduled'::text, p_metadata jsonb DEFAULT NULL::jsonb) RETURNS jsonb
+    LANGUAGE plpgsql SECURITY DEFINER
+    AS $$
+DECLARE
+    v_appointment_id UUID;
+    v_resource_type appointment_resource_type;
+    v_client_type appointment_client_type;
+    v_existing_count INT;
+    v_start_timestamp TIMESTAMPTZ;
+    v_end_timestamp TIMESTAMPTZ;
+    v_final_client_id UUID;
+    v_final_catalog_item_id UUID;
+    v_final_metadata JSONB;
+BEGIN
+    -- Handle both parameter naming conventions
+    v_final_client_id := COALESCE(p_client_id, p_client_entity_id);
+    v_final_catalog_item_id := COALESCE(p_catalog_item_id, p_service_id);
+    
+    -- Initialize metadata with booking channel if provided
+    v_final_metadata := COALESCE(p_metadata, '{}'::jsonb);
+
+    -- Convert date + time to timestamptz
+    v_start_timestamp := (p_appointment_date || ' ' || p_start_time)::TIMESTAMP AT TIME ZONE 'America/Santiago';
+    v_end_timestamp := (p_appointment_date || ' ' || p_end_time)::TIMESTAMP AT TIME ZONE 'America/Santiago';
+
+    -- Check for conflicts ONLY if a resource is provided
+    IF p_primary_resource_entity_id IS NOT NULL THEN
+        SELECT COUNT(*) INTO v_existing_count
+        FROM appointments a
+        JOIN appointment_resources ar ON ar.appointment_id = a.id
+        WHERE ar.entity_id = p_primary_resource_entity_id
+          AND a.organization_id = p_organization_id
+          AND a.status NOT IN ('cancelled', 'completed', 'no_show')
+          AND a.start_time < v_end_timestamp
+          AND a.end_time > v_start_timestamp;
+
+        IF v_existing_count > 0 THEN
+            RETURN jsonb_build_object(
+                'success', false,
+                'error', 'Horario ocupado: Este recurso ya tiene una cita en este horario',
+                'conflict_count', v_existing_count
+            );
+        END IF;
+    END IF;
+    
+    -- Map client type to enum - use valid enum values
+    v_client_type := CASE p_client_type
+        WHEN 'existing' THEN 'existing'::appointment_client_type
+        WHEN 'new' THEN 'new'::appointment_client_type
+        WHEN 'walkin' THEN 'walkin'::appointment_client_type
+        WHEN 'walk_in' THEN 'walkin'::appointment_client_type
+        WHEN 'guest' THEN 'guest'::appointment_client_type
+        WHEN 'client' THEN 'existing'::appointment_client_type
+        WHEN 'customer' THEN 'existing'::appointment_client_type
+        ELSE 'existing'::appointment_client_type
+    END;
+
+    -- Create the appointment with metadata
+    INSERT INTO appointments (
+        organization_id,
+        client_id,
+        catalog_item_id,
+        title,
+        start_time,
+        end_time,
+        status,
+        client_type,
+        notes,
+        metadata
+    ) VALUES (
+        p_organization_id,
+        v_final_client_id,
+        v_final_catalog_item_id,
+        COALESCE(p_title, 'Appointment'),
+        v_start_timestamp,
+        v_end_timestamp,
+        p_status::appointment_status,
+        v_client_type,
+        p_notes,
+        v_final_metadata
+    )
+    RETURNING id INTO v_appointment_id;
+
+    -- Link the primary resource ONLY if provided
+    IF p_primary_resource_entity_id IS NOT NULL THEN
+        -- Get resource type from entity - map to VALID enum values
+        SELECT CASE 
+            WHEN e.entity_type IN ('staff', 'employee', 'provider', 'user', 'stylist') THEN 'person'::appointment_resource_type
+            WHEN e.entity_type IN ('room', 'space', 'location', 'station') THEN 'space'::appointment_resource_type
+            WHEN e.entity_type IN ('equipment', 'asset', 'tool') THEN 'equipment'::appointment_resource_type
+            ELSE 'person'::appointment_resource_type
+        END INTO v_resource_type
+        FROM entities e
+        WHERE e.id = p_primary_resource_entity_id;
+        
+        -- Default to person if entity not found
+        IF v_resource_type IS NULL THEN
+            v_resource_type := 'person'::appointment_resource_type;
+        END IF;
+
+        INSERT INTO appointment_resources (
+            appointment_id,
+            entity_id,
+            resource_type,
+            is_primary
+        ) VALUES (
+            v_appointment_id,
+            p_primary_resource_entity_id,
+            v_resource_type,
+            true
+        );
+    END IF;
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'appointment_id', v_appointment_id
+    );
+END;
+$$;
+
+
+--
+-- Name: book_appointment_with_resources(uuid, uuid, text, text, uuid, date, time without time zone, time without time zone, uuid, text, text, text, jsonb, jsonb, jsonb); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.book_appointment_with_resources(p_organization_id uuid, p_client_entity_id uuid DEFAULT NULL::uuid, p_client_name text DEFAULT NULL::text, p_client_type text DEFAULT 'customer'::text, p_primary_resource_entity_id uuid DEFAULT NULL::uuid, p_appointment_date date DEFAULT NULL::date, p_start_time time without time zone DEFAULT NULL::time without time zone, p_end_time time without time zone DEFAULT NULL::time without time zone, p_service_id uuid DEFAULT NULL::uuid, p_catalog_item_name text DEFAULT NULL::text, p_notes text DEFAULT ''::text, p_status text DEFAULT 'scheduled'::text, p_metadata jsonb DEFAULT NULL::jsonb, p_service_items jsonb DEFAULT '[]'::jsonb, p_additional_resources jsonb DEFAULT '[]'::jsonb) RETURNS json
     LANGUAGE plpgsql SECURITY DEFINER
     AS $$
 DECLARE
@@ -3745,15 +3566,11 @@ DECLARE
     v_resource_type appointment_resource_type;
     v_client_type appointment_client_type;
     v_conflict_count INTEGER;
+    v_effective_status appointment_status;
 BEGIN
-    -- ========================================
-    -- VALIDATION: Required fields
-    -- ========================================
+    -- Validation
     IF p_organization_id IS NULL THEN
         RETURN json_build_object('success', false, 'error', 'Organization ID is required');
-    END IF;
-    IF p_primary_resource_entity_id IS NULL THEN
-        RETURN json_build_object('success', false, 'error', 'Resource is required');
     END IF;
     IF p_appointment_date IS NULL THEN
         RETURN json_build_object('success', false, 'error', 'Appointment date is required');
@@ -3761,93 +3578,145 @@ BEGIN
     IF p_start_time IS NULL OR p_end_time IS NULL THEN
         RETURN json_build_object('success', false, 'error', 'Start and end times are required');
     END IF;
-    
-    -- ========================================
-    -- VALIDATION: Time range is valid
-    -- ========================================
     IF p_end_time <= p_start_time THEN
         RETURN json_build_object('success', false, 'error', 'End time must be after start time');
     END IF;
-    
-    -- ========================================
-    -- CONFLICT DETECTION: Check for overlapping appointments
-    -- ========================================
-    SELECT COUNT(*) INTO v_conflict_count
-    FROM appointments
-    WHERE organization_id = p_organization_id
-      AND resource_entity_id = p_primary_resource_entity_id
-      AND appointment_date = p_appointment_date
-      AND status NOT IN ('cancelled', 'no_show')  -- Ignore cancelled appointments
-      AND (
-          -- New appointment starts during existing appointment
-          (p_start_time >= start_time AND p_start_time < end_time)
-          OR
-          -- New appointment ends during existing appointment
-          (p_end_time > start_time AND p_end_time <= end_time)
-          OR
-          -- New appointment completely contains existing appointment
-          (p_start_time <= start_time AND p_end_time >= end_time)
-      );
-    
-    IF v_conflict_count > 0 THEN
-        RETURN json_build_object(
-            'success', false, 
-            'error', 'Time slot conflict: This resource already has an appointment during this time',
-            'conflict_count', v_conflict_count
-        );
+
+    -- Conflict detection ONLY if resource is provided
+    IF p_primary_resource_entity_id IS NOT NULL THEN
+        SELECT COUNT(*) INTO v_conflict_count
+        FROM appointments
+        WHERE organization_id = p_organization_id
+          AND resource_entity_id = p_primary_resource_entity_id
+          AND appointment_date = p_appointment_date
+          AND status NOT IN ('cancelled', 'no_show', 'completed')
+          AND (
+              (p_start_time >= start_time AND p_start_time < end_time)
+              OR (p_end_time > start_time AND p_end_time <= end_time)
+              OR (p_start_time <= start_time AND p_end_time >= end_time)
+          );
+
+        IF v_conflict_count > 0 THEN
+            RETURN json_build_object('success', false, 'error', 'Time conflict with existing appointment');
+        END IF;
     END IF;
-    
-    -- ========================================
-    -- Determine resource_type and client_type
-    -- ========================================
-    v_resource_type := 'person';
-    v_client_type := 'customer';
-    BEGIN
-        v_client_type := p_client_type::appointment_client_type;
-    EXCEPTION WHEN OTHERS THEN
-        v_client_type := 'customer';
+
+    -- Map resource type based on entity_type (use 'person' instead of 'staff')
+    IF p_primary_resource_entity_id IS NOT NULL THEN
+        SELECT CASE
+            WHEN e.entity_type IN ('staff', 'employee', 'provider', 'person') THEN 'person'
+            WHEN e.entity_type IN ('room', 'space', 'location') THEN 'space'
+            WHEN e.entity_type IN ('equipment', 'asset') THEN 'equipment'
+            ELSE 'person'
+        END INTO v_resource_type
+        FROM entities e
+        WHERE e.id = p_primary_resource_entity_id;
+
+        IF v_resource_type IS NULL THEN
+            v_resource_type := 'person';
+        END IF;
+    END IF;
+
+    -- Convert client type
+    v_client_type := CASE LOWER(p_client_type)
+        WHEN 'customer' THEN 'customer'
+        WHEN 'patient' THEN 'patient'
+        WHEN 'lead' THEN 'lead'
+        WHEN 'guest' THEN 'guest'
+        ELSE 'customer'
     END;
 
-    -- ========================================
-    -- INSERT the appointment
-    -- ========================================
+    -- Convert status
+    v_effective_status := CASE LOWER(p_status)
+        WHEN 'scheduled' THEN 'scheduled'
+        WHEN 'confirmed' THEN 'confirmed'
+        WHEN 'in_progress' THEN 'in_progress'
+        WHEN 'completed' THEN 'completed'
+        WHEN 'cancelled' THEN 'cancelled'
+        WHEN 'no_show' THEN 'no_show'
+        ELSE 'scheduled'
+    END;
+
+    -- Insert appointment
     INSERT INTO appointments (
         organization_id,
         client_entity_id,
+        client_name,
         client_type,
         resource_entity_id,
         resource_type,
         catalog_item_id,
+        catalog_item_name,
         appointment_date,
         start_time,
         end_time,
         notes,
-        status
-    )
-    VALUES (
+        status,
+        metadata
+    ) VALUES (
         p_organization_id,
         p_client_entity_id,
+        p_client_name,
         v_client_type,
         p_primary_resource_entity_id,
-        v_resource_type,
+        COALESCE(v_resource_type, 'person'::appointment_resource_type),
         p_service_id,
+        p_catalog_item_name,
         p_appointment_date,
         p_start_time,
         p_end_time,
-        COALESCE(p_notes, ''),
-        'scheduled'
-    )
-    RETURNING id INTO v_appointment_id;
+        p_notes,
+        v_effective_status,
+        p_metadata
+    ) RETURNING id INTO v_appointment_id;
+
+    -- Insert service items if provided
+    IF jsonb_array_length(p_service_items) > 0 THEN
+        INSERT INTO appointment_line_items (
+            appointment_id,
+            catalog_item_id,
+            catalog_item_name,
+            quantity,
+            unit_price
+        )
+        SELECT
+            v_appointment_id,
+            (item->>'id')::uuid,
+            item->>'name',
+            COALESCE((item->>'quantity')::integer, 1),
+            COALESCE((item->>'price')::numeric, 0)
+        FROM jsonb_array_elements(p_service_items) AS item;
+    END IF;
+
+    -- Insert additional resources if provided
+    IF jsonb_array_length(p_additional_resources) > 0 THEN
+        INSERT INTO appointment_resources (
+            appointment_id,
+            entity_id,
+            resource_type
+        )
+        SELECT
+            v_appointment_id,
+            (res->>'entity_id')::uuid,
+            CASE
+                WHEN res->>'resource_type' IN ('person', 'equipment', 'space') 
+                THEN (res->>'resource_type')::appointment_resource_type
+                ELSE 'person'::appointment_resource_type
+            END
+        FROM jsonb_array_elements(p_additional_resources) AS res
+        WHERE res->>'entity_id' IS NOT NULL;
+    END IF;
 
     RETURN json_build_object(
         'success', true,
-        'appointment_id', v_appointment_id,
-        'message', 'Appointment created successfully'
+        'appointment_id', v_appointment_id
     );
 
-EXCEPTION
-    WHEN OTHERS THEN
-        RETURN json_build_object('success', false, 'error', SQLERRM, 'sqlstate', SQLSTATE);
+EXCEPTION WHEN OTHERS THEN
+    RETURN json_build_object(
+        'success', false,
+        'error', SQLERRM
+    );
 END;
 $$;
 
@@ -4048,13 +3917,6 @@ BEGIN
   RETURN v_result;
 END;
 $$;
-
-
---
--- Name: FUNCTION build_patient_vertical_content(p_patient_id uuid); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.build_patient_vertical_content(p_patient_id uuid) IS 'Builds vertical-aware content for patient embeddings using organization_verticals configuration';
 
 
 --
@@ -4270,13 +4132,6 @@ END) STORED,
 
 
 --
--- Name: TABLE catalog_categories; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.catalog_categories IS 'Hierarchical product/service categories with ltree support';
-
-
---
 -- Name: catalog_categories_embedding_content(public.catalog_categories); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -4324,13 +4179,6 @@ $$;
 
 
 --
--- Name: FUNCTION catalog_categories_embedding_content(cat public.catalog_categories); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.catalog_categories_embedding_content(cat public.catalog_categories) IS 'Generates content for category embeddings including hierarchy path';
-
-
---
 -- Name: catalog_categories_embedding_content_wrapper(uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -4375,8 +4223,8 @@ CREATE TABLE public.catalog_items (
     barcode character varying(50),
     item_type character varying(30) DEFAULT 'product'::character varying NOT NULL,
     tracking_type character varying(30) DEFAULT 'none'::character varying NOT NULL,
-    is_storable boolean GENERATED ALWAYS AS (((item_type)::text = ANY ((ARRAY['product'::character varying, 'consumable'::character varying])::text[]))) STORED,
-    is_bookable boolean GENERATED ALWAYS AS (((item_type)::text = ANY ((ARRAY['service'::character varying, 'bundle'::character varying])::text[]))) STORED,
+    is_storable boolean GENERATED ALWAYS AS (((item_type)::text = ANY (ARRAY[('product'::character varying)::text, ('consumable'::character varying)::text]))) STORED,
+    is_bookable boolean GENERATED ALWAYS AS (((item_type)::text = ANY (ARRAY[('service'::character varying)::text, ('bundle'::character varying)::text]))) STORED,
     parent_id uuid,
     variant_name text,
     is_template boolean GENERATED ALWAYS AS ((parent_id IS NULL)) STORED,
@@ -4432,18 +4280,13 @@ CREATE TABLE public.catalog_items (
     search_vector tsvector,
     requires_appointment boolean DEFAULT true,
     requires_assessment boolean DEFAULT false,
+    product_category character varying(30),
+    scan_metadata jsonb,
     CONSTRAINT catalog_items_name_check CHECK ((length(TRIM(BOTH FROM name)) >= 2)),
     CONSTRAINT catalog_items_price_positive CHECK ((base_price >= (0)::numeric)),
     CONSTRAINT catalog_items_service_duration CHECK ((((item_type)::text <> 'service'::text) OR (duration_minutes IS NOT NULL))),
-    CONSTRAINT catalog_items_stock_levels CHECK ((((item_type)::text <> ALL ((ARRAY['product'::character varying, 'consumable'::character varying])::text[])) OR ((min_stock_level IS NULL) OR (min_stock_level >= 0))))
+    CONSTRAINT catalog_items_stock_levels CHECK ((((item_type)::text <> ALL (ARRAY[('product'::character varying)::text, ('consumable'::character varying)::text])) OR ((min_stock_level IS NULL) OR (min_stock_level >= 0))))
 );
-
-
---
--- Name: TABLE catalog_items; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.catalog_items IS 'Unified catalog for products, services, bundles, and subscriptions';
 
 
 --
@@ -4558,13 +4401,6 @@ BEGIN
     RETURN array_to_string(v_content_parts, ' | ');
 END;
 $$;
-
-
---
--- Name: FUNCTION catalog_items_embedding_content(item public.catalog_items); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.catalog_items_embedding_content(item public.catalog_items) IS 'Generates rich content for catalog item embeddings including category hierarchy, skills, and attributes';
 
 
 --
@@ -4747,36 +4583,6 @@ $$;
 
 
 --
--- Name: FUNCTION check_insurance_policy_uniqueness(p_organization_id uuid, p_provider_code text, p_policy_number text, p_exclude_patient_id uuid); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.check_insurance_policy_uniqueness(p_organization_id uuid, p_provider_code text, p_policy_number text, p_exclude_patient_id uuid) IS 'Checks if an insurance policy number already exists for another patient
-within the specified organization. Used for real-time validation in forms.
-
-Parameters:
-  - p_organization_id: The organization to search within
-  - p_provider_code: Insurance provider code (e.g., ''senasa'', ''ars_humano'')
-  - p_policy_number: The policy/carnet number to check
-  - p_exclude_patient_id: Optional patient ID to exclude (for edit mode)
-
-Returns JSONB:
-  - unique: boolean - true if policy doesn''t exist for another patient
-  - message: string - Human-readable message if duplicate found
-  - patient_id: uuid - ID of existing patient if duplicate
-  - patient_code: string - Code of existing patient if duplicate
-  - patient_name: string - Name of existing patient if duplicate
-
-Example:
-  SELECT check_insurance_policy_uniqueness(
-    ''org-uuid'',
-    ''senasa'',
-    ''123456789'',
-    null
-  );
-';
-
-
---
 -- Name: check_insurance_uniqueness(uuid, text, text, uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -4819,6 +4625,50 @@ BEGIN
         'message', 'Póliza ' || p_policy_number || ' de ' || COALESCE(v_existing.provider_name, p_provider_code)
                    || ' ya registrada para: ' || v_existing.display_name
     );
+END;
+$$;
+
+
+--
+-- Name: check_promotion_overlaps(uuid, timestamp with time zone, timestamp with time zone, character varying, uuid[], uuid[], uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.check_promotion_overlaps(p_organization_id uuid, p_valid_from timestamp with time zone, p_valid_until timestamp with time zone, p_promo_type character varying, p_catalog_item_ids uuid[] DEFAULT NULL::uuid[], p_category_ids uuid[] DEFAULT NULL::uuid[], p_exclude_promotion_id uuid DEFAULT NULL::uuid) RETURNS TABLE(promotion_id uuid, promotion_name character varying, promo_type character varying, existing_start timestamp with time zone, existing_end timestamp with time zone, overlap_type text)
+    LANGUAGE plpgsql STABLE
+    AS $$
+DECLARE
+    v_new_range tstzrange;
+BEGIN
+    v_new_range := tstzrange(
+        COALESCE(p_valid_from, '-infinity'::timestamptz),
+        COALESCE(p_valid_until, 'infinity'::timestamptz),
+        '[)'
+    );
+
+    RETURN QUERY
+    SELECT 
+        p.id AS promotion_id,
+        p.name AS promotion_name,
+        p.promo_type,
+        p.valid_from AS existing_start,
+        p.valid_until AS existing_end,
+        CASE
+            WHEN p.validity_range = v_new_range THEN 'exact_match'
+            WHEN p.validity_range @> v_new_range THEN 'contained_in_existing'
+            WHEN v_new_range @> p.validity_range THEN 'contains_existing'
+            ELSE 'partial_overlap'
+        END AS overlap_type
+    FROM promotions p
+    WHERE 
+        p.organization_id = p_organization_id
+        AND p.validity_range && v_new_range
+        AND p.is_active = TRUE
+        AND (p_exclude_promotion_id IS NULL OR p.id != p_exclude_promotion_id)
+        AND (
+            p.promo_type = p_promo_type
+            OR (p.promo_type IN ('percentage', 'fixed_amount') 
+                AND p_promo_type IN ('percentage', 'fixed_amount'))
+        );
 END;
 $$;
 
@@ -4930,13 +4780,6 @@ $$;
 
 
 --
--- Name: FUNCTION cleanup_expired_cache(); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.cleanup_expired_cache() IS 'Clean up expired AI cache entries. Run this periodically via pg_cron.';
-
-
---
 -- Name: cleanup_expired_conversation_flows(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -4990,13 +4833,6 @@ $$;
 
 
 --
--- Name: FUNCTION cleanup_expired_sessions(); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.cleanup_expired_sessions() IS 'Marks expired conversation sessions and flow runtimes';
-
-
---
 -- Name: clear_expired_conversation_states(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -5020,13 +4856,6 @@ BEGIN
   RETURN cleared_count;
 END;
 $$;
-
-
---
--- Name: FUNCTION clear_expired_conversation_states(); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.clear_expired_conversation_states() IS 'Clears conversation states that have expired (default 15 minutes)';
 
 
 --
@@ -5068,13 +4897,6 @@ BEGIN
   RETURN v_closed_count;
 END;
 $$;
-
-
---
--- Name: FUNCTION close_inactive_conversations(); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.close_inactive_conversations() IS 'Maintenance function to mark conversations as abandoned after 24h inactivity';
 
 
 --
@@ -5234,14 +5056,6 @@ $$;
 
 
 --
--- Name: FUNCTION create_bidirectional_relationship(p_organization_id uuid, p_entity_1_id uuid, p_entity_2_id uuid, p_relationship_type public.entity_relationship_type, p_valid_from date, p_valid_until date, p_custom_fields jsonb); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.create_bidirectional_relationship(p_organization_id uuid, p_entity_1_id uuid, p_entity_2_id uuid, p_relationship_type public.entity_relationship_type, p_valid_from date, p_valid_until date, p_custom_fields jsonb) IS 'Create symmetric bidirectional relationship (e.g., spouse, sibling, colleague).
-Returns IDs of both relationship records.';
-
-
---
 -- Name: create_client_from_chat(uuid, text, text, text, public.client_source, jsonb); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -5337,13 +5151,6 @@ BEGIN
     RETURN QUERY SELECT v_entity_id, v_client_id, p_display_name, true;
 END;
 $$;
-
-
---
--- Name: FUNCTION create_client_from_chat(p_organization_id uuid, p_display_name text, p_phone text, p_email text, p_source public.client_source, p_vertical_fields jsonb); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.create_client_from_chat(p_organization_id uuid, p_display_name text, p_phone text, p_email text, p_source public.client_source, p_vertical_fields jsonb) IS 'Creates a new client from chat interaction (entity + client record)';
 
 
 --
@@ -5533,9 +5340,35 @@ $$;
 --
 
 CREATE FUNCTION public.current_org_id() RETURNS uuid
-    LANGUAGE sql STABLE
+    LANGUAGE plpgsql STABLE SECURITY DEFINER
     AS $$
-    SELECT (current_setting('request.jwt.claims', true)::jsonb->>'organization_id')::uuid;
+DECLARE
+  jwt_org_id UUID;
+  session_org_id UUID;
+BEGIN
+  -- Try to get from JWT claims first
+  BEGIN
+    jwt_org_id := (current_setting('request.jwt.claims', true)::jsonb->>'organization_id')::uuid;
+    IF jwt_org_id IS NOT NULL THEN
+      RETURN jwt_org_id;
+    END IF;
+  EXCEPTION WHEN OTHERS THEN
+    -- JWT parsing failed, continue to fallback
+  END;
+
+  -- Fallback: try to get from app.current_organization_id session variable
+  BEGIN
+    session_org_id := current_setting('app.current_organization_id', true)::uuid;
+    IF session_org_id IS NOT NULL THEN
+      RETURN session_org_id;
+    END IF;
+  EXCEPTION WHEN OTHERS THEN
+    -- Session variable not set
+  END;
+
+  -- Return NULL if no organization found
+  RETURN NULL;
+END;
 $$;
 
 
@@ -5654,110 +5487,12 @@ CREATE TABLE public.employees (
     CONSTRAINT chk_employee_code_length CHECK ((length(TRIM(BOTH FROM employee_code)) >= 2)),
     CONSTRAINT chk_hire_before_termination CHECK (((termination_date IS NULL) OR (termination_date >= hire_date))),
     CONSTRAINT chk_hours_per_week_positive CHECK ((standard_hours_per_week > (0)::numeric)),
-    CONSTRAINT chk_performance_rating CHECK (((performance_rating IS NULL) OR ((performance_rating)::text = ANY ((ARRAY['excellent'::character varying, 'very_good'::character varying, 'good'::character varying, 'satisfactory'::character varying, 'needs_improvement'::character varying, 'unsatisfactory'::character varying])::text[])))),
+    CONSTRAINT chk_performance_rating CHECK (((performance_rating IS NULL) OR ((performance_rating)::text = ANY (ARRAY[('excellent'::character varying)::text, ('very_good'::character varying)::text, ('good'::character varying)::text, ('satisfactory'::character varying)::text, ('needs_improvement'::character varying)::text, ('unsatisfactory'::character varying)::text])))),
     CONSTRAINT chk_salary_positive CHECK (((salary IS NULL) OR (salary > (0)::numeric))),
     CONSTRAINT chk_sick_days_positive CHECK ((sick_days_per_year >= (0)::numeric)),
     CONSTRAINT chk_terminated_status CHECK ((((termination_date IS NULL) AND (employment_status <> ALL (ARRAY['terminated'::public.employment_status_enum, 'resigned'::public.employment_status_enum, 'retired'::public.employment_status_enum, 'deceased'::public.employment_status_enum]))) OR ((termination_date IS NOT NULL) AND (employment_status = ANY (ARRAY['terminated'::public.employment_status_enum, 'resigned'::public.employment_status_enum, 'retired'::public.employment_status_enum, 'deceased'::public.employment_status_enum]))))),
     CONSTRAINT chk_vacation_days_positive CHECK ((vacation_days_per_year >= (0)::numeric))
 );
-
-
---
--- Name: TABLE employees; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.employees IS 'Employees table - specializes entities for employee records with comprehensive HR/ERP features';
-
-
---
--- Name: COLUMN employees.entity_id; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.employees.entity_id IS 'Foreign key to entities table - one employee per entity';
-
-
---
--- Name: COLUMN employees.employee_code; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.employees.employee_code IS 'Internal employee number unique per organization';
-
-
---
--- Name: COLUMN employees.reports_to_employee_id; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.employees.reports_to_employee_id IS 'Manager/supervisor employee ID - creates reporting hierarchy';
-
-
---
--- Name: COLUMN employees.hr_data; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.employees.hr_data IS 'Industry-specific HR data (certifications, specialties, etc.) in JSONB format';
-
-
---
--- Name: COLUMN employees.salary_history; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.employees.salary_history IS 'Array of salary changes with dates, reasons, and approvals';
-
-
---
--- Name: COLUMN employees.position_history; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.employees.position_history IS 'Array of position/department changes over time';
-
-
---
--- Name: COLUMN employees.leave_history; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.employees.leave_history IS 'Array of leave records (vacation, sick, unpaid, etc.)';
-
-
---
--- Name: COLUMN employees.skills; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.employees.skills IS 'Technical and soft skills with proficiency levels - enables talent matching, skill gap analysis, and team composition optimization';
-
-
---
--- Name: COLUMN employees.ai_features; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.employees.ai_features IS 'Pre-calculated AI features: embeddings, scores, predictions, recommendations - critical for ML/AI without recalculating';
-
-
---
--- Name: COLUMN employees.analytics_snapshot; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.employees.analytics_snapshot IS 'Aggregated KPIs and metrics snapshot - enables fast dashboards and executive reporting without complex joins';
-
-
---
--- Name: COLUMN employees.work_schedule; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.employees.work_schedule IS 'JSONB with schedule type, weekly hours, overtime rules, and booking config';
-
-
---
--- Name: COLUMN employees.commission_structure; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.employees.commission_structure IS 'JSONB with commission tiers, rates, and calculation rules';
-
-
---
--- Name: COLUMN employees.vertical_data; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.employees.vertical_data IS 'JSONB with vertical-specific data (clinical, salon, legal, etc.)';
 
 
 --
@@ -5896,45 +5631,11 @@ CREATE TABLE public.entities (
     deleted_at timestamp with time zone,
     embedding extensions.vector(1536),
     has_embedding boolean DEFAULT false,
+    is_bookable boolean DEFAULT false,
     CONSTRAINT entities_display_name_check CHECK ((length(TRIM(BOTH FROM display_name)) >= 2)),
     CONSTRAINT entities_email_format CHECK ((((email)::text ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'::text) OR (email IS NULL))),
     CONSTRAINT entities_type_subtype_check CHECK ((((entity_type = 'person'::public.entity_type) AND (person_subtype IS NOT NULL) AND (organization_subtype IS NULL)) OR ((entity_type = 'organization'::public.entity_type) AND (organization_subtype IS NOT NULL) AND (person_subtype IS NULL))))
 );
-
-
---
--- Name: TABLE entities; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.entities IS 'Universal entity table - supports both persons and organizations in a multi-tenant context';
-
-
---
--- Name: COLUMN entities.entity_code; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.entities.entity_code IS 'Unique code within organization (e.g., PAT-001, DOC-123, CUS-456)';
-
-
---
--- Name: COLUMN entities.entity_type; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.entities.entity_type IS 'Discriminator: person or organization';
-
-
---
--- Name: COLUMN entities.person_subtype; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.entities.person_subtype IS 'Subtype when entity_type = person';
-
-
---
--- Name: COLUMN entities.organization_subtype; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.entities.organization_subtype IS 'Subtype when entity_type = organization';
 
 
 --
@@ -6023,6 +5724,31 @@ $$;
 
 
 --
+-- Name: expire_old_approval_requests(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.expire_old_approval_requests() RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    expired_count INTEGER;
+BEGIN
+    UPDATE ai_approval_requests 
+    SET status = 'expired', resolved_at = NOW()
+    WHERE status = 'pending' AND expires_at < NOW();
+    
+    GET DIAGNOSTICS expired_count = ROW_COUNT;
+    
+    IF expired_count > 0 THEN
+        RAISE NOTICE 'Expired % approval requests', expired_count;
+    END IF;
+    
+    RETURN expired_count;
+END;
+$$;
+
+
+--
 -- Name: export_nlu_training_data(uuid, real, boolean, integer); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -6081,13 +5807,6 @@ BEGIN
   LIMIT 5;
 END;
 $$;
-
-
---
--- Name: FUNCTION find_cross_channel_context(p_organization_id uuid, p_phone_number text, p_user_id uuid, p_max_age_days integer); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.find_cross_channel_context(p_organization_id uuid, p_phone_number text, p_user_id uuid, p_max_age_days integer) IS 'Finds related conversations across different channels for the same user/phone.';
 
 
 --
@@ -6184,6 +5903,61 @@ $$;
 
 
 --
+-- Name: find_providers_for_services(uuid[], uuid, date, integer); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.find_providers_for_services(p_item_ids uuid[], p_organization_id uuid, p_date date DEFAULT CURRENT_DATE, p_limit_count integer DEFAULT 20) RETURNS TABLE(provider_entity_id uuid, provider_name text, is_fully_qualified boolean, can_do_all_services boolean, services_count integer, qualified_services_count integer)
+    LANGUAGE plpgsql SECURITY DEFINER
+    AS $$
+BEGIN
+    RETURN QUERY
+    WITH service_count AS (
+        -- Count total services requested
+        SELECT array_length(p_item_ids, 1) AS total_services
+    ),
+    provider_services AS (
+        -- Get providers that can do ANY of the services
+        SELECT 
+            ip.provider_entity_id,
+            e.display_name AS provider_name,
+            ip.is_qualified,
+            ip.is_available,
+            ip.item_id
+        FROM item_providers ip
+        JOIN entities e ON e.id = ip.provider_entity_id
+        WHERE ip.item_id = ANY(p_item_ids)
+        AND ip.is_available = true
+        AND (p_organization_id IS NULL OR ip.organization_id = p_organization_id)
+    ),
+    provider_counts AS (
+        -- Count how many services each provider can do
+        SELECT 
+            ps.provider_entity_id,
+            ps.provider_name,
+            COUNT(DISTINCT ps.item_id) AS qualified_count,
+            BOOL_AND(ps.is_qualified) AS all_qualified
+        FROM provider_services ps
+        GROUP BY ps.provider_entity_id, ps.provider_name
+    )
+    SELECT 
+        pc.provider_entity_id,
+        pc.provider_name,
+        pc.all_qualified AS is_fully_qualified,
+        (pc.qualified_count = sc.total_services) AS can_do_all_services,
+        sc.total_services AS services_count,
+        pc.qualified_count::INTEGER AS qualified_services_count
+    FROM provider_counts pc
+    CROSS JOIN service_count sc
+    ORDER BY 
+        (pc.qualified_count = sc.total_services) DESC,  -- Prioritize those who can do ALL
+        pc.all_qualified DESC,
+        pc.qualified_count DESC
+    LIMIT p_limit_count;
+END;
+$$;
+
+
+--
 -- Name: find_qualified_providers(uuid, uuid, date, integer); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -6261,13 +6035,6 @@ $$;
 
 
 --
--- Name: FUNCTION find_qualified_providers(p_item_id uuid, p_organization_id uuid, p_date date, p_limit_count integer); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.find_qualified_providers(p_item_id uuid, p_organization_id uuid, p_date date, p_limit_count integer) IS 'Find providers qualified to deliver a catalog item based on skill requirements';
-
-
---
 -- Name: find_resources_for_catalog_item(uuid, uuid, integer, time without time zone, integer, jsonb, integer); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -6320,13 +6087,6 @@ BEGIN
   LIMIT p_limit;
 END;
 $$;
-
-
---
--- Name: FUNCTION find_resources_for_catalog_item(p_organization_id uuid, p_catalog_item_id uuid, p_check_day integer, p_check_time time without time zone, p_min_proficiency_score integer, p_attributes_filter jsonb, p_limit integer); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.find_resources_for_catalog_item(p_organization_id uuid, p_catalog_item_id uuid, p_check_day integer, p_check_time time without time zone, p_min_proficiency_score integer, p_attributes_filter jsonb, p_limit integer) IS 'Find resources that can provide a catalog item, with filtering by proficiency and attributes.';
 
 
 --
@@ -6395,13 +6155,6 @@ BEGIN
   );
 END;
 $$;
-
-
---
--- Name: FUNCTION format_whatsapp_message(p_organization_id uuid, p_category text, p_message_key text, p_variables jsonb); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.format_whatsapp_message(p_organization_id uuid, p_category text, p_message_key text, p_variables jsonb) IS 'Format a bot message according to org WhatsApp config';
 
 
 --
@@ -6489,13 +6242,6 @@ $$;
 
 
 --
--- Name: FUNCTION generate_patient_code(p_organization_id uuid); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.generate_patient_code(p_organization_id uuid) IS 'Generates unique patient code in format PREFIX-YEAR-SEQUENCE';
-
-
---
 -- Name: generate_scheduled_shifts(uuid, date, date); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -6574,10 +6320,183 @@ $$;
 
 
 --
--- Name: FUNCTION generate_scheduled_shifts(p_employee_id uuid, p_start_date date, p_end_date date); Type: COMMENT; Schema: public; Owner: -
+-- Name: generate_variants_from_template(uuid, jsonb, boolean); Type: FUNCTION; Schema: public; Owner: -
 --
 
-COMMENT ON FUNCTION public.generate_scheduled_shifts(p_employee_id uuid, p_start_date date, p_end_date date) IS 'Generates scheduled_shifts for a date range based on employee work_schedule';
+CREATE FUNCTION public.generate_variants_from_template(p_template_id uuid, p_selected_values jsonb, p_skip_existing boolean DEFAULT true) RETURNS TABLE(variant_id uuid, variant_name text, variant_code text, status text, message text)
+    LANGUAGE plpgsql SECURITY DEFINER
+    AS $$
+DECLARE
+    v_template RECORD;
+    v_org_id UUID;
+    v_exclusions JSONB;
+    v_price_modifiers JSONB;
+    v_combinations JSONB[];
+    v_combo JSONB;
+    v_attr_name TEXT;
+    v_attr_values JSONB;
+    v_value TEXT;
+    v_variant_name TEXT;
+    v_variant_code TEXT;
+    v_new_id UUID;
+    v_existing_id UUID;
+    v_is_excluded BOOLEAN;
+    v_price_modifier NUMERIC;
+    v_final_price NUMERIC;
+BEGIN
+    -- 1. Obtener template y validar (is_template = true cuando parent_id IS NULL)
+    SELECT * INTO v_template
+    FROM catalog_items
+    WHERE id = p_template_id 
+      AND parent_id IS NULL  -- Es template porque no tiene padre
+      AND deleted_at IS NULL;
+    
+    IF NOT FOUND THEN
+        RETURN QUERY SELECT 
+            NULL::UUID, NULL::TEXT, NULL::TEXT, 
+            'error'::TEXT, 'Template no encontrado o no es un template'::TEXT;
+        RETURN;
+    END IF;
+    
+    v_org_id := v_template.organization_id;
+    
+    -- 2. Extraer configuración del vertical_config
+    v_exclusions := COALESCE(v_template.vertical_config->'variant_exclusions', '[]'::JSONB);
+    v_price_modifiers := COALESCE(v_template.vertical_config->'price_modifiers', '{}'::JSONB);
+    
+    -- 3. Generar producto cartesiano de combinaciones
+    v_combinations := ARRAY['{}']::JSONB[];
+    
+    FOR v_attr_name, v_attr_values IN SELECT * FROM jsonb_each(p_selected_values)
+    LOOP
+        WITH current_combos AS (
+            SELECT unnest(v_combinations) as combo
+        ),
+        attr_vals AS (
+            SELECT jsonb_array_elements_text(v_attr_values) as val
+        ),
+        new_combos AS (
+            SELECT jsonb_set(c.combo, ARRAY[v_attr_name], to_jsonb(a.val)) as combo
+            FROM current_combos c
+            CROSS JOIN attr_vals a
+        )
+        SELECT ARRAY_AGG(combo) INTO v_combinations FROM new_combos;
+    END LOOP;
+    
+    -- 4. Procesar cada combinación
+    FOREACH v_combo IN ARRAY v_combinations
+    LOOP
+        -- Generar nombre de variante (ordenado por key)
+        SELECT string_agg(
+            (value #>> '{}'), ' / ' ORDER BY key
+        ) INTO v_variant_name
+        FROM jsonb_each(v_combo);
+        
+        -- Generar código de variante
+        v_variant_code := v_template.item_code || '-' || 
+            UPPER(REPLACE(REPLACE(
+                (SELECT string_agg((value #>> '{}'), '-' ORDER BY key) FROM jsonb_each(v_combo)),
+                ' ', ''
+            ), '"', ''));
+        
+        -- Verificar si ya existe (por attributes o por código)
+        SELECT id INTO v_existing_id
+        FROM catalog_items
+        WHERE parent_id = p_template_id 
+          AND (attributes @> v_combo OR item_code = v_variant_code)
+          AND deleted_at IS NULL
+        LIMIT 1;
+        
+        IF v_existing_id IS NOT NULL AND p_skip_existing THEN
+            RETURN QUERY SELECT 
+                v_existing_id, v_variant_name, v_variant_code,
+                'skipped'::TEXT, 'Variante ya existe'::TEXT;
+            CONTINUE;
+        END IF;
+        
+        -- Verificar exclusiones
+        v_is_excluded := false;
+        SELECT EXISTS (
+            SELECT 1 FROM jsonb_array_elements(v_exclusions) exc
+            WHERE v_combo @> exc
+        ) INTO v_is_excluded;
+        
+        IF v_is_excluded THEN
+            RETURN QUERY SELECT 
+                NULL::UUID, v_variant_name, v_variant_code,
+                'excluded'::TEXT, 'Combinacion excluida'::TEXT;
+            CONTINUE;
+        END IF;
+        
+        -- Calcular precio con modificadores
+        v_final_price := v_template.base_price;
+        FOR v_attr_name, v_value IN SELECT key, (value #>> '{}') FROM jsonb_each(v_combo)
+        LOOP
+            v_price_modifier := (v_price_modifiers->v_attr_name->>v_value)::NUMERIC;
+            IF v_price_modifier IS NOT NULL THEN
+                v_final_price := v_final_price + v_price_modifier;
+            END IF;
+        END LOOP;
+        
+        -- Crear variante (SIN is_template, is_storable, is_bookable, display_name - son generated)
+        INSERT INTO catalog_items (
+            id,
+            organization_id,
+            item_code,
+            name,
+            description,
+            parent_id,        -- Esto hace is_template = false automáticamente
+            variant_name,
+            attributes,
+            base_price,
+            item_type,
+            category_id,
+            tax_category,
+            is_active,
+            vertical_config,
+            duration_minutes,
+            created_at,
+            updated_at
+        )
+        VALUES (
+            gen_random_uuid(),
+            v_org_id,
+            v_variant_code,
+            v_template.name,  -- name base, display_name se genera solo
+            v_template.description,
+            p_template_id,    -- parent_id = template -> is_template = false
+            v_variant_name,   -- esto se concatena en display_name
+            v_combo,
+            v_final_price,
+            v_template.item_type,
+            v_template.category_id,
+            v_template.tax_category,
+            true,
+            v_template.vertical_config,
+            v_template.duration_minutes,
+            NOW(),
+            NOW()
+        )
+        RETURNING id INTO v_new_id;
+        
+        RETURN QUERY SELECT 
+            v_new_id, v_variant_name, v_variant_code,
+            'created'::TEXT, 'Variante creada exitosamente'::TEXT;
+    END LOOP;
+    
+    -- 5. Actualizar template con los atributos seleccionados
+    UPDATE catalog_items
+    SET vertical_config = jsonb_set(
+        COALESCE(vertical_config, '{}'),
+        '{variant_attributes}',
+        p_selected_values
+    ),
+    updated_at = NOW()
+    WHERE id = p_template_id;
+    
+    RETURN;
+END;
+$$;
 
 
 --
@@ -6605,6 +6524,105 @@ BEGIN
       AND (cfs.expires_at IS NULL OR cfs.expires_at > now())
     ORDER BY cfs.started_at DESC
     LIMIT 1;
+END;
+$$;
+
+
+--
+-- Name: get_applicable_promotions(uuid, uuid, uuid, text[], numeric, boolean); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.get_applicable_promotions(p_catalog_item_id uuid, p_organization_id uuid, p_category_id uuid DEFAULT NULL::uuid, p_tags text[] DEFAULT '{}'::text[], p_price numeric DEFAULT NULL::numeric, p_is_first_visit boolean DEFAULT false) RETURNS TABLE(promotion_id uuid, promo_name text, promo_type text, promo_code text, discount_percentage numeric, discount_amount numeric, fixed_price numeric, buy_quantity integer, get_quantity integer, display_label text, priority integer)
+    LANGUAGE plpgsql SECURITY DEFINER
+    AS $_$
+BEGIN
+    RETURN QUERY
+    SELECT
+        p.id,
+        p.name,
+        p.promo_type,
+        p.promo_code,
+        p.discount_percentage,
+        p.discount_amount,
+        p.fixed_price,
+        p.buy_quantity,
+        p.get_quantity,
+        CASE p.promo_type
+            WHEN 'percentage' THEN p.discount_percentage::TEXT || '% OFF'
+            WHEN 'fixed_amount' THEN '-$' || p.discount_amount::TEXT
+            WHEN 'fixed_price' THEN '$' || p.fixed_price::TEXT
+            WHEN 'buy_x_get_y' THEN p.buy_quantity::TEXT || 'x' || (p.buy_quantity + p.get_quantity)::TEXT
+            WHEN 'free_shipping' THEN 'ENVIO GRATIS'
+            ELSE p.promo_type
+        END,
+        p.priority
+    FROM promotions p
+    LEFT JOIN promotion_rules pr ON pr.promotion_id = p.id AND pr.is_active = TRUE
+    WHERE p.organization_id = p_organization_id
+      AND p.is_active = TRUE
+      AND (p.valid_from IS NULL OR p.valid_from <= now())
+      AND (p.valid_until IS NULL OR p.valid_until >= now())
+      AND (p.max_uses_total IS NULL OR p.current_uses < p.max_uses_total)
+      AND (p.valid_days_of_week IS NULL OR EXTRACT(DOW FROM now())::INTEGER = ANY(p.valid_days_of_week))
+      AND (
+          -- No rules means applies to all
+          pr.id IS NULL
+          OR pr.apply_on = 'all'
+          -- Category match
+          OR (pr.apply_on = 'category' AND pr.category_id = p_category_id)
+          -- Specific item
+          OR (pr.apply_on = 'items' AND p_catalog_item_id = ANY(pr.item_ids))
+          -- Price range
+          OR (pr.apply_on = 'price_range' AND p_price IS NOT NULL
+              AND p_price >= COALESCE(pr.min_price, 0)
+              AND p_price <= COALESCE(pr.max_price, 999999999))
+          -- Tags match
+          OR (pr.apply_on = 'tags' AND pr.required_tags && p_tags)
+      )
+      -- First visit filter
+      AND (p.promo_type != 'first_visit' OR p_is_first_visit = TRUE)
+      -- Auto-apply or has code
+      AND (p.auto_apply = TRUE OR p.promo_code IS NOT NULL)
+    GROUP BY p.id
+    ORDER BY p.priority DESC, p.discount_percentage DESC NULLS LAST;
+END;
+$_$;
+
+
+--
+-- Name: get_appointments_for_org(uuid, date, date, uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.get_appointments_for_org(p_organization_id uuid, p_start_date date, p_end_date date, p_resource_id uuid DEFAULT NULL::uuid) RETURNS TABLE(id uuid, organization_id uuid, appointment_date date, start_time time without time zone, end_time time without time zone, resource_entity_id uuid, client_entity_id uuid, client_name text, catalog_item_id uuid, catalog_item_name text, service_name text, notes text, status text, metadata jsonb, created_at timestamp with time zone, updated_at timestamp with time zone)
+    LANGUAGE plpgsql SECURITY DEFINER
+    AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    a.id,
+    a.organization_id,
+    a.appointment_date,
+    a.start_time,
+    a.end_time,
+    a.resource_entity_id,
+    a.client_entity_id,
+    COALESCE(a.client_name, e.display_name) as client_name,
+    a.catalog_item_id,
+    a.catalog_item_name,
+    a.catalog_item_name as service_name,
+    a.notes,
+    a.status::TEXT,
+    a.metadata,
+    a.created_at,
+    a.updated_at
+  FROM appointments a
+  LEFT JOIN entities e ON e.id = a.client_entity_id
+  WHERE a.organization_id = p_organization_id
+    AND a.appointment_date >= p_start_date
+    AND a.appointment_date <= p_end_date
+    AND a.deleted_at IS NULL
+    AND (p_resource_id IS NULL OR a.resource_entity_id = p_resource_id)
+  ORDER BY a.appointment_date, a.start_time;
 END;
 $$;
 
@@ -6767,13 +6785,6 @@ $$;
 
 
 --
--- Name: FUNCTION get_billing_entity(p_entity_id uuid); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.get_billing_entity(p_entity_id uuid) IS 'Returns the entity responsible for billing. Falls back to the entity itself if no billing contact exists.';
-
-
---
 -- Name: get_bot_message(text, text, uuid, text, text, jsonb); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -6877,10 +6888,26 @@ $$;
 
 
 --
--- Name: FUNCTION get_cache_stats(p_organization_id uuid); Type: COMMENT; Schema: public; Owner: -
+-- Name: get_catalog_items_for_org(uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
-COMMENT ON FUNCTION public.get_cache_stats(p_organization_id uuid) IS 'Get statistics about AI response cache usage.';
+CREATE FUNCTION public.get_catalog_items_for_org(p_organization_id uuid) RETURNS TABLE(id uuid, name text, item_type character varying, base_price numeric, duration_minutes integer, is_active boolean)
+    LANGUAGE sql SECURITY DEFINER
+    SET search_path TO 'public'
+    AS $$
+  SELECT 
+    ci.id,
+    ci.name,
+    ci.item_type,
+    ci.base_price,
+    ci.duration_minutes,
+    ci.is_active
+  FROM catalog_items ci
+  WHERE ci.organization_id = p_organization_id
+    AND (ci.is_active IS NULL OR ci.is_active = true)
+  ORDER BY ci.item_type, ci.name
+  LIMIT 100;
+$$;
 
 
 --
@@ -6939,13 +6966,6 @@ $$;
 
 
 --
--- Name: FUNCTION get_client_resolution_config(p_organization_id uuid); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.get_client_resolution_config(p_organization_id uuid) IS 'Get client resolution configuration for an organization';
-
-
---
 -- Name: get_confirmation_message(text, jsonb, uuid, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -6990,13 +7010,6 @@ BEGIN
   WHERE c.id = p_conversation_id;
 END;
 $$;
-
-
---
--- Name: FUNCTION get_conversation_context(p_conversation_id uuid); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.get_conversation_context(p_conversation_id uuid) IS 'Returns conversation context, ensures collected_slots is always an object';
 
 
 --
@@ -7061,13 +7074,6 @@ $$;
 
 
 --
--- Name: FUNCTION get_conversation_history(p_conversation_id uuid, p_limit integer); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.get_conversation_history(p_conversation_id uuid, p_limit integer) IS 'Returns recent text messages formatted for LLM context (user/assistant roles)';
-
-
---
 -- Name: get_conversation_state(uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -7084,13 +7090,6 @@ BEGIN
   RETURN COALESCE(state, '{}'::jsonb);
 END;
 $$;
-
-
---
--- Name: FUNCTION get_conversation_state(p_conversation_id uuid); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.get_conversation_state(p_conversation_id uuid) IS 'Retrieves the current conversation state';
 
 
 --
@@ -7153,13 +7152,6 @@ $$;
 
 
 --
--- Name: FUNCTION get_dependents(p_entity_id uuid); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.get_dependents(p_entity_id uuid) IS 'Get all dependents of an entity (children, legal dependents).';
-
-
---
 -- Name: get_emergency_contacts(uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -7188,13 +7180,6 @@ BEGIN
     ORDER BY er.priority_order ASC, er.primary_contact DESC;
 END;
 $$;
-
-
---
--- Name: FUNCTION get_emergency_contacts(p_entity_id uuid); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.get_emergency_contacts(p_entity_id uuid) IS 'Get emergency contacts for an entity, ordered by priority.';
 
 
 --
@@ -7315,13 +7300,6 @@ $$;
 
 
 --
--- Name: FUNCTION get_entity_recommendations(p_entity_id uuid, p_organization_id uuid, p_limit integer); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.get_entity_recommendations(p_entity_id uuid, p_organization_id uuid, p_limit integer) IS 'Get similar entities based on vector similarity. Useful for "Similar patients" feature.';
-
-
---
 -- Name: get_entity_relationships(uuid, boolean); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -7381,14 +7359,6 @@ BEGIN
     ORDER BY primary_contact DESC, priority_order ASC;
 END;
 $$;
-
-
---
--- Name: FUNCTION get_entity_relationships(p_entity_id uuid, p_include_inactive boolean); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.get_entity_relationships(p_entity_id uuid, p_include_inactive boolean) IS 'Get all active relationships for an entity (both from and to).
-Set p_include_inactive=true to include inactive relationships.';
 
 
 --
@@ -7488,13 +7458,6 @@ $$;
 
 
 --
--- Name: FUNCTION get_guardians(p_entity_id uuid); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.get_guardians(p_entity_id uuid) IS 'Returns all guardians/parents for a minor entity';
-
-
---
 -- Name: get_high_risk_patients(uuid, numeric); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -7522,13 +7485,6 @@ BEGIN
     ORDER BY (p.ai_risk_assessment->>'overall_risk_score')::numeric DESC;
 END;
 $$;
-
-
---
--- Name: FUNCTION get_high_risk_patients(p_organization_id uuid, p_risk_threshold numeric); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.get_high_risk_patients(p_organization_id uuid, p_risk_threshold numeric) IS 'Get high-risk patients based on AI risk assessment.';
 
 
 --
@@ -7563,13 +7519,6 @@ $$;
 
 
 --
--- Name: FUNCTION get_inactive_patients(p_organization_id uuid, p_months_inactive integer); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.get_inactive_patients(p_organization_id uuid, p_months_inactive integer) IS 'Get patients who haven''t visited in N months (default 6).';
-
-
---
 -- Name: get_intent_signals(text, uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -7590,6 +7539,82 @@ BEGIN
     AND s.intent = p_intent
     AND (s.organization_id IS NULL OR s.organization_id = p_organization_id)
   ORDER BY s.priority DESC, s.weight DESC;
+END;
+$$;
+
+
+--
+-- Name: get_item_price(uuid, uuid, uuid, text, integer); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.get_item_price(p_catalog_item_id uuid, p_organization_id uuid, p_customer_group_id uuid DEFAULT NULL::uuid, p_country_code text DEFAULT NULL::text, p_quantity integer DEFAULT 1) RETURNS TABLE(price numeric, price_list_id uuid, price_list_name text, original_price numeric, discount_applied numeric)
+    LANGUAGE plpgsql SECURITY DEFINER
+    AS $$
+DECLARE
+    v_base_price NUMERIC(12,4);
+    v_cost_price NUMERIC(12,4);
+BEGIN
+    -- Get base and cost price from catalog item
+    SELECT ci.base_price, ci.cost_price
+    INTO v_base_price, v_cost_price
+    FROM catalog_items ci
+    WHERE ci.id = p_catalog_item_id;
+
+    -- First check for specific price list item override
+    RETURN QUERY
+    SELECT
+        pli.price,
+        pl.id,
+        pl.name,
+        v_base_price,
+        v_base_price - pli.price
+    FROM price_list_items pli
+    JOIN price_lists pl ON pl.id = pli.price_list_id
+    WHERE pli.catalog_item_id = p_catalog_item_id
+      AND pl.organization_id = p_organization_id
+      AND pl.is_active = TRUE
+      AND (pl.start_date IS NULL OR pl.start_date <= now())
+      AND (pl.end_date IS NULL OR pl.end_date >= now())
+      AND pli.min_quantity <= p_quantity
+      AND (p_customer_group_id IS NULL OR p_customer_group_id = ANY(pl.customer_group_ids) OR pl.customer_group_ids = '{}')
+      AND (p_country_code IS NULL OR p_country_code = ANY(pl.country_codes) OR pl.country_codes = '{}')
+    ORDER BY pl.priority ASC, pli.min_quantity DESC
+    LIMIT 1;
+
+    -- If no specific item price, check for price list discount
+    IF NOT FOUND THEN
+        RETURN QUERY
+        SELECT
+            CASE pl.price_list_type
+                WHEN 'percentage_discount' THEN v_base_price * (1 - pl.discount_percent / 100)
+                WHEN 'fixed_discount' THEN GREATEST(0, v_base_price - pl.discount_amount)
+                WHEN 'formula' THEN COALESCE(v_cost_price, v_base_price) * (1 + pl.margin_percent / 100)
+                ELSE v_base_price
+            END,
+            pl.id,
+            pl.name,
+            v_base_price,
+            v_base_price - CASE pl.price_list_type
+                WHEN 'percentage_discount' THEN v_base_price * (1 - pl.discount_percent / 100)
+                WHEN 'fixed_discount' THEN GREATEST(0, v_base_price - pl.discount_amount)
+                WHEN 'formula' THEN COALESCE(v_cost_price, v_base_price) * (1 + pl.margin_percent / 100)
+                ELSE v_base_price
+            END
+        FROM price_lists pl
+        WHERE pl.organization_id = p_organization_id
+          AND pl.is_active = TRUE
+          AND (pl.start_date IS NULL OR pl.start_date <= now())
+          AND (pl.end_date IS NULL OR pl.end_date >= now())
+          AND (p_customer_group_id IS NULL OR p_customer_group_id = ANY(pl.customer_group_ids) OR pl.customer_group_ids = '{}')
+          AND (p_country_code IS NULL OR p_country_code = ANY(pl.country_codes) OR pl.country_codes = '{}')
+        ORDER BY pl.priority ASC
+        LIMIT 1;
+    END IF;
+
+    -- If still nothing, return base price
+    IF NOT FOUND THEN
+        RETURN QUERY SELECT v_base_price, NULL::UUID, 'Precio base'::TEXT, v_base_price, 0::NUMERIC(12,4);
+    END IF;
 END;
 $$;
 
@@ -7653,19 +7678,6 @@ BEGIN
     LIMIT 1;
 END;
 $$;
-
-
---
--- Name: FUNCTION get_llm_prompt(p_prompt_key character varying, p_organization_id uuid, p_vertical_code character varying, p_channel character varying, p_language character varying); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.get_llm_prompt(p_prompt_key character varying, p_organization_id uuid, p_vertical_code character varying, p_channel character varying, p_language character varying) IS 'Gets the most specific LLM prompt for the given context.
-Uses priority scoring to find the best match:
-- Organization match: +100 points
-- Vertical match: +10 points
-- Channel match: +5 points
-- Language match: +2 points
-- Plus the prompt priority field';
 
 
 --
@@ -7765,13 +7777,6 @@ $$;
 
 
 --
--- Name: FUNCTION get_or_create_conversation(p_organization_id uuid, p_channel text, p_phone_number text, p_user_id uuid, p_context_type text, p_max_age_minutes integer); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.get_or_create_conversation(p_organization_id uuid, p_channel text, p_phone_number text, p_user_id uuid, p_context_type text, p_max_age_minutes integer) IS 'Finds an active conversation or creates a new one. Used by bot handlers.';
-
-
---
 -- Name: conversation_sessions; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -7797,15 +7802,8 @@ CREATE TABLE public.conversation_sessions (
     expires_at timestamp with time zone DEFAULT (now() + '00:30:00'::interval),
     closed_at timestamp with time zone,
     status character varying(20) DEFAULT 'active'::character varying,
-    CONSTRAINT conversation_sessions_status_check CHECK (((status)::text = ANY ((ARRAY['active'::character varying, 'waiting'::character varying, 'completed'::character varying, 'expired'::character varying, 'error'::character varying])::text[])))
+    CONSTRAINT conversation_sessions_status_check CHECK (((status)::text = ANY (ARRAY[('active'::character varying)::text, ('waiting'::character varying)::text, ('completed'::character varying)::text, ('expired'::character varying)::text, ('error'::character varying)::text])))
 );
-
-
---
--- Name: TABLE conversation_sessions; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.conversation_sessions IS 'Tracks active conversation sessions for multi-turn AI interactions';
 
 
 --
@@ -7854,13 +7852,6 @@ BEGIN
     RETURN v_session;
 END;
 $$;
-
-
---
--- Name: FUNCTION get_or_create_conversation_session(p_organization_id uuid, p_channel character varying, p_channel_user_id character varying); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.get_or_create_conversation_session(p_organization_id uuid, p_channel character varying, p_channel_user_id character varying) IS 'Gets an active session or creates a new one';
 
 
 --
@@ -7928,13 +7919,6 @@ $$;
 
 
 --
--- Name: FUNCTION get_or_create_whatsapp_conversation(p_phone_number text, p_organization_id uuid, p_provider text); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.get_or_create_whatsapp_conversation(p_phone_number text, p_organization_id uuid, p_provider text) IS 'Finds active conversation by phone+org or creates new one. Auto-links to entity if exists.';
-
-
---
 -- Name: llm_prompts; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -7969,50 +7953,6 @@ CREATE TABLE public.llm_prompts (
     CONSTRAINT llm_prompts_temperature_check CHECK (((temperature >= (0)::numeric) AND (temperature <= (2)::numeric))),
     CONSTRAINT llm_prompts_top_p_check CHECK (((top_p >= (0)::numeric) AND (top_p <= (1)::numeric)))
 );
-
-
---
--- Name: TABLE llm_prompts; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.llm_prompts IS 'Stores configurable LLM system prompts with multi-tenant, multi-vertical, multi-channel support.
-Replaces hardcoded SYSTEM_PROMPTS in TypeScript.
-Use get_llm_prompt() RPC to retrieve the most specific prompt for a given context.';
-
-
---
--- Name: COLUMN llm_prompts.prompt_key; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.llm_prompts.prompt_key IS 'Unique key identifying the prompt type: general, appointment_booking, patient_search, etc.';
-
-
---
--- Name: COLUMN llm_prompts.model_hint; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.llm_prompts.model_hint IS 'Suggested model to use. NULL = use system default.';
-
-
---
--- Name: COLUMN llm_prompts.vertical_code; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.llm_prompts.vertical_code IS 'Vertical this prompt is optimized for. NULL = all verticals.';
-
-
---
--- Name: COLUMN llm_prompts.channel; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.llm_prompts.channel IS 'Channel this prompt is optimized for (whatsapp, web, voice). NULL = all channels.';
-
-
---
--- Name: COLUMN llm_prompts.priority; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.llm_prompts.priority IS 'When multiple prompts match, higher priority wins.';
 
 
 --
@@ -8066,13 +8006,6 @@ $$;
 
 
 --
--- Name: FUNCTION get_organization_vertical_config(p_organization_id uuid); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.get_organization_vertical_config(p_organization_id uuid) IS 'Returns complete vertical configuration for an organization including terminology and features';
-
-
---
 -- Name: get_organization_whatsapp_config(uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -8089,13 +8022,6 @@ BEGIN
   RETURN config;
 END;
 $$;
-
-
---
--- Name: FUNCTION get_organization_whatsapp_config(org_id uuid); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.get_organization_whatsapp_config(org_id uuid) IS 'Retrieves WhatsApp configuration for a specific organization';
 
 
 --
@@ -8168,13 +8094,6 @@ $$;
 
 
 --
--- Name: FUNCTION get_patient_age(p_date_of_birth date); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.get_patient_age(p_date_of_birth date) IS 'Calculate patient age from date of birth.';
-
-
---
 -- Name: get_patient_full_profile(uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -8216,13 +8135,6 @@ BEGIN
       AND e.deleted_at IS NULL;
 END;
 $$;
-
-
---
--- Name: FUNCTION get_patient_full_profile(p_patient_id uuid); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.get_patient_full_profile(p_patient_id uuid) IS 'Get complete patient profile with entity information.';
 
 
 --
@@ -8353,13 +8265,6 @@ $$;
 
 
 --
--- Name: FUNCTION get_patients_with_upcoming_appointments(p_organization_id uuid, p_days_ahead integer); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.get_patients_with_upcoming_appointments(p_organization_id uuid, p_days_ahead integer) IS 'Get patients with appointments in the next N days (default 7).';
-
-
---
 -- Name: get_pending_action(uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -8418,10 +8323,96 @@ $$;
 
 
 --
--- Name: FUNCTION get_person_label(p_organization_id uuid, p_plural boolean); Type: COMMENT; Schema: public; Owner: -
+-- Name: get_photo_roles_for_category(character varying); Type: FUNCTION; Schema: public; Owner: -
 --
 
-COMMENT ON FUNCTION public.get_person_label(p_organization_id uuid, p_plural boolean) IS 'Returns the appropriate person label for an organization based on its vertical (e.g., Paciente, Cliente, Huésped)';
+CREATE FUNCTION public.get_photo_roles_for_category(p_category character varying) RETURNS jsonb
+    LANGUAGE plpgsql STABLE
+    AS $$
+DECLARE
+    v_roles jsonb;
+BEGIN
+    v_roles := CASE p_category
+        WHEN 'food' THEN '[
+            {"role": "front", "required": true, "step": 1, "title": "Frente del Producto"},
+            {"role": "nutrition", "required": true, "step": 2, "title": "Tabla Nutricional"},
+            {"role": "ingredients", "required": true, "step": 3, "title": "Ingredientes"},
+            {"role": "back", "required": false, "step": 4, "title": "Parte Trasera"}
+        ]'::jsonb
+        
+        WHEN 'medicine' THEN '[
+            {"role": "front", "required": true, "step": 1, "title": "Frente del Producto"},
+            {"role": "composition", "required": true, "step": 2, "title": "Composición/Fórmula"},
+            {"role": "indications", "required": true, "step": 3, "title": "Indicaciones"},
+            {"role": "warnings", "required": true, "step": 4, "title": "Advertencias"}
+        ]'::jsonb
+        
+        WHEN 'supplement' THEN '[
+            {"role": "front", "required": true, "step": 1, "title": "Frente del Producto"},
+            {"role": "nutrition", "required": true, "step": 2, "title": "Información Nutricional"},
+            {"role": "ingredients", "required": true, "step": 3, "title": "Ingredientes"},
+            {"role": "warnings", "required": false, "step": 4, "title": "Advertencias"}
+        ]'::jsonb
+        
+        WHEN 'cosmetic' THEN '[
+            {"role": "front", "required": true, "step": 1, "title": "Frente del Producto"},
+            {"role": "ingredients", "required": true, "step": 2, "title": "Ingredientes (INCI)"},
+            {"role": "usage", "required": false, "step": 3, "title": "Modo de Uso"},
+            {"role": "back", "required": false, "step": 4, "title": "Parte Trasera"}
+        ]'::jsonb
+        
+        WHEN 'personal_care' THEN '[
+            {"role": "front", "required": true, "step": 1, "title": "Frente del Producto"},
+            {"role": "ingredients", "required": true, "step": 2, "title": "Ingredientes"},
+            {"role": "usage", "required": false, "step": 3, "title": "Modo de Uso"},
+            {"role": "back", "required": false, "step": 4, "title": "Parte Trasera"}
+        ]'::jsonb
+        
+        WHEN 'electronics' THEN '[
+            {"role": "front", "required": true, "step": 1, "title": "Frente/Caja"},
+            {"role": "specs", "required": true, "step": 2, "title": "Especificaciones"},
+            {"role": "certifications", "required": false, "step": 3, "title": "Certificaciones"},
+            {"role": "back", "required": false, "step": 4, "title": "Parte Trasera"}
+        ]'::jsonb
+        
+        WHEN 'appliance' THEN '[
+            {"role": "front", "required": true, "step": 1, "title": "Frente del Producto"},
+            {"role": "specs", "required": true, "step": 2, "title": "Especificaciones"},
+            {"role": "certifications", "required": false, "step": 3, "title": "Certificaciones"},
+            {"role": "usage", "required": false, "step": 4, "title": "Instrucciones"}
+        ]'::jsonb
+        
+        WHEN 'clothing' THEN '[
+            {"role": "front", "required": true, "step": 1, "title": "Frente de la Prenda"},
+            {"role": "care_label", "required": true, "step": 2, "title": "Etiqueta de Cuidado"},
+            {"role": "fabric_composition", "required": true, "step": 3, "title": "Composición"},
+            {"role": "back", "required": false, "step": 4, "title": "Parte Trasera"}
+        ]'::jsonb
+        
+        WHEN 'cleaning' THEN '[
+            {"role": "front", "required": true, "step": 1, "title": "Frente del Producto"},
+            {"role": "ingredients", "required": true, "step": 2, "title": "Ingredientes"},
+            {"role": "warnings", "required": true, "step": 3, "title": "Advertencias"},
+            {"role": "usage", "required": false, "step": 4, "title": "Modo de Uso"}
+        ]'::jsonb
+        
+        WHEN 'auto' THEN '[
+            {"role": "front", "required": true, "step": 1, "title": "Frente del Producto"},
+            {"role": "specs", "required": true, "step": 2, "title": "Especificaciones"},
+            {"role": "certifications", "required": false, "step": 3, "title": "Certificaciones"}
+        ]'::jsonb
+        
+        ELSE '[
+            {"role": "front", "required": true, "step": 1, "title": "Frente del Producto"},
+            {"role": "label", "required": false, "step": 2, "title": "Etiqueta"},
+            {"role": "barcode", "required": false, "step": 3, "title": "Código de Barras"},
+            {"role": "back", "required": false, "step": 4, "title": "Parte Trasera"}
+        ]'::jsonb
+    END;
+    
+    RETURN v_roles;
+END;
+$$;
 
 
 --
@@ -8515,10 +8506,39 @@ $$;
 
 
 --
--- Name: FUNCTION get_search_analytics(p_organization_id uuid, p_days integer); Type: COMMENT; Schema: public; Owner: -
+-- Name: get_skill_execution_stats(uuid, integer); Type: FUNCTION; Schema: public; Owner: -
 --
 
-COMMENT ON FUNCTION public.get_search_analytics(p_organization_id uuid, p_days integer) IS 'Get analytics about semantic searches for the last N days.';
+CREATE FUNCTION public.get_skill_execution_stats(p_organization_id uuid, p_since_hours integer DEFAULT 24) RETURNS TABLE(total_executions bigint, allowed_count bigint, denied_count bigint, error_count bigint, avg_execution_time_ms numeric, unique_skills bigint, unique_roles bigint, top_skills jsonb)
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        COUNT(*)::BIGINT as total_executions,
+        COUNT(*) FILTER (WHERE e.was_allowed = true)::BIGINT as allowed_count,
+        COUNT(*) FILTER (WHERE e.was_allowed = false)::BIGINT as denied_count,
+        COUNT(*) FILTER (WHERE e.error_message IS NOT NULL)::BIGINT as error_count,
+        ROUND(AVG(e.execution_time_ms) FILTER (WHERE e.execution_time_ms IS NOT NULL), 2) as avg_execution_time_ms,
+        COUNT(DISTINCT e.skill_name)::BIGINT as unique_skills,
+        COUNT(DISTINCT e.role_key)::BIGINT as unique_roles,
+        (
+            SELECT jsonb_agg(skill_info)
+            FROM (
+                SELECT jsonb_build_object('skill', skill_name, 'count', COUNT(*)) as skill_info
+                FROM ai_skill_executions
+                WHERE organization_id = p_organization_id
+                  AND created_at > NOW() - INTERVAL '1 hour' * p_since_hours
+                GROUP BY skill_name
+                ORDER BY COUNT(*) DESC
+                LIMIT 5
+            ) sub
+        ) as top_skills
+    FROM ai_skill_executions e
+    WHERE e.organization_id = p_organization_id
+      AND e.created_at > NOW() - INTERVAL '1 hour' * p_since_hours;
+END;
+$$;
 
 
 --
@@ -8607,6 +8627,88 @@ BEGIN
   ELSE
     RETURN 'evening';
   END IF;
+END;
+$$;
+
+
+--
+-- Name: get_transaction_line_items(text, uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.get_transaction_line_items(p_transaction_type text, p_transaction_id uuid) RETURNS TABLE(id uuid, organization_id uuid, transaction_type text, transaction_id uuid, catalog_item_id uuid, catalog_item_name text, catalog_item_type text, provider_entity_id uuid, provider_name text, quantity numeric, unit_price numeric, discount_amount numeric, discount_percent numeric, tax_amount numeric, total_price numeric, status text, estimated_duration_minutes integer, started_at timestamp with time zone, completed_at timestamp with time zone, notes text, sort_order integer, created_at timestamp with time zone, updated_at timestamp with time zone)
+    LANGUAGE plpgsql SECURITY DEFINER
+    AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        tli.id,
+        tli.organization_id,
+        tli.transaction_type::text,
+        tli.transaction_id,
+        tli.catalog_item_id,
+        tli.catalog_item_name,
+        tli.catalog_item_type,
+        tli.provider_entity_id,
+        tli.provider_name,
+        tli.quantity,
+        tli.unit_price,
+        tli.discount_amount,
+        tli.discount_percent,
+        tli.tax_amount,
+        tli.total_price,
+        tli.status,
+        tli.estimated_duration_minutes,
+        tli.started_at,
+        tli.completed_at,
+        tli.notes,
+        tli.sort_order,
+        tli.created_at,
+        tli.updated_at
+    FROM transaction_line_items tli
+    WHERE tli.transaction_type = p_transaction_type
+      AND tli.transaction_id = p_transaction_id
+      AND tli.deleted_at IS NULL
+    ORDER BY tli.sort_order, tli.created_at;
+END;
+$$;
+
+
+--
+-- Name: get_transaction_totals(text, uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.get_transaction_totals(p_transaction_type text, p_transaction_id uuid) RETURNS json
+    LANGUAGE plpgsql SECURITY DEFINER
+    AS $$
+DECLARE
+    v_subtotal NUMERIC;
+    v_discount NUMERIC;
+    v_tax NUMERIC;
+    v_total NUMERIC;
+    v_item_count INTEGER;
+    v_duration_minutes INTEGER;
+BEGIN
+    SELECT 
+        COALESCE(SUM(quantity * COALESCE(unit_price, 0)), 0),
+        COALESCE(SUM(discount_amount), 0),
+        COALESCE(SUM(tax_amount), 0),
+        COALESCE(SUM(total_price), 0),
+        COUNT(*)::INTEGER,
+        COALESCE(SUM(estimated_duration_minutes), 0)::INTEGER
+    INTO v_subtotal, v_discount, v_tax, v_total, v_item_count, v_duration_minutes
+    FROM transaction_line_items
+    WHERE transaction_type = p_transaction_type
+      AND transaction_id = p_transaction_id
+      AND deleted_at IS NULL;
+    
+    RETURN json_build_object(
+        'subtotal', v_subtotal,
+        'discount', v_discount,
+        'tax', v_tax,
+        'total', v_total,
+        'item_count', v_item_count,
+        'total_duration_minutes', v_duration_minutes
+    );
 END;
 $$;
 
@@ -8958,13 +9060,6 @@ $$;
 
 
 --
--- Name: FUNCTION get_whatsapp_config(p_organization_id uuid); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.get_whatsapp_config(p_organization_id uuid) IS 'Get WhatsApp configuration for an organization with defaults';
-
-
---
 -- Name: has_ai_feature_access(text); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -8993,13 +9088,6 @@ BEGIN
     RETURN true;
 END;
 $$;
-
-
---
--- Name: FUNCTION has_ai_feature_access(feature_name text); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.has_ai_feature_access(feature_name text) IS 'Check if current user has access to AI features. Can be extended with subscription plan checks.';
 
 
 --
@@ -9070,13 +9158,6 @@ BEGIN
     LIMIT p_limit;
 END;
 $$;
-
-
---
--- Name: FUNCTION hybrid_search_entities(query_text text, query_embedding extensions.vector, p_organization_id uuid, p_limit integer, p_semantic_weight double precision, p_keyword_weight double precision); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.hybrid_search_entities(query_text text, query_embedding extensions.vector, p_organization_id uuid, p_limit integer, p_semantic_weight double precision, p_keyword_weight double precision) IS 'Hybrid search combining semantic (AI) and keyword (text exact match). Best for multilingual and typo-tolerant search.';
 
 
 --
@@ -9163,13 +9244,6 @@ $$;
 
 
 --
--- Name: FUNCTION log_semantic_search(p_query_text text, p_organization_id uuid, p_user_id uuid, p_results_count integer, p_avg_similarity_score double precision, p_latency_ms integer, p_search_type text, p_filters_applied jsonb); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.log_semantic_search(p_query_text text, p_organization_id uuid, p_user_id uuid, p_results_count integer, p_avg_similarity_score double precision, p_latency_ms integer, p_search_type text, p_filters_applied jsonb) IS 'Log semantic search queries for analytics and performance monitoring.';
-
-
---
 -- Name: mark_reminder_sent(uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -9241,13 +9315,6 @@ $$;
 
 
 --
--- Name: FUNCTION match_catalog_items(p_query_embedding extensions.vector, p_organization_id uuid, p_item_types text[], p_category_id uuid, p_attributes jsonb, p_min_price numeric, p_max_price numeric, p_similarity_threshold double precision, p_limit_count integer); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.match_catalog_items(p_query_embedding extensions.vector, p_organization_id uuid, p_item_types text[], p_category_id uuid, p_attributes jsonb, p_min_price numeric, p_max_price numeric, p_similarity_threshold double precision, p_limit_count integer) IS 'Primary semantic search function for catalog items with full filtering. Uses pgvector cosine similarity.';
-
-
---
 -- Name: match_catalog_items_simple(extensions.vector, uuid, double precision, integer, text, uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -9283,13 +9350,6 @@ BEGIN
     ) m;
 END;
 $$;
-
-
---
--- Name: FUNCTION match_catalog_items_simple(p_query_embedding extensions.vector, p_organization_id uuid, p_similarity_threshold double precision, p_limit_count integer, p_item_type text, p_category uuid); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.match_catalog_items_simple(p_query_embedding extensions.vector, p_organization_id uuid, p_similarity_threshold double precision, p_limit_count integer, p_item_type text, p_category uuid) IS 'Backward-compatible wrapper for simple semantic search. Calls primary match_catalog_items internally.';
 
 
 --
@@ -9347,13 +9407,6 @@ BEGIN
   LIMIT match_count;
 END;
 $$;
-
-
---
--- Name: FUNCTION match_domain_knowledge(query_embedding extensions.vector, p_organization_id uuid, p_domain text, match_threshold double precision, match_count integer); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.match_domain_knowledge(query_embedding extensions.vector, p_organization_id uuid, p_domain text, match_threshold double precision, match_count integer) IS 'Búsqueda semántica de knowledge base. Para enriquecer contexto con políticas/guías.';
 
 
 --
@@ -9497,13 +9550,6 @@ $$;
 
 
 --
--- Name: FUNCTION match_providers(p_query_embedding extensions.vector, p_organization_id uuid, p_similarity_threshold double precision, p_limit_count integer, p_service_id uuid, p_specialty text); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.match_providers(p_query_embedding extensions.vector, p_organization_id uuid, p_similarity_threshold double precision, p_limit_count integer, p_service_id uuid, p_specialty text) IS 'Match service providers using embedding similarity. Includes extensions schema for pgvector operators.';
-
-
---
 -- Name: match_services(extensions.vector, double precision, integer, uuid, numeric, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -9533,13 +9579,6 @@ BEGIN
   LIMIT p_limit_count;
 END;
 $$;
-
-
---
--- Name: FUNCTION match_services(p_query_embedding extensions.vector, p_similarity_threshold double precision, p_limit_count integer, p_organization_id uuid, p_max_price_usd numeric, p_category text); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.match_services(p_query_embedding extensions.vector, p_similarity_threshold double precision, p_limit_count integer, p_organization_id uuid, p_max_price_usd numeric, p_category text) IS 'Match services using embedding similarity. Includes extensions schema for pgvector operators.';
 
 
 --
@@ -9706,144 +9745,6 @@ CREATE TABLE public.patients (
 
 
 --
--- Name: TABLE patients; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.patients IS 'Patient records following Entity-Party pattern.
-Documents and insurance are stored in normalized tables:
-- entity_identification_documents (linked via entity_id)
-- entity_insurance_policies (linked via entity_id)
-
-BREAKING CHANGE 2025-12-19: Removed identification_documents and insurance_policies JSONB columns.';
-
-
---
--- Name: COLUMN patients.patient_code; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.patients.patient_code IS 'Auto-generated unique patient code. Format: {ORG_PREFIX}-{YEAR}-{SEQUENCE}. NOT EDITABLE by users.';
-
-
---
--- Name: COLUMN patients.medical_record_number; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.patients.medical_record_number IS 'Legacy/external Medical Record Number. For imported data from other systems. Auto-generated patient_code is the primary identifier.';
-
-
---
--- Name: COLUMN patients.insurance_info; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.patients.insurance_info IS 'Insurance information (primary, secondary, tertiary) - healthcare specific.';
-
-
---
--- Name: COLUMN patients.medical_history; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.patients.medical_history IS 'Array of medical conditions and diagnoses.';
-
-
---
--- Name: COLUMN patients.allergies; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.patients.allergies IS 'Array of allergies (medications, food, environmental).';
-
-
---
--- Name: COLUMN patients.current_medications; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.patients.current_medications IS 'Array of current medications.';
-
-
---
--- Name: COLUMN patients.preferences; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.patients.preferences IS 'Patient preferences (appointments, communication, products, etc.).';
-
-
---
--- Name: COLUMN patients.ai_risk_assessment; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.patients.ai_risk_assessment IS 'AI-powered overall health risk assessment.';
-
-
---
--- Name: COLUMN patients.ai_clinical_insights; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.patients.ai_clinical_insights IS 'AI-detected anomalies, trends, and recommended tests.';
-
-
---
--- Name: COLUMN patients.ai_treatment_recommendations; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.patients.ai_treatment_recommendations IS 'ML-based treatment and medication suggestions.';
-
-
---
--- Name: COLUMN patients.ai_appointment_optimization; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.patients.ai_appointment_optimization IS 'AI-optimized appointment scheduling recommendations.';
-
-
---
--- Name: COLUMN patients.ai_similar_patients; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.patients.ai_similar_patients IS 'Cohort analysis and similar patient benchmarking.';
-
-
---
--- Name: COLUMN patients.ai_preventive_care_alerts; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.patients.ai_preventive_care_alerts IS 'Proactive screening and vaccination reminders.';
-
-
---
--- Name: COLUMN patients.ai_cost_predictions; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.patients.ai_cost_predictions IS 'Healthcare cost forecasting and optimization.';
-
-
---
--- Name: COLUMN patients.vertical_fields; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.patients.vertical_fields IS 'Industry-specific fields (healthcare, beauty, spa, dental, etc.).';
-
-
---
--- Name: COLUMN patients.addresses; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.patients.addresses IS 'List of patient addresses (home, work, billing). Format: [{type, line1, line2, city, state, postalCode, country, isPrimary}]';
-
-
---
--- Name: COLUMN patients.emails; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.patients.emails IS 'List of patient emails. Format: [{type, address, isPrimary, isVerified}]';
-
-
---
--- Name: COLUMN patients.phones; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.patients.phones IS 'List of patient phones. Format: [{type, number, isPrimary, whatsapp, telegram}]';
-
-
---
 -- Name: patients_embedding_content(public.patients); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -9997,13 +9898,6 @@ $$;
 
 
 --
--- Name: FUNCTION patients_embedding_content(p public.patients); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.patients_embedding_content(p public.patients) IS 'Generates embedding content for a patient. Handles medical_history as both array and object.';
-
-
---
 -- Name: process_pending_reminders(integer); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -10127,13 +10021,6 @@ $$;
 
 
 --
--- Name: FUNCTION queue_appointment_embedding(); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.queue_appointment_embedding() IS 'Automatically queue appointments for embedding generation';
-
-
---
 -- Name: queue_time_summary_recalculation(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -10183,6 +10070,36 @@ $$;
 
 
 --
+-- Name: record_promotion_usage(uuid, uuid, uuid, uuid, text, numeric, numeric, numeric, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.record_promotion_usage(p_promotion_id uuid, p_organization_id uuid, p_customer_id uuid, p_order_id uuid, p_order_type text, p_discount_applied numeric, p_original_amount numeric, p_final_amount numeric, p_promo_code text DEFAULT NULL::text) RETURNS uuid
+    LANGUAGE plpgsql SECURITY DEFINER
+    AS $$
+DECLARE
+    v_usage_id UUID;
+BEGIN
+    -- Insert usage record
+    INSERT INTO promotion_usage (
+        promotion_id, organization_id, customer_id, order_id, order_type,
+        discount_applied, original_amount, final_amount, promo_code_used
+    ) VALUES (
+        p_promotion_id, p_organization_id, p_customer_id, p_order_id, p_order_type,
+        p_discount_applied, p_original_amount, p_final_amount, p_promo_code
+    ) RETURNING id INTO v_usage_id;
+
+    -- Increment counter
+    UPDATE promotions
+    SET current_uses = current_uses + 1,
+        total_revenue_generated = total_revenue_generated + p_final_amount
+    WHERE id = p_promotion_id;
+
+    RETURN v_usage_id;
+END;
+$$;
+
+
+--
 -- Name: record_time_entry(uuid, public.time_entry_type, public.time_entry_source, public.verification_method, jsonb, text, timestamp with time zone); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -10226,6 +10143,26 @@ BEGIN
     ) RETURNING id INTO v_entry_id;
 
     RETURN v_entry_id;
+END;
+$$;
+
+
+--
+-- Name: remove_line_item(uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.remove_line_item(p_line_item_id uuid) RETURNS json
+    LANGUAGE plpgsql SECURITY DEFINER
+    AS $$
+BEGIN
+    UPDATE transaction_line_items
+    SET deleted_at = NOW()
+    WHERE id = p_line_item_id;
+    
+    RETURN json_build_object(
+        'success', true,
+        'message', 'Item eliminado'
+    );
 END;
 $$;
 
@@ -10343,85 +10280,159 @@ $$;
 
 
 --
--- Name: FUNCTION resolve_client_by_phone(p_organization_id uuid, p_phone text); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.resolve_client_by_phone(p_organization_id uuid, p_phone text) IS 'Resolve client entity by phone number with organization-specific rules';
-
-
---
 -- Name: resolve_entity_synonym(character varying, character varying, uuid, character varying, character varying, character varying); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.resolve_entity_synonym(p_input_text character varying, p_entity_type character varying, p_organization_id uuid DEFAULT NULL::uuid, p_vertical_code character varying DEFAULT NULL::character varying, p_channel character varying DEFAULT NULL::character varying, p_language character varying DEFAULT 'es'::character varying) RETURNS TABLE(canonical_value character varying, canonical_id uuid, match_type character varying, confidence numeric, is_special_token boolean, metadata jsonb)
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE FUNCTION public.resolve_entity_synonym(p_input_text character varying, p_entity_type character varying, p_organization_id uuid, p_vertical_code character varying DEFAULT NULL::character varying, p_channel character varying DEFAULT NULL::character varying, p_language character varying DEFAULT NULL::character varying) RETURNS TABLE(canonical_value text, canonical_id uuid, match_type character varying, confidence double precision, is_special_token boolean, metadata jsonb)
+    LANGUAGE plpgsql STABLE
     AS $$
 DECLARE
-    v_normalized_input varchar;
+    v_normalized_input TEXT;
+    v_fuzzy_threshold FLOAT := 0.35;
+    v_result RECORD;
+    v_catalog_item_id UUID;
 BEGIN
-    -- Normalize input
-    v_normalized_input := lower(trim(p_input_text));
+    v_normalized_input := lower(p_input_text);
     
-    RETURN QUERY
+    -- ═══════════════════════════════════════════════════════════════════════════
+    -- PHASE 1: EXACT and PATTERN matches from synonyms table
+    -- ═══════════════════════════════════════════════════════════════════════════
     SELECT 
-        es.canonical_value,
-        es.canonical_id,
-        es.match_type,
-        -- Calculate confidence score
-        (
-            es.weight * 
-            CASE 
-                WHEN es.organization_id = p_organization_id THEN 1.5
-                WHEN es.organization_id IS NULL THEN 1.0
-                ELSE 0.5
-            END *
-            CASE
-                WHEN es.match_type = 'exact' AND v_normalized_input = es.synonym THEN 1.0
-                WHEN es.match_type = 'prefix' AND v_normalized_input LIKE es.synonym || '%' THEN 0.9
-                WHEN es.match_type = 'contains' AND v_normalized_input LIKE '%' || es.synonym || '%' THEN 0.7
-                ELSE 0.5
-            END
-        )::decimal AS confidence,
-        es.is_special_token,
-        jsonb_build_object(
-            'matched_synonym', es.synonym,
-            'category', es.category,
-            'context_hints', es.context_hints
-        ) AS metadata
-    FROM entity_synonyms es
+        es.canonical_value::TEXT as canonical_value,
+        COALESCE(es.match_type, 'exact')::VARCHAR as match_type,
+        es.confidence::FLOAT as confidence,
+        false as is_special_token,
+        jsonb_build_object('matched_synonym', es.synonym) as metadata
+    INTO v_result
+    FROM nlu_entity_synonyms es
     WHERE 
         es.enabled = true
         AND es.entity_type = p_entity_type
         AND (es.organization_id IS NULL OR es.organization_id = p_organization_id)
-        AND (es.vertical_code IS NULL OR es.vertical_code = p_vertical_code)
-        AND (es.channel IS NULL OR es.channel = p_channel)
-        AND (es.language IS NULL OR es.language = p_language)
         AND (
-            -- Match based on match_type
-            (es.match_type = 'exact' AND (
-                (NOT es.case_sensitive AND lower(es.synonym) = v_normalized_input) OR
-                (es.case_sensitive AND es.synonym = p_input_text)
-            ))
-            OR (es.match_type = 'prefix' AND v_normalized_input LIKE lower(es.synonym) || '%')
+            (COALESCE(es.match_type, 'exact') = 'exact' AND lower(es.synonym) = v_normalized_input)
             OR (es.match_type = 'contains' AND v_normalized_input LIKE '%' || lower(es.synonym) || '%')
+            OR (es.match_type = 'prefix' AND v_normalized_input LIKE lower(es.synonym) || '%')
         )
     ORDER BY 
-        confidence DESC,
-        es.priority DESC,
-        es.organization_id NULLS LAST  -- Org-specific first
+        es.confidence DESC,
+        COALESCE(es.priority, 0) DESC,
+        es.organization_id NULLS LAST
     LIMIT 1;
+    
+    -- If found in synonyms, lookup the actual catalog_item ID
+    IF FOUND THEN
+        v_catalog_item_id := NULL;
+        
+        IF p_entity_type = 'catalog_item' THEN
+            SELECT ci.id INTO v_catalog_item_id
+            FROM catalog_items ci
+            WHERE lower(ci.name) = lower(v_result.canonical_value)
+              AND ci.organization_id = p_organization_id
+              AND ci.deleted_at IS NULL
+            LIMIT 1;
+        END IF;
+        
+        RETURN QUERY SELECT 
+            v_result.canonical_value,
+            v_catalog_item_id,
+            v_result.match_type,
+            v_result.confidence,
+            v_result.is_special_token,
+            v_result.metadata || jsonb_build_object('catalog_item_id', v_catalog_item_id);
+        RETURN;
+    END IF;
+    
+    -- ═══════════════════════════════════════════════════════════════════════════
+    -- PHASE 2: FUZZY match using pg_trgm on synonyms
+    -- ═══════════════════════════════════════════════════════════════════════════
+    SELECT 
+        es.canonical_value::TEXT as canonical_value,
+        'fuzzy'::VARCHAR as match_type,
+        (es.confidence * similarity(lower(es.synonym), v_normalized_input))::FLOAT as confidence,
+        false as is_special_token,
+        jsonb_build_object(
+            'matched_synonym', es.synonym,
+            'similarity_score', similarity(lower(es.synonym), v_normalized_input),
+            'fuzzy_match', true
+        ) as metadata
+    INTO v_result
+    FROM nlu_entity_synonyms es
+    WHERE 
+        es.enabled = true
+        AND es.entity_type = p_entity_type
+        AND (es.organization_id IS NULL OR es.organization_id = p_organization_id)
+        AND lower(es.synonym) % v_normalized_input
+        AND similarity(lower(es.synonym), v_normalized_input) >= v_fuzzy_threshold
+    ORDER BY 
+        similarity(lower(es.synonym), v_normalized_input) DESC,
+        es.confidence DESC,
+        COALESCE(es.priority, 0) DESC,
+        es.organization_id NULLS LAST
+    LIMIT 1;
+    
+    IF FOUND THEN
+        v_catalog_item_id := NULL;
+        
+        IF p_entity_type = 'catalog_item' THEN
+            SELECT ci.id INTO v_catalog_item_id
+            FROM catalog_items ci
+            WHERE lower(ci.name) = lower(v_result.canonical_value)
+              AND ci.organization_id = p_organization_id
+              AND ci.deleted_at IS NULL
+            LIMIT 1;
+        END IF;
+        
+        RETURN QUERY SELECT 
+            v_result.canonical_value,
+            v_catalog_item_id,
+            v_result.match_type,
+            v_result.confidence,
+            v_result.is_special_token,
+            v_result.metadata || jsonb_build_object('catalog_item_id', v_catalog_item_id);
+        RETURN;
+    END IF;
+    
+    -- ═══════════════════════════════════════════════════════════════════════════
+    -- PHASE 3: Direct catalog_items lookup (name match + fuzzy)
+    -- ═══════════════════════════════════════════════════════════════════════════
+    IF p_entity_type = 'catalog_item' THEN
+        SELECT 
+            ci.name::TEXT as canonical_value,
+            ci.id as canonical_id,
+            CASE WHEN lower(ci.name) = v_normalized_input THEN 'direct' ELSE 'direct_fuzzy' END::VARCHAR as match_type,
+            CASE WHEN lower(ci.name) = v_normalized_input THEN 0.95 ELSE similarity(lower(ci.name), v_normalized_input) END::FLOAT as confidence,
+            false as is_special_token,
+            jsonb_build_object('direct_match', true, 'catalog_item_id', ci.id) as metadata
+        INTO v_result
+        FROM catalog_items ci
+        WHERE ci.deleted_at IS NULL
+          AND ci.organization_id = p_organization_id
+          AND (
+            lower(ci.name) = v_normalized_input
+            OR (lower(ci.name) % v_normalized_input AND similarity(lower(ci.name), v_normalized_input) >= v_fuzzy_threshold)
+          )
+        ORDER BY 
+            CASE WHEN lower(ci.name) = v_normalized_input THEN 0 ELSE 1 END,
+            similarity(lower(ci.name), v_normalized_input) DESC
+        LIMIT 1;
+        
+        IF FOUND THEN
+            RETURN QUERY SELECT 
+                v_result.canonical_value,
+                v_result.canonical_id,
+                v_result.match_type,
+                v_result.confidence,
+                v_result.is_special_token,
+                v_result.metadata;
+            RETURN;
+        END IF;
+    END IF;
+    
+    -- No match found
+    RETURN;
 END;
 $$;
-
-
---
--- Name: FUNCTION resolve_entity_synonym(p_input_text character varying, p_entity_type character varying, p_organization_id uuid, p_vertical_code character varying, p_channel character varying, p_language character varying); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.resolve_entity_synonym(p_input_text character varying, p_entity_type character varying, p_organization_id uuid, p_vertical_code character varying, p_channel character varying, p_language character varying) IS 'Resolves an input text to its canonical entity value.
-Supports exact, prefix, and contains matching with confidence scoring.
-Organization-specific synonyms take priority over global ones.';
 
 
 --
@@ -10610,13 +10621,6 @@ $$;
 
 
 --
--- Name: FUNCTION resolve_slot_value(p_organization_id uuid, p_slot_name text, p_search_value text, p_channel_user_id text); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.resolve_slot_value(p_organization_id uuid, p_slot_name text, p_search_value text, p_channel_user_id text) IS 'Generic slot resolver - resolves client/provider/service values to entity/catalog IDs';
-
-
---
 -- Name: resource_can_provide(uuid, uuid, integer, time without time zone, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -10711,13 +10715,6 @@ $$;
 
 
 --
--- Name: FUNCTION resource_can_provide(p_resource_entity_id uuid, p_catalog_item_id uuid, p_check_day integer, p_check_time time without time zone, p_check_timezone text); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.resource_can_provide(p_resource_entity_id uuid, p_catalog_item_id uuid, p_check_day integer, p_check_time time without time zone, p_check_timezone text) IS 'Check if a resource can provide a catalog item at a specific day/time. Returns capability details.';
-
-
---
 -- Name: restore_patient(uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -10744,14 +10741,6 @@ $$;
 
 
 --
--- Name: FUNCTION restore_patient(p_patient_id uuid); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.restore_patient(p_patient_id uuid) IS 'Restore a soft-deleted patient (clear deleted_at timestamp).
-Returns true if patient was restored, false if not found or not deleted.';
-
-
---
 -- Name: role_has_permission(text, text, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -10774,6 +10763,33 @@ BEGIN
 
     v_permission := v_resource_perms->>p_action;
     RETURN v_permission IN ('true', 'all', 'own', 'limited', 'reports_only', 'booking_only');
+END;
+$$;
+
+
+--
+-- Name: rule_applies_to_role(text[], integer, text, integer); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.rule_applies_to_role(p_applicable_roles text[], p_minimum_level integer, p_role_key text, p_role_level integer) RETURNS boolean
+    LANGUAGE plpgsql IMMUTABLE
+    AS $$
+BEGIN
+    -- Check role key array (if specified)
+    IF p_applicable_roles IS NOT NULL AND array_length(p_applicable_roles, 1) > 0 THEN
+        IF NOT (p_role_key = ANY(p_applicable_roles)) THEN
+            RETURN FALSE;
+        END IF;
+    END IF;
+    
+    -- Check minimum level (if specified)
+    IF p_minimum_level IS NOT NULL THEN
+        IF p_role_level < p_minimum_level THEN
+            RETURN FALSE;
+        END IF;
+    END IF;
+    
+    RETURN TRUE;
 END;
 $$;
 
@@ -10894,13 +10910,6 @@ $$;
 
 
 --
--- Name: FUNCTION search_appointments(p_organization_id uuid, p_query_embedding extensions.vector, p_similarity_threshold double precision, p_limit_count integer, p_status text[], p_date_from date, p_date_to date); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.search_appointments(p_organization_id uuid, p_query_embedding extensions.vector, p_similarity_threshold double precision, p_limit_count integer, p_status text[], p_date_from date, p_date_to date) IS 'Semantic search for appointments with optional date and status filters.';
-
-
---
 -- Name: search_available_resources(text, uuid, date, time without time zone, text[], integer); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -10965,24 +10974,6 @@ BEGIN
     LIMIT p_match_count;
 END;
 $$;
-
-
---
--- Name: FUNCTION search_available_resources(p_query_text text, p_organization_id uuid, p_date date, p_time time without time zone, p_person_subtypes text[], p_match_count integer); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.search_available_resources(p_query_text text, p_organization_id uuid, p_date date, p_time time without time zone, p_person_subtypes text[], p_match_count integer) IS 'Search entities and check their availability for appointments.
-Returns resources sorted by relevance with availability status.
-
-Example:
-SELECT * FROM search_available_resources(
-    ''estilista'',
-    ''00000000-0000-0000-0000-000000000002''::uuid,
-    CURRENT_DATE + 1,
-    ''14:00''::time,
-    ARRAY[''staff''],
-    5
-);';
 
 
 --
@@ -11080,13 +11071,6 @@ $$;
 
 
 --
--- Name: FUNCTION search_catalog_items_hybrid(p_query_text text, p_query_embedding extensions.vector, p_organization_id uuid, p_item_types text[], p_category_id uuid, p_min_price numeric, p_max_price numeric, p_limit_count integer, p_semantic_weight double precision, p_fulltext_weight double precision, p_fuzzy_weight double precision); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.search_catalog_items_hybrid(p_query_text text, p_query_embedding extensions.vector, p_organization_id uuid, p_item_types text[], p_category_id uuid, p_min_price numeric, p_max_price numeric, p_limit_count integer, p_semantic_weight double precision, p_fulltext_weight double precision, p_fuzzy_weight double precision) IS 'Hybrid search combining semantic (pgvector), full-text (tsvector), and fuzzy (pg_trgm) matching. Weights configurable.';
-
-
---
 -- Name: search_catalog_items_text(text, uuid, text[], uuid, integer); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -11173,13 +11157,6 @@ $$;
 
 
 --
--- Name: FUNCTION search_catalog_items_text(p_query_text text, p_organization_id uuid, p_item_types text[], p_category_id uuid, p_limit_count integer); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.search_catalog_items_text(p_query_text text, p_organization_id uuid, p_item_types text[], p_category_id uuid, p_limit_count integer) IS 'Text-only search using full-text (tsvector) and fuzzy (pg_trgm) matching. No embedding required.';
-
-
---
 -- Name: search_faqs(uuid, extensions.vector, integer); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -11231,6 +11208,71 @@ $$;
 
 
 --
+-- Name: search_patients(uuid, text, integer); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.search_patients(p_organization_id uuid, p_search_term text, p_limit integer DEFAULT 50) RETURNS TABLE(patient_id uuid, match_score integer)
+    LANGUAGE plpgsql SECURITY DEFINER
+    AS $$
+DECLARE
+    search_pattern text;
+BEGIN
+    -- Prepare search pattern
+    search_pattern := '%' || LOWER(p_search_term) || '%';
+    
+    RETURN QUERY
+    SELECT DISTINCT
+        p.id as patient_id,
+        CASE
+            -- Exact matches score higher
+            WHEN LOWER(p.patient_code) = LOWER(p_search_term) THEN 100
+            WHEN LOWER(p.medical_record_number) = LOWER(p_search_term) THEN 100
+            WHEN LOWER(e.display_name) = LOWER(p_search_term) THEN 90
+            -- Partial matches
+            WHEN LOWER(p.patient_code) LIKE search_pattern THEN 80
+            WHEN LOWER(p.medical_record_number) LIKE search_pattern THEN 80
+            WHEN LOWER(p.first_name || ' ' || p.last_name) LIKE search_pattern THEN 70
+            WHEN LOWER(e.display_name) LIKE search_pattern THEN 70
+            WHEN e.phone LIKE search_pattern THEN 60
+            WHEN e.mobile LIKE search_pattern THEN 60
+            WHEN LOWER(e.email) LIKE search_pattern THEN 50
+            ELSE 10
+        END as match_score
+    FROM patients p
+    LEFT JOIN entities e ON e.id = p.entity_id
+    WHERE p.organization_id = p_organization_id
+      AND p.deleted_at IS NULL
+      AND (
+          -- Search in patients table
+          LOWER(p.patient_code) LIKE search_pattern
+          OR LOWER(p.medical_record_number) LIKE search_pattern
+          OR LOWER(p.external_id) LIKE search_pattern
+          OR LOWER(p.first_name) LIKE search_pattern
+          OR LOWER(p.last_name) LIKE search_pattern
+          OR LOWER(p.first_name || ' ' || p.last_name) LIKE search_pattern
+          -- Search in entities table (name, phone, email)
+          OR LOWER(e.display_name) LIKE search_pattern
+          OR e.phone LIKE search_pattern
+          OR e.mobile LIKE search_pattern
+          OR LOWER(e.email) LIKE search_pattern
+          -- Search in phones JSONB array
+          OR EXISTS (
+              SELECT 1 FROM jsonb_array_elements(p.phones) AS phone
+              WHERE phone->>'number' LIKE search_pattern
+          )
+          -- Search in emails JSONB array
+          OR EXISTS (
+              SELECT 1 FROM jsonb_array_elements(p.emails) AS email
+              WHERE LOWER(email->>'address') LIKE search_pattern
+          )
+      )
+    ORDER BY match_score DESC, e.display_name ASC
+    LIMIT p_limit;
+END;
+$$;
+
+
+--
 -- Name: search_similar_interactions(extensions.vector, double precision, integer, uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -11265,13 +11307,6 @@ BEGIN
   LIMIT match_count;
 END;
 $$;
-
-
---
--- Name: FUNCTION search_similar_interactions(query_embedding extensions.vector, match_threshold double precision, match_count integer, p_organization_id uuid); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.search_similar_interactions(query_embedding extensions.vector, match_threshold double precision, match_count integer, p_organization_id uuid) IS 'Search similar AI interactions using pgvector cosine similarity. Includes extensions schema for pgvector operators.';
 
 
 --
@@ -11378,13 +11413,6 @@ BEGIN
     LIMIT p_limit;
 END;
 $$;
-
-
---
--- Name: FUNCTION semantic_search_entities(query_embedding extensions.vector, p_organization_id uuid, p_limit integer, p_min_similarity double precision); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.semantic_search_entities(query_embedding extensions.vector, p_organization_id uuid, p_limit integer, p_min_similarity double precision) IS 'Semantic search of entities using vector similarity. Returns entities ordered by relevance.';
 
 
 --
@@ -11531,13 +11559,6 @@ CREATE TABLE public.services (
 
 
 --
--- Name: TABLE services; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.services IS 'Services offered by providers';
-
-
---
 -- Name: services_embedding_content(public.services); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -11666,13 +11687,6 @@ $$;
 
 
 --
--- Name: FUNCTION services_embedding_content(s public.services); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.services_embedding_content(s public.services) IS 'Generates multi-vertical aware content for service embeddings. Adapts based on organization vertical (healthcare treatments, beauty services, retail products, etc.)';
-
-
---
 -- Name: set_organization_patient_prefix(uuid, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -11686,13 +11700,6 @@ BEGIN
   DO UPDATE SET prefix = upper(p_prefix);
 END;
 $$;
-
-
---
--- Name: FUNCTION set_organization_patient_prefix(p_organization_id uuid, p_prefix text); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.set_organization_patient_prefix(p_organization_id uuid, p_prefix text) IS 'Sets the patient code prefix for an organization';
 
 
 --
@@ -11755,13 +11762,6 @@ CREATE TABLE public.skill_definitions (
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     has_embedding boolean DEFAULT false
 );
-
-
---
--- Name: TABLE skill_definitions; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.skill_definitions IS 'Defines skills/certifications that providers can have and items can require';
 
 
 --
@@ -11848,13 +11848,6 @@ $$;
 
 
 --
--- Name: FUNCTION skill_definitions_embedding_content(skill public.skill_definitions); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.skill_definitions_embedding_content(skill public.skill_definitions) IS 'Generates content for skill definition embeddings';
-
-
---
 -- Name: skill_definitions_embedding_content_wrapper(uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -11910,14 +11903,6 @@ BEGIN
     RETURN v_affected_rows > 0;
 END;
 $$;
-
-
---
--- Name: FUNCTION soft_delete_patient(p_patient_id uuid); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.soft_delete_patient(p_patient_id uuid) IS 'Soft delete a patient (set deleted_at timestamp).
-Returns true if patient was deleted, false if not found or already deleted.';
 
 
 --
@@ -12133,13 +12118,6 @@ $$;
 
 
 --
--- Name: FUNCTION sync_employee_schedule_to_provider(p_employee_id uuid); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.sync_employee_schedule_to_provider(p_employee_id uuid) IS 'Syncs employee work_schedule JSONB to provider_schedules table for scheduler integration';
-
-
---
 -- Name: sync_proficiency_score(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -12205,6 +12183,95 @@ BEGIN
         PERFORM sync_employee_schedule_to_provider(NEW.id);
     END IF;
     RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: update_appointment_status(uuid, text, uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.update_appointment_status(p_appointment_id uuid, p_status text, p_organization_id uuid DEFAULT NULL::uuid) RETURNS json
+    LANGUAGE plpgsql SECURITY DEFINER
+    AS $$
+DECLARE
+    v_status appointment_status;
+    v_updated_row appointments%ROWTYPE;
+BEGIN
+    -- Validate and convert status
+    BEGIN
+        v_status := p_status::appointment_status;
+    EXCEPTION WHEN OTHERS THEN
+        RETURN json_build_object(
+            'success', false,
+            'error', 'Invalid status: ' || p_status
+        );
+    END;
+
+    -- Update the appointment
+    UPDATE appointments
+    SET 
+        status = v_status,
+        updated_at = NOW()
+    WHERE id = p_appointment_id
+      AND (p_organization_id IS NULL OR organization_id = p_organization_id)
+    RETURNING * INTO v_updated_row;
+
+    IF v_updated_row.id IS NULL THEN
+        RETURN json_build_object(
+            'success', false,
+            'error', 'Appointment not found or access denied'
+        );
+    END IF;
+
+    RETURN json_build_object(
+        'success', true,
+        'appointment_id', v_updated_row.id,
+        'new_status', v_updated_row.status::text
+    );
+END;
+$$;
+
+
+--
+-- Name: update_appointment_with_fields(uuid, uuid, text, uuid, jsonb); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.update_appointment_with_fields(p_appointment_id uuid, p_organization_id uuid, p_status text DEFAULT NULL::text, p_resource_entity_id uuid DEFAULT NULL::uuid, p_metadata jsonb DEFAULT NULL::jsonb) RETURNS jsonb
+    LANGUAGE plpgsql SECURITY DEFINER
+    AS $$
+DECLARE
+    v_updated_row appointments%ROWTYPE;
+BEGIN
+    -- Verify the appointment belongs to the organization
+    IF NOT EXISTS (
+        SELECT 1 FROM appointments 
+        WHERE id = p_appointment_id 
+        AND organization_id = p_organization_id
+    ) THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Appointment not found or access denied');
+    END IF;
+
+    -- Build dynamic update
+    UPDATE appointments
+    SET 
+        status = COALESCE(p_status::appointment_status, status),
+        resource_entity_id = COALESCE(p_resource_entity_id, resource_entity_id),
+        metadata = COALESCE(p_metadata, metadata),
+        updated_at = NOW()
+    WHERE id = p_appointment_id
+    AND organization_id = p_organization_id
+    RETURNING * INTO v_updated_row;
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'appointment_id', v_updated_row.id,
+        'status', v_updated_row.status,
+        'resource_entity_id', v_updated_row.resource_entity_id
+    );
+EXCEPTION
+    WHEN OTHERS THEN
+        RETURN jsonb_build_object('success', false, 'error', SQLERRM);
 END;
 $$;
 
@@ -12300,13 +12367,6 @@ $$;
 
 
 --
--- Name: FUNCTION update_conversation_memory(p_conversation_id uuid, p_message jsonb, p_slots jsonb, p_intent text, p_summary text); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.update_conversation_memory(p_conversation_id uuid, p_message jsonb, p_slots jsonb, p_intent text, p_summary text) IS 'Updates conversation with new message and merges slots (fixes array concatenation bug)';
-
-
---
 -- Name: update_conversation_state(uuid, jsonb); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -12321,13 +12381,6 @@ BEGIN
   WHERE id = p_conversation_id;
 END;
 $$;
-
-
---
--- Name: FUNCTION update_conversation_state(p_conversation_id uuid, p_state jsonb); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.update_conversation_state(p_conversation_id uuid, p_state jsonb) IS 'Updates the conversation state for a WhatsApp conversation';
 
 
 --
@@ -12348,13 +12401,6 @@ BEGIN
   RETURN NEW;
 END;
 $$;
-
-
---
--- Name: FUNCTION update_conversation_timestamp(); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.update_conversation_timestamp() IS 'Automatically updates conversation last_message_at and message_count on new message';
 
 
 --
@@ -12381,6 +12427,48 @@ CREATE FUNCTION public.update_departments_timestamp() RETURNS trigger
 BEGIN
     NEW.updated_at = NOW();
     RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: update_entity_bookable_status(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.update_entity_bookable_status() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    -- Cuando se agrega un item_provider o service_provider, marcar entidad como bookable
+    IF TG_OP = 'INSERT' THEN
+        UPDATE entities 
+        SET is_bookable = true,
+            updated_at = NOW()
+        WHERE id = NEW.provider_entity_id
+        AND is_bookable = false;  -- Solo si no está ya marcado
+        
+        RETURN NEW;
+    END IF;
+    
+    -- Cuando se elimina, verificar si quedan otros servicios
+    IF TG_OP = 'DELETE' THEN
+        -- Verificar si la entidad tiene otros servicios asignados
+        IF NOT EXISTS (
+            SELECT 1 FROM item_providers WHERE provider_entity_id = OLD.provider_entity_id
+            UNION ALL
+            SELECT 1 FROM service_providers WHERE provider_entity_id = OLD.provider_entity_id
+        ) THEN
+            -- No tiene más servicios, desmarcar is_bookable
+            UPDATE entities 
+            SET is_bookable = false,
+                updated_at = NOW()
+            WHERE id = OLD.provider_entity_id;
+        END IF;
+        
+        RETURN OLD;
+    END IF;
+    
+    RETURN NULL;
 END;
 $$;
 
@@ -12550,6 +12638,83 @@ CREATE FUNCTION public.update_leave_types_timestamp() RETURNS trigger
 BEGIN
     NEW.updated_at = NOW();
     RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: update_line_item_provider(uuid, uuid, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.update_line_item_provider(p_line_item_id uuid, p_provider_entity_id uuid, p_provider_name text) RETURNS jsonb
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public'
+    AS $$
+DECLARE
+    v_result JSONB;
+BEGIN
+    -- Update the line item
+    UPDATE transaction_line_items
+    SET 
+        provider_entity_id = p_provider_entity_id,
+        provider_name = p_provider_name,
+        updated_at = NOW()
+    WHERE id = p_line_item_id;
+    
+    -- Check if update was successful
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'error', 'Line item not found'
+        );
+    END IF;
+    
+    -- Return success with updated data
+    SELECT jsonb_build_object(
+        'success', true,
+        'line_item_id', id,
+        'provider_entity_id', provider_entity_id,
+        'provider_name', provider_name
+    ) INTO v_result
+    FROM transaction_line_items
+    WHERE id = p_line_item_id;
+    
+    RETURN v_result;
+END;
+$$;
+
+
+--
+-- Name: update_line_item_status(uuid, text, uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.update_line_item_status(p_line_item_id uuid, p_status text, p_provider_entity_id uuid DEFAULT NULL::uuid) RETURNS json
+    LANGUAGE plpgsql SECURITY DEFINER
+    AS $$
+DECLARE
+    v_provider_name TEXT;
+BEGIN
+    -- Obtener nombre del provider si se cambia
+    IF p_provider_entity_id IS NOT NULL THEN
+        SELECT display_name INTO v_provider_name
+        FROM entities
+        WHERE id = p_provider_entity_id;
+    END IF;
+
+    UPDATE transaction_line_items
+    SET 
+        status = p_status,
+        started_at = CASE WHEN p_status = 'in_progress' AND started_at IS NULL THEN NOW() ELSE started_at END,
+        completed_at = CASE WHEN p_status = 'completed' THEN NOW() ELSE completed_at END,
+        provider_entity_id = COALESCE(p_provider_entity_id, provider_entity_id),
+        provider_name = COALESCE(v_provider_name, provider_name),
+        updated_at = NOW()
+    WHERE id = p_line_item_id;
+    
+    RETURN json_build_object(
+        'success', true,
+        'message', 'Status actualizado'
+    );
 END;
 $$;
 
@@ -12753,6 +12918,20 @@ $$;
 
 
 --
+-- Name: update_tli_timestamp(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.update_tli_timestamp() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$;
+
+
+--
 -- Name: update_updated_at_column(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -12764,13 +12943,6 @@ BEGIN
     RETURN NEW;
 END;
 $$;
-
-
---
--- Name: FUNCTION update_updated_at_column(); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.update_updated_at_column() IS 'Trigger function to automatically update updated_at timestamps';
 
 
 --
@@ -12954,196 +13126,114 @@ $$;
 
 
 --
--- Name: authenticate_as(text); Type: FUNCTION; Schema: tests; Owner: -
+-- Name: validate_promo_code(text, uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION tests.authenticate_as(identifier text) RETURNS void
+CREATE FUNCTION public.validate_promo_code(p_code text, p_organization_id uuid, p_customer_id uuid DEFAULT NULL::uuid) RETURNS TABLE(is_valid boolean, promotion_id uuid, promo_name text, promo_type text, error_message text)
     LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'auth', 'pg_temp'
     AS $$
 DECLARE
-    user_id uuid;
+    v_promotion promotions%ROWTYPE;
+    v_customer_uses INTEGER;
 BEGIN
-    SELECT id INTO user_id
-    FROM auth.users
-    WHERE raw_user_meta_data ->> 'test_identifier' = identifier
-    LIMIT 1;
+    -- Find promotion by code
+    SELECT * INTO v_promotion
+    FROM promotions
+    WHERE promo_code = UPPER(p_code)
+      AND organization_id = p_organization_id;
 
-    IF user_id IS NULL THEN
-        RAISE EXCEPTION 'User with identifier % not found', identifier;
+    IF NOT FOUND THEN
+        RETURN QUERY SELECT FALSE, NULL::UUID, NULL::TEXT, NULL::TEXT, 'Codigo invalido';
+        RETURN;
     END IF;
 
-    PERFORM set_config('request.jwt.claim.sub', user_id::text, true);
-    PERFORM set_config('request.jwt.claim.role', 'authenticated', true);
-    PERFORM set_config('request.jwt.claims', json_build_object('sub', user_id)::text, true);
+    -- Check if active
+    IF NOT v_promotion.is_active THEN
+        RETURN QUERY SELECT FALSE, v_promotion.id, v_promotion.name, v_promotion.promo_type, 'Promocion inactiva';
+        RETURN;
+    END IF;
 
-    EXECUTE 'SET LOCAL ROLE authenticated';
+    -- Check date validity
+    IF v_promotion.valid_from IS NOT NULL AND v_promotion.valid_from > now() THEN
+        RETURN QUERY SELECT FALSE, v_promotion.id, v_promotion.name, v_promotion.promo_type, 'Promocion aun no inicia';
+        RETURN;
+    END IF;
+
+    IF v_promotion.valid_until IS NOT NULL AND v_promotion.valid_until < now() THEN
+        RETURN QUERY SELECT FALSE, v_promotion.id, v_promotion.name, v_promotion.promo_type, 'Promocion expirada';
+        RETURN;
+    END IF;
+
+    -- Check total uses
+    IF v_promotion.max_uses_total IS NOT NULL AND v_promotion.current_uses >= v_promotion.max_uses_total THEN
+        RETURN QUERY SELECT FALSE, v_promotion.id, v_promotion.name, v_promotion.promo_type, 'Limite de usos alcanzado';
+        RETURN;
+    END IF;
+
+    -- Check per-customer uses
+    IF v_promotion.max_uses_per_customer IS NOT NULL AND p_customer_id IS NOT NULL THEN
+        SELECT COUNT(*) INTO v_customer_uses
+        FROM promotion_usage
+        WHERE promotion_id = v_promotion.id AND customer_id = p_customer_id;
+
+        IF v_customer_uses >= v_promotion.max_uses_per_customer THEN
+            RETURN QUERY SELECT FALSE, v_promotion.id, v_promotion.name, v_promotion.promo_type, 'Ya usaste esta promocion';
+            RETURN;
+        END IF;
+    END IF;
+
+    -- Valid!
+    RETURN QUERY SELECT TRUE, v_promotion.id, v_promotion.name, v_promotion.promo_type, NULL::TEXT;
 END;
 $$;
 
 
 --
--- Name: authenticate_as_service_role(); Type: FUNCTION; Schema: tests; Owner: -
+-- Name: validate_promotion_no_overlap(uuid, timestamp with time zone, timestamp with time zone, character varying, uuid[], uuid[], uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION tests.authenticate_as_service_role() RETURNS void
-    LANGUAGE plpgsql SECURITY DEFINER
-    AS $$
-BEGIN
-    PERFORM set_config('request.jwt.claim.sub', '', true);
-    PERFORM set_config('request.jwt.claim.role', '', true);
-    PERFORM set_config('request.jwt.claims', '', true);
-
-    EXECUTE 'SET LOCAL ROLE service_role';
-END;
-$$;
-
-
---
--- Name: cleanup_test_data(); Type: FUNCTION; Schema: tests; Owner: -
---
-
-CREATE FUNCTION tests.cleanup_test_data() RETURNS void
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public', 'auth', 'pg_temp'
-    AS $$
-BEGIN
-    DELETE FROM auth.users WHERE raw_user_meta_data->>'test_identifier' IS NOT NULL;
-    DELETE FROM public.organizations WHERE custom_fields->>'test_data' = 'true';
-END;
-$$;
-
-
---
--- Name: clear_authentication(); Type: FUNCTION; Schema: tests; Owner: -
---
-
-CREATE FUNCTION tests.clear_authentication() RETURNS void
-    LANGUAGE plpgsql SECURITY DEFINER
-    AS $$
-BEGIN
-    PERFORM set_config('request.jwt.claim.sub', '', true);
-    PERFORM set_config('request.jwt.claim.role', '', true);
-    PERFORM set_config('request.jwt.claims', '', true);
-
-    EXECUTE 'SET LOCAL ROLE anon';
-END;
-$$;
-
-
---
--- Name: create_supabase_user(text, text, text, jsonb); Type: FUNCTION; Schema: tests; Owner: -
---
-
-CREATE FUNCTION tests.create_supabase_user(identifier text, email text DEFAULT NULL::text, phone text DEFAULT NULL::text, metadata jsonb DEFAULT NULL::jsonb) RETURNS uuid
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'auth', 'pg_temp'
+CREATE FUNCTION public.validate_promotion_no_overlap(p_organization_id uuid, p_valid_from timestamp with time zone, p_valid_until timestamp with time zone, p_promo_type character varying, p_catalog_item_ids uuid[] DEFAULT NULL::uuid[], p_category_ids uuid[] DEFAULT NULL::uuid[], p_exclude_promotion_id uuid DEFAULT NULL::uuid) RETURNS jsonb
+    LANGUAGE plpgsql STABLE
     AS $$
 DECLARE
-    user_id uuid;
+    v_overlaps JSONB;
+    v_count INT;
 BEGIN
-    user_id := gen_random_uuid();
-
-    INSERT INTO auth.users (
-        id, email, phone, raw_user_meta_data, raw_app_meta_data,
-        created_at, updated_at, email_confirmed_at, aud, role
-    )
-    VALUES (
-        user_id,
-        coalesce(email, concat(user_id, '@test.com')),
-        phone,
-        jsonb_build_object('test_identifier', identifier) || coalesce(metadata, '{}'::jsonb),
-        '{}'::jsonb,
-        now(), now(), now(), 'authenticated', 'authenticated'
+    -- Get all overlapping promotions
+    SELECT 
+        jsonb_agg(jsonb_build_object(
+            'id', promotion_id,
+            'name', promotion_name,
+            'type', promo_type,
+            'start', existing_start,
+            'end', existing_end,
+            'overlap_type', overlap_type
+        )),
+        COUNT(*)
+    INTO v_overlaps, v_count
+    FROM check_promotion_overlaps(
+        p_organization_id,
+        p_valid_from,
+        p_valid_until,
+        p_promo_type,
+        p_catalog_item_ids,
+        p_category_ids,
+        p_exclude_promotion_id
     );
 
-    RETURN user_id;
-END;
-$$;
-
-
---
--- Name: get_supabase_uid(text); Type: FUNCTION; Schema: tests; Owner: -
---
-
-CREATE FUNCTION tests.get_supabase_uid(identifier text) RETURNS uuid
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'auth', 'pg_temp'
-    AS $$
-DECLARE
-    user_id uuid;
-BEGIN
-    SELECT id INTO user_id
-    FROM auth.users
-    WHERE raw_user_meta_data ->> 'test_identifier' = identifier
-    LIMIT 1;
-
-    RETURN user_id;
-END;
-$$;
-
-
---
--- Name: get_supabase_user(text); Type: FUNCTION; Schema: tests; Owner: -
---
-
-CREATE FUNCTION tests.get_supabase_user(identifier text) RETURNS json
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'auth', 'pg_temp'
-    AS $$
-DECLARE
-    supabase_user json;
-BEGIN
-    SELECT json_build_object(
-        'id', id, 'email', email, 'phone', phone,
-        'raw_user_meta_data', raw_user_meta_data,
-        'raw_app_meta_data', raw_app_meta_data
-    ) INTO supabase_user
-    FROM auth.users
-    WHERE raw_user_meta_data ->> 'test_identifier' = identifier
-    LIMIT 1;
-
-    RETURN supabase_user;
-END;
-$$;
-
-
---
--- Name: rls_enabled(text); Type: FUNCTION; Schema: tests; Owner: -
---
-
-CREATE FUNCTION tests.rls_enabled(testing_schema text) RETURNS SETOF text
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-    table_name text;
-BEGIN
-    FOR table_name IN
-        SELECT tablename
-        FROM pg_tables
-        WHERE schemaname = testing_schema
-    LOOP
-        RETURN QUERY SELECT ok(
-            (SELECT relrowsecurity FROM pg_class WHERE oid = (quote_ident(testing_schema) || '.' || quote_ident(table_name))::regclass),
-            'RLS should be enabled on table ' || testing_schema || '.' || table_name
+    IF v_count = 0 THEN
+        RETURN jsonb_build_object(
+            'valid', true,
+            'message', 'No hay conflictos de fechas',
+            'overlaps', '[]'::jsonb
         );
-    END LOOP;
-END;
-$$;
-
-
---
--- Name: rls_enabled(text, text); Type: FUNCTION; Schema: tests; Owner: -
---
-
-CREATE FUNCTION tests.rls_enabled(testing_schema text, testing_table text) RETURNS SETOF text
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-    RETURN QUERY SELECT ok(
-        (SELECT relrowsecurity FROM pg_class WHERE oid = (quote_ident(testing_schema) || '.' || quote_ident(testing_table))::regclass),
-        'RLS should be enabled on table ' || testing_schema || '.' || testing_table
-    );
+    ELSE
+        RETURN jsonb_build_object(
+            'valid', false,
+            'message', format('Hay %s promoción(es) con fechas solapadas', v_count),
+            'overlaps', COALESCE(v_overlaps, '[]'::jsonb)
+        );
+    END IF;
 END;
 $$;
 
@@ -13216,13 +13306,6 @@ $$;
 
 
 --
--- Name: FUNCTION clear_column(); Type: COMMENT; Schema: util; Owner: -
---
-
-COMMENT ON FUNCTION util.clear_column() IS 'Generic trigger to clear a column value (set to NULL) before update. Requires hstore extension.';
-
-
---
 -- Name: invoke_edge_function(text, jsonb, integer); Type: FUNCTION; Schema: util; Owner: -
 --
 
@@ -13262,13 +13345,6 @@ BEGIN
   );
 END;
 $$;
-
-
---
--- Name: FUNCTION invoke_edge_function(name text, body jsonb, timeout_milliseconds integer); Type: COMMENT; Schema: util; Owner: -
---
-
-COMMENT ON FUNCTION util.invoke_edge_function(name text, body jsonb, timeout_milliseconds integer) IS 'Invokes a Supabase Edge Function asynchronously via pg_net with optional authorization';
 
 
 --
@@ -13509,13 +13585,6 @@ $$;
 
 
 --
--- Name: FUNCTION process_embeddings_with_ai(p_batch_size integer, p_max_jobs integer, p_timeout_seconds integer); Type: COMMENT; Schema: util; Owner: -
---
-
-COMMENT ON FUNCTION util.process_embeddings_with_ai(p_batch_size integer, p_max_jobs integer, p_timeout_seconds integer) IS 'Processes embedding queue with correct net.http_post signature (positional params).';
-
-
---
 -- Name: project_url(); Type: FUNCTION; Schema: util; Owner: -
 --
 
@@ -13533,13 +13602,6 @@ begin
   return secret_value;
 end;
 $$;
-
-
---
--- Name: FUNCTION project_url(); Type: COMMENT; Schema: util; Owner: -
---
-
-COMMENT ON FUNCTION util.project_url() IS 'Retrieves Supabase project URL from Vault for Edge Function invocations';
 
 
 --
@@ -13569,13 +13631,6 @@ begin
   return NEW;
 end;
 $$;
-
-
---
--- Name: FUNCTION queue_embeddings(); Type: COMMENT; Schema: util; Owner: -
---
-
-COMMENT ON FUNCTION util.queue_embeddings() IS 'Trigger function that queues embedding generation jobs in pgmq. Requires table to have id column.';
 
 
 --
@@ -13609,14 +13664,6 @@ begin
   return NEW;
 end;
 $$;
-
-
---
--- Name: FUNCTION queue_embeddings_with_ai(); Type: COMMENT; Schema: util; Owner: -
---
-
-COMMENT ON FUNCTION util.queue_embeddings_with_ai() IS 'Trigger function that queues embedding generation AND AI analysis jobs. 
-Args: contentFunction, embeddingColumn, analyzeAi (bool), entityType';
 
 
 --
@@ -13681,13 +13728,6 @@ begin
   return secret_value;
 end;
 $$;
-
-
---
--- Name: FUNCTION service_role_key(); Type: COMMENT; Schema: util; Owner: -
---
-
-COMMENT ON FUNCTION util.service_role_key() IS 'Returns the service_role JWT from vault.secrets. Strips "Bearer " prefix if present.';
 
 
 --
@@ -13808,6 +13848,34 @@ ALTER SEQUENCE public._migrations_id_seq OWNED BY public._migrations.id;
 
 
 --
+-- Name: ai_approval_requests; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ai_approval_requests (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    organization_id uuid NOT NULL,
+    skill_name text NOT NULL,
+    intent text,
+    action_data jsonb DEFAULT '{}'::jsonb NOT NULL,
+    description text NOT NULL,
+    requester_user_id uuid,
+    requester_entity_id uuid,
+    requester_role text NOT NULL,
+    requester_name text,
+    status text DEFAULT 'pending'::text NOT NULL,
+    approver_user_id uuid,
+    approver_role text,
+    approver_comment text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    expires_at timestamp with time zone NOT NULL,
+    resolved_at timestamp with time zone,
+    channel text DEFAULT 'unknown'::text,
+    channel_user_id text,
+    CONSTRAINT ai_approval_requests_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'approved'::text, 'rejected'::text, 'expired'::text, 'cancelled'::text])))
+);
+
+
+--
 -- Name: ai_cache; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -13824,13 +13892,6 @@ CREATE TABLE public.ai_cache (
     expires_at timestamp with time zone,
     created_at timestamp with time zone DEFAULT now() NOT NULL
 );
-
-
---
--- Name: TABLE ai_cache; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.ai_cache IS 'Cache of AI responses to reduce API costs and improve latency';
 
 
 --
@@ -13860,69 +13921,6 @@ CREATE TABLE public.ai_conversations (
 
 
 --
--- Name: TABLE ai_conversations; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.ai_conversations IS 'AI chat conversation history';
-
-
---
--- Name: COLUMN ai_conversations.context_type; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.ai_conversations.context_type IS 'Context: general, appointment_booking, patient_search, medical_notes';
-
-
---
--- Name: COLUMN ai_conversations.messages; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.ai_conversations.messages IS 'Array of messages: [{"role": "user|assistant", "content": "...", "timestamp": "..."}]';
-
-
---
--- Name: COLUMN ai_conversations.channel; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.ai_conversations.channel IS 'Origin channel: whatsapp, web, app, voice';
-
-
---
--- Name: COLUMN ai_conversations.phone_number; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.ai_conversations.phone_number IS 'Phone number for identifying users without auth (WhatsApp)';
-
-
---
--- Name: COLUMN ai_conversations.summary; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.ai_conversations.summary IS 'AI-generated summary of the conversation for context reuse';
-
-
---
--- Name: COLUMN ai_conversations.collected_slots; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.ai_conversations.collected_slots IS 'Slots collected during conversation: {"doctor": "Dr. Pérez", "service": "consulta"}';
-
-
---
--- Name: COLUMN ai_conversations.last_intent; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.ai_conversations.last_intent IS 'Last detected intent: create_appointment, cancel_appointment, etc.';
-
-
---
--- Name: COLUMN ai_conversations.session_id; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.ai_conversations.session_id IS 'Session ID for grouping related conversations';
-
-
---
 -- Name: ai_embedding_configs; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -13943,34 +13941,6 @@ CREATE TABLE public.ai_embedding_configs (
 
 
 --
--- Name: TABLE ai_embedding_configs; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.ai_embedding_configs IS 'Registry of tables with auto-embedding enabled';
-
-
---
--- Name: COLUMN ai_embedding_configs.content_columns; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.ai_embedding_configs.content_columns IS 'Array of column names to concatenate for embedding content';
-
-
---
--- Name: COLUMN ai_embedding_configs.custom_content_sql; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.ai_embedding_configs.custom_content_sql IS 'Optional: Custom SQL to generate content (can reference NEW.column_name)';
-
-
---
--- Name: COLUMN ai_embedding_configs.filter_condition; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.ai_embedding_configs.filter_condition IS 'Optional: WHERE clause to filter which rows get embedded';
-
-
---
 -- Name: ai_embedding_queue; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -13987,13 +13957,6 @@ CREATE TABLE public.ai_embedding_queue (
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     processed_at timestamp with time zone
 );
-
-
---
--- Name: TABLE ai_embedding_queue; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.ai_embedding_queue IS 'Queue for asynchronous embedding generation via Edge Functions';
 
 
 --
@@ -14017,27 +13980,6 @@ CREATE TABLE public.ai_embeddings (
 
 
 --
--- Name: TABLE ai_embeddings; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.ai_embeddings IS 'Vector embeddings for AI-powered semantic search';
-
-
---
--- Name: COLUMN ai_embeddings.embedding; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.ai_embeddings.embedding IS 'Vector of 1536 dimensions (OpenAI text-embedding-3-small)';
-
-
---
--- Name: COLUMN ai_embeddings.metadata; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.ai_embeddings.metadata IS 'Metadata for hybrid filtering (e.g., {"entity_type": "patient", "status": "active"})';
-
-
---
 -- Name: ai_interactions; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -14054,13 +13996,6 @@ CREATE TABLE public.ai_interactions (
     metadata jsonb DEFAULT '{}'::jsonb,
     created_at timestamp with time zone DEFAULT now()
 );
-
-
---
--- Name: TABLE ai_interactions; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.ai_interactions IS 'Memoria semántica de interacciones usuario-IA. Usado para RAG y aprendizaje.';
 
 
 --
@@ -14082,53 +14017,28 @@ CREATE TABLE public.ai_search_logs (
 
 
 --
--- Name: TABLE ai_search_logs; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.ai_search_logs IS 'Logs of semantic searches for analytics and performance monitoring';
-
-
---
 -- Name: ai_skill_executions; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.ai_skill_executions (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    skill_id uuid NOT NULL,
+    id uuid NOT NULL,
     organization_id uuid NOT NULL,
     user_id uuid,
-    conversation_id uuid,
-    channel text,
-    request_id text,
-    input_params jsonb,
-    output_result jsonb,
-    reasoning text,
-    status public.skill_execution_status DEFAULT 'pending'::public.skill_execution_status NOT NULL,
+    skill_name text NOT NULL,
+    intent text,
+    input_data jsonb,
+    output_data jsonb,
+    entity_id uuid,
+    entity_type text DEFAULT 'unknown'::text,
+    role_key text DEFAULT 'unknown'::text,
+    role_level integer DEFAULT 0,
+    channel text DEFAULT 'unknown'::text,
+    was_allowed boolean DEFAULT true,
+    denial_reason text,
     error_message text,
-    error_code text,
-    latency_ms integer,
-    tokens_used integer,
-    requires_approval boolean DEFAULT false,
-    approved_by uuid,
-    approved_at timestamp with time zone,
-    started_at timestamp with time zone DEFAULT now(),
-    completed_at timestamp with time zone,
+    execution_time_ms integer,
     created_at timestamp with time zone DEFAULT now()
 );
-
-
---
--- Name: TABLE ai_skill_executions; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.ai_skill_executions IS 'Audit trail of all skill executions';
-
-
---
--- Name: COLUMN ai_skill_executions.reasoning; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.ai_skill_executions.reasoning IS 'LLM explanation of why this skill was selected';
 
 
 --
@@ -14158,27 +14068,6 @@ CREATE TABLE public.ai_skills (
 
 
 --
--- Name: TABLE ai_skills; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.ai_skills IS 'Registry of available AI skills for the orchestrator';
-
-
---
--- Name: COLUMN ai_skills.parameters; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.ai_skills.parameters IS 'JSON Schema defining the skill parameters';
-
-
---
--- Name: COLUMN ai_skills.requires_approval; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.ai_skills.requires_approval IS 'If true, execution requires human approval';
-
-
---
 -- Name: ai_usage; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -14195,13 +14084,6 @@ CREATE TABLE public.ai_usage (
     metadata jsonb DEFAULT '{}'::jsonb,
     created_at timestamp with time zone DEFAULT now()
 );
-
-
---
--- Name: TABLE ai_usage; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.ai_usage IS 'Tracking detallado de costos y uso de IA. Para billing y análisis.';
 
 
 --
@@ -14229,13 +14111,6 @@ CREATE TABLE public.appointment_audit_log (
 
 
 --
--- Name: TABLE appointment_audit_log; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.appointment_audit_log IS 'Tracks all changes to appointments for compliance and history';
-
-
---
 -- Name: appointment_resources; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -14260,10 +14135,31 @@ CREATE TABLE public.appointment_resources (
 
 
 --
--- Name: TABLE appointment_resources; Type: COMMENT; Schema: public; Owner: -
+-- Name: asset_registry; Type: TABLE; Schema: public; Owner: -
 --
 
-COMMENT ON TABLE public.appointment_resources IS 'Multiple resources (people, equipment, rooms) per appointment';
+CREATE TABLE public.asset_registry (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    organization_id uuid NOT NULL,
+    entity_id uuid,
+    asset_code character varying(50) NOT NULL,
+    name text NOT NULL,
+    description text,
+    asset_type text NOT NULL,
+    manufacturer text,
+    model text,
+    serial_number text,
+    purchase_date date,
+    warranty_until date,
+    location_entity_id uuid,
+    status text DEFAULT 'active'::text NOT NULL,
+    criticality text DEFAULT 'medium'::text NOT NULL,
+    custom_fields jsonb DEFAULT '{}'::jsonb,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    deleted_at timestamp with time zone,
+    CONSTRAINT asset_registry_name_check CHECK ((length(TRIM(BOTH FROM name)) >= 2))
+);
 
 
 --
@@ -14291,15 +14187,8 @@ CREATE TABLE public.attribute_definitions (
     embedding extensions.vector(1536),
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT attribute_definitions_data_type_check CHECK (((data_type)::text = ANY ((ARRAY['text'::character varying, 'number'::character varying, 'boolean'::character varying, 'date'::character varying, 'select'::character varying, 'multi_select'::character varying, 'color'::character varying, 'url'::character varying])::text[])))
+    CONSTRAINT attribute_definitions_data_type_check CHECK (((data_type)::text = ANY (ARRAY[('text'::character varying)::text, ('number'::character varying)::text, ('boolean'::character varying)::text, ('date'::character varying)::text, ('select'::character varying)::text, ('multi_select'::character varying)::text, ('color'::character varying)::text, ('url'::character varying)::text])))
 );
-
-
---
--- Name: TABLE attribute_definitions; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.attribute_definitions IS 'Defines available attributes for catalog items (color, size, etc.)';
 
 
 --
@@ -14318,13 +14207,6 @@ CREATE TABLE public.audit_logs (
     created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
     CONSTRAINT audit_logs_action_check CHECK ((length(action) > 0))
 );
-
-
---
--- Name: TABLE audit_logs; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.audit_logs IS 'Audit trail for all important data changes';
 
 
 --
@@ -14371,13 +14253,6 @@ CREATE TABLE public.booking_configurations (
 
 
 --
--- Name: TABLE booking_configurations; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.booking_configurations IS 'Configuration for public booking widget';
-
-
---
 -- Name: booking_sessions; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -14396,13 +14271,6 @@ CREATE TABLE public.booking_sessions (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT booking_sessions_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'confirmed'::text, 'expired'::text, 'cancelled'::text])))
 );
-
-
---
--- Name: TABLE booking_sessions; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.booking_sessions IS 'Temporary holds on time slots during booking process';
 
 
 --
@@ -14426,41 +14294,6 @@ CREATE TABLE public.bot_messages (
     CONSTRAINT bot_messages_category_check CHECK ((category = ANY (ARRAY['greeting'::text, 'farewell'::text, 'acknowledgment'::text, 'slot_prompt'::text, 'confirmation'::text, 'error'::text, 'fallback'::text, 'waiting'::text, 'menu'::text, 'help'::text, 'transfer'::text, 'out_of_hours'::text, 'appointment_created'::text, 'appointment_updated'::text, 'appointment_cancelled'::text]))),
     CONSTRAINT bot_messages_channel_check CHECK (((channel IS NULL) OR (channel = ANY (ARRAY['whatsapp'::text, 'web'::text, 'app'::text]))))
 );
-
-
---
--- Name: TABLE bot_messages; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.bot_messages IS 'Database-driven bot messages, prompts, and templates';
-
-
---
--- Name: COLUMN bot_messages.category; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.bot_messages.category IS 'Message category: greeting, slot_prompt, error, etc.';
-
-
---
--- Name: COLUMN bot_messages.message_key; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.bot_messages.message_key IS 'Specific key within category (e.g., service, provider for slot_prompt)';
-
-
---
--- Name: COLUMN bot_messages.message_template; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.bot_messages.message_template IS 'Message text with {variable} placeholders';
-
-
---
--- Name: COLUMN bot_messages.variations; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.bot_messages.variations IS 'Alternative phrasings for variety';
 
 
 --
@@ -14512,13 +14345,6 @@ CREATE TABLE public.calendar_connections (
 
 
 --
--- Name: TABLE calendar_connections; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.calendar_connections IS 'External calendar connections for sync (Google, Outlook, Apple)';
-
-
---
 -- Name: catalog_item_types; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -14535,13 +14361,6 @@ CREATE TABLE public.catalog_item_types (
 
 
 --
--- Name: TABLE catalog_item_types; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.catalog_item_types IS 'Reference table for catalog item types (product, service, bundle, etc.)';
-
-
---
 -- Name: catalog_tracking_types; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -14552,13 +14371,6 @@ CREATE TABLE public.catalog_tracking_types (
     sort_order integer DEFAULT 0,
     created_at timestamp with time zone DEFAULT now() NOT NULL
 );
-
-
---
--- Name: TABLE catalog_tracking_types; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.catalog_tracking_types IS 'Reference table for inventory tracking methods';
 
 
 --
@@ -14627,167 +14439,6 @@ CREATE TABLE public.clients (
 
 
 --
--- Name: TABLE clients; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.clients IS 'Extension table for non-healthcare client data (beauty, retail, etc.)';
-
-
---
--- Name: COLUMN clients.entity_id; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.clients.entity_id IS 'Reference to base entity record';
-
-
---
--- Name: COLUMN clients.preferences; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.clients.preferences IS 'Client preferences (preferred stylist, services, times, etc.)';
-
-
---
--- Name: COLUMN clients.ai_insights; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.clients.ai_insights IS 'AI-generated insights (churn risk, upsell opportunities, etc.)';
-
-
---
--- Name: COLUMN clients.vertical_fields; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.clients.vertical_fields IS 'Vertical-specific fields (hair_type, skin_type, etc. for beauty)';
-
-
---
--- Name: COLUMN clients.tags; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.clients.tags IS 'Custom tags for organizing/filtering clients';
-
-
---
--- Name: COLUMN clients.client_type; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.clients.client_type IS 'Type of client: individual (persona física) or business (empresa)';
-
-
---
--- Name: COLUMN clients.photo_url; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.clients.photo_url IS 'URL to client profile photo in storage';
-
-
---
--- Name: COLUMN clients.company_name; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.clients.company_name IS 'Legal company name (Razón Social) - only for business clients';
-
-
---
--- Name: COLUMN clients.trade_name; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.clients.trade_name IS 'Trade/Commercial name (Nombre Comercial) - only for business clients';
-
-
---
--- Name: COLUMN clients.tax_id; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.clients.tax_id IS 'Tax identification number (RNC/NIF/RFC/EIN) - only for business clients';
-
-
---
--- Name: COLUMN clients.industry; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.clients.industry IS 'Industry or business sector - only for business clients';
-
-
---
--- Name: COLUMN clients.legal_representative; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.clients.legal_representative IS 'Legal representative name - only for business clients';
-
-
---
--- Name: COLUMN clients.legal_representative_phone; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.clients.legal_representative_phone IS 'Legal representative phone - only for business clients';
-
-
---
--- Name: COLUMN clients.legal_representative_email; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.clients.legal_representative_email IS 'Legal representative email - only for business clients';
-
-
---
--- Name: COLUMN clients.number_of_employees; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.clients.number_of_employees IS 'Company size / number of employees - only for business clients';
-
-
---
--- Name: COLUMN clients.website; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.clients.website IS 'Company website URL - only for business clients';
-
-
---
--- Name: COLUMN clients.year_founded; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.clients.year_founded IS 'Year the company was founded - only for business clients';
-
-
---
--- Name: COLUMN clients.social_links; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.clients.social_links IS 'Social media profiles: {"instagram": {"url": "...", "handle": "..."}, "facebook": {...}, ...}';
-
-
---
--- Name: COLUMN clients.ai_churn_risk; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.clients.ai_churn_risk IS 'AI-predicted churn probability (0.0 = no risk, 1.0 = certain churn)';
-
-
---
--- Name: COLUMN clients.ai_lifetime_value; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.clients.ai_lifetime_value IS 'AI-predicted customer lifetime value in organization currency';
-
-
---
--- Name: COLUMN clients.ai_predicted_next_visit; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.clients.ai_predicted_next_visit IS 'AI-predicted date of next visit based on behavior patterns';
-
-
---
--- Name: COLUMN clients.ai_upsell_opportunities; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.clients.ai_upsell_opportunities IS 'AI-suggested upsell opportunities based on client profile and history';
-
-
---
 -- Name: conversation_flow_runtime; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -14845,13 +14496,6 @@ CREATE TABLE public.conversation_flow_states (
 
 
 --
--- Name: TABLE conversation_flow_states; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.conversation_flow_states IS 'Runtime state for active conversation flows. Tracks collected slots and current position.';
-
-
---
 -- Name: conversation_flows; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -14888,28 +14532,6 @@ CREATE TABLE public.conversation_flows (
 
 
 --
--- Name: TABLE conversation_flows; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.conversation_flows IS 'Defines multi-turn conversation flows with slot collection and validation.
-Used to structure conversations like appointment booking, inquiries, etc.';
-
-
---
--- Name: COLUMN conversation_flows.trigger_intents; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.conversation_flows.trigger_intents IS 'Array of intent names that activate this flow';
-
-
---
--- Name: COLUMN conversation_flows.slots; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.conversation_flows.slots IS 'JSONB array defining slots with: name, type, required, order, prompt_key, validation, dependencies';
-
-
---
 -- Name: conversation_memory; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -14924,15 +14546,8 @@ CREATE TABLE public.conversation_memory (
     detected_intent character varying(100),
     detected_entities jsonb DEFAULT '{}'::jsonb,
     created_at timestamp with time zone DEFAULT now(),
-    CONSTRAINT conversation_memory_role_check CHECK (((role)::text = ANY ((ARRAY['user'::character varying, 'assistant'::character varying, 'system'::character varying])::text[])))
+    CONSTRAINT conversation_memory_role_check CHECK (((role)::text = ANY (ARRAY[('user'::character varying)::text, ('assistant'::character varying)::text, ('system'::character varying)::text])))
 );
-
-
---
--- Name: TABLE conversation_memory; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.conversation_memory IS 'Stores conversation history for context-aware AI responses';
 
 
 --
@@ -14984,13 +14599,6 @@ CREATE TABLE public.daily_time_summary (
 
 
 --
--- Name: TABLE daily_time_summary; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.daily_time_summary IS 'Pre-calculated daily totals for fast reporting and payroll';
-
-
---
 -- Name: departments; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -15019,13 +14627,6 @@ CREATE TABLE public.departments (
 
 
 --
--- Name: TABLE departments; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.departments IS 'Organizational units with hierarchical structure';
-
-
---
 -- Name: entity_ai_cold; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -15037,13 +14638,6 @@ CREATE TABLE public.entity_ai_cold (
     archived_at timestamp with time zone DEFAULT now(),
     created_at timestamp with time zone DEFAULT now() NOT NULL
 );
-
-
---
--- Name: TABLE entity_ai_cold; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.entity_ai_cold IS 'Cold storage for historical AI snapshots - archived for compliance and trend analysis';
 
 
 --
@@ -15061,13 +14655,6 @@ CREATE TABLE public.entity_ai_hot (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
-
-
---
--- Name: TABLE entity_ai_hot; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.entity_ai_hot IS 'Hot storage for frequently accessed AI data (last 90 days) - optimized for low latency';
 
 
 --
@@ -15097,13 +14684,6 @@ CREATE TABLE public.entity_ai_traits (
     created_by uuid,
     updated_by uuid
 );
-
-
---
--- Name: TABLE entity_ai_traits; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.entity_ai_traits IS 'Shared AI fields for all entity types - eliminates duplication across patients, customers, beauty_clients, etc';
 
 
 --
@@ -15245,13 +14825,6 @@ CREATE TABLE public.entity_metrics_cache (
 
 
 --
--- Name: TABLE entity_metrics_cache; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.entity_metrics_cache IS 'Materialized metrics cache for fast dashboard queries - updated via triggers or batch jobs';
-
-
---
 -- Name: entity_relationships; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -15292,78 +14865,6 @@ CREATE TABLE public.entity_relationships (
 
 
 --
--- Name: TABLE entity_relationships; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.entity_relationships IS 'Bidirectional relationships between entities.
-Examples: parent-child, patient-physician, employee-manager, client-vendor.
-Create both directions if relationship is symmetric (e.g., spouse, sibling).';
-
-
---
--- Name: COLUMN entity_relationships.source_entity_id; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.entity_relationships.source_entity_id IS 'Source entity in relationship (e.g., parent, physician, manager).';
-
-
---
--- Name: COLUMN entity_relationships.target_entity_id; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.entity_relationships.target_entity_id IS 'Target entity in relationship (e.g., child, patient, employee).';
-
-
---
--- Name: COLUMN entity_relationships.can_make_medical_decisions; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.entity_relationships.can_make_medical_decisions IS 'Can make medical decisions on behalf of entity_to (healthcare proxy, guardian).';
-
-
---
--- Name: COLUMN entity_relationships.can_view_medical_records; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.entity_relationships.can_view_medical_records IS 'Authorized to view medical records of entity_to.';
-
-
---
--- Name: COLUMN entity_relationships.is_billing_contact; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.entity_relationships.is_billing_contact IS 'Financially responsible for entity_to (parent, guarantor).';
-
-
---
--- Name: COLUMN entity_relationships.is_primary; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.entity_relationships.is_primary IS 'Primary contact for entity_to (emergency, billing, etc.).';
-
-
---
--- Name: COLUMN entity_relationships.valid_from; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.entity_relationships.valid_from IS 'Relationship start date.';
-
-
---
--- Name: COLUMN entity_relationships.valid_until; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.entity_relationships.valid_until IS 'Relationship end date (NULL = active indefinitely).';
-
-
---
--- Name: COLUMN entity_relationships.priority; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.entity_relationships.priority IS 'Priority/order (1=primary, 2=secondary). Lower number = higher priority.';
-
-
---
 -- Name: entity_synonyms; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -15394,57 +14895,6 @@ CREATE TABLE public.entity_synonyms (
 
 
 --
--- Name: TABLE entity_synonyms; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.entity_synonyms IS 'Stores entity synonyms for NLU resolution with multi-tenant support.
-Maps informal/regional terms to canonical values.
-Examples: "la china" → "Xiomara", "corte" → "corte de cabello"';
-
-
---
--- Name: COLUMN entity_synonyms.entity_type; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.entity_synonyms.entity_type IS 'Type of entity: service, provider, product, location, time_expression';
-
-
---
--- Name: COLUMN entity_synonyms.synonym; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.entity_synonyms.synonym IS 'The input text to match (stored lowercase)';
-
-
---
--- Name: COLUMN entity_synonyms.canonical_value; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.entity_synonyms.canonical_value IS 'The normalized/resolved value';
-
-
---
--- Name: COLUMN entity_synonyms.canonical_id; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.entity_synonyms.canonical_id IS 'Optional direct reference to the entity (employee.id, service.id)';
-
-
---
--- Name: COLUMN entity_synonyms.match_type; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.entity_synonyms.match_type IS 'How to match: exact, prefix, contains, fuzzy, regex';
-
-
---
--- Name: COLUMN entity_synonyms.is_special_token; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.entity_synonyms.is_special_token IS 'For special tokens like __LAST_PROVIDER__, __ANY__';
-
-
---
 -- Name: external_calendar_events; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -15467,10 +14917,81 @@ CREATE TABLE public.external_calendar_events (
 
 
 --
--- Name: TABLE external_calendar_events; Type: COMMENT; Schema: public; Owner: -
+-- Name: fuel_accounts; Type: TABLE; Schema: public; Owner: -
 --
 
-COMMENT ON TABLE public.external_calendar_events IS 'Events synced from external calendars';
+CREATE TABLE public.fuel_accounts (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    organization_id uuid NOT NULL,
+    account_code character varying(50) NOT NULL,
+    name text NOT NULL,
+    provider_entity_id uuid,
+    status text DEFAULT 'active'::text NOT NULL,
+    notes text,
+    custom_fields jsonb DEFAULT '{}'::jsonb,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    deleted_at timestamp with time zone,
+    CONSTRAINT fuel_accounts_name_check CHECK ((length(TRIM(BOTH FROM name)) >= 2)),
+    CONSTRAINT fuel_accounts_status_check CHECK ((status = ANY (ARRAY['active'::text, 'suspended'::text, 'closed'::text])))
+);
+
+
+--
+-- Name: fuel_cards; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.fuel_cards (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    organization_id uuid NOT NULL,
+    account_id uuid,
+    card_code character varying(50) NOT NULL,
+    last_four character varying(10),
+    provider_entity_id uuid,
+    assigned_entity_id uuid,
+    assigned_asset_id uuid,
+    daily_limit numeric(12,2),
+    monthly_limit numeric(12,2),
+    currency character varying(3) DEFAULT 'USD'::character varying,
+    status text DEFAULT 'active'::text NOT NULL,
+    notes text,
+    custom_fields jsonb DEFAULT '{}'::jsonb,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    deleted_at timestamp with time zone,
+    CONSTRAINT fuel_cards_status_check CHECK ((status = ANY (ARRAY['active'::text, 'blocked'::text, 'expired'::text])))
+);
+
+
+--
+-- Name: fuel_transactions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.fuel_transactions (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    organization_id uuid NOT NULL,
+    asset_id uuid,
+    driver_entity_id uuid,
+    fuel_card_id uuid,
+    supplier_entity_id uuid,
+    location_entity_id uuid,
+    odometer_km numeric(12,2),
+    liters numeric(12,3) NOT NULL,
+    unit_price numeric(12,4),
+    total_cost numeric(12,4),
+    currency character varying(3) DEFAULT 'USD'::character varying,
+    occurred_at timestamp with time zone DEFAULT now() NOT NULL,
+    source text DEFAULT 'manual'::text NOT NULL,
+    raw_payload jsonb DEFAULT '{}'::jsonb,
+    notes text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    deleted_at timestamp with time zone,
+    CONSTRAINT fuel_transactions_cost_check CHECK (((total_cost IS NULL) OR (total_cost >= (0)::numeric))),
+    CONSTRAINT fuel_transactions_liters_check CHECK ((liters > (0)::numeric)),
+    CONSTRAINT fuel_transactions_odometer_check CHECK (((odometer_km IS NULL) OR (odometer_km >= (0)::numeric))),
+    CONSTRAINT fuel_transactions_source_check CHECK ((source = ANY (ARRAY['manual'::text, 'telematics'::text, 'import'::text])))
+);
 
 
 --
@@ -15500,13 +15021,6 @@ CREATE TABLE public.identification_document_types (
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone DEFAULT now()
 );
-
-
---
--- Name: TABLE identification_document_types; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.identification_document_types IS 'Catalog of identification document types per country';
 
 
 --
@@ -15544,13 +15058,6 @@ CREATE TABLE public.insurance_providers (
 
 
 --
--- Name: TABLE insurance_providers; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.insurance_providers IS 'Insurance provider specific data - extends entities table';
-
-
---
 -- Name: inventory; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -15564,13 +15071,6 @@ CREATE TABLE public.inventory (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
-
-
---
--- Name: TABLE inventory; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.inventory IS 'Inventario por producto/organización';
 
 
 --
@@ -15616,13 +15116,6 @@ CREATE TABLE public.item_attributes (
 
 
 --
--- Name: TABLE item_attributes; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.item_attributes IS 'Stores attribute values for catalog items (especially for variant-creating attributes)';
-
-
---
 -- Name: item_providers; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -15646,13 +15139,6 @@ CREATE TABLE public.item_providers (
 
 
 --
--- Name: TABLE item_providers; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.item_providers IS 'Links catalog items to providers who can deliver them';
-
-
---
 -- Name: item_skill_requirements; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -15666,13 +15152,6 @@ CREATE TABLE public.item_skill_requirements (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT item_skill_requirements_min_proficiency_check CHECK (((min_proficiency >= 1) AND (min_proficiency <= 5)))
 );
-
-
---
--- Name: TABLE item_skill_requirements; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.item_skill_requirements IS 'Defines which skills/certifications are required to provide an item';
 
 
 --
@@ -15709,13 +15188,6 @@ CREATE TABLE public.jobs (
 
 
 --
--- Name: TABLE jobs; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.jobs IS 'Position templates with pay grades, requirements, and benefit eligibility';
-
-
---
 -- Name: leave_balances; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -15735,13 +15207,6 @@ CREATE TABLE public.leave_balances (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
-
-
---
--- Name: TABLE leave_balances; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.leave_balances IS 'Employee leave balances per type per year';
 
 
 --
@@ -15775,13 +15240,6 @@ CREATE TABLE public.leave_requests (
 
 
 --
--- Name: TABLE leave_requests; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.leave_requests IS 'Employee leave requests with approval workflow';
-
-
---
 -- Name: leave_types; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -15810,10 +15268,47 @@ CREATE TABLE public.leave_types (
 
 
 --
--- Name: TABLE leave_types; Type: COMMENT; Schema: public; Owner: -
+-- Name: maintenance_plan_tasks; Type: TABLE; Schema: public; Owner: -
 --
 
-COMMENT ON TABLE public.leave_types IS 'Types of leave with accrual rules and pay configuration';
+CREATE TABLE public.maintenance_plan_tasks (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    plan_id uuid NOT NULL,
+    catalog_item_id uuid,
+    sequence integer DEFAULT 0 NOT NULL,
+    estimated_minutes integer,
+    instructions text,
+    is_required boolean DEFAULT true NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT maintenance_plan_tasks_sequence_check CHECK ((sequence >= 0))
+);
+
+
+--
+-- Name: maintenance_plans; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.maintenance_plans (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    organization_id uuid NOT NULL,
+    asset_id uuid NOT NULL,
+    plan_code character varying(50) NOT NULL,
+    name text NOT NULL,
+    description text,
+    plan_type text DEFAULT 'preventive'::text NOT NULL,
+    interval_type text NOT NULL,
+    interval_value integer NOT NULL,
+    next_due_at timestamp with time zone,
+    sla_hours integer,
+    is_active boolean DEFAULT true NOT NULL,
+    custom_fields jsonb DEFAULT '{}'::jsonb,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    deleted_at timestamp with time zone,
+    CONSTRAINT maintenance_plans_interval_check CHECK ((interval_value > 0)),
+    CONSTRAINT maintenance_plans_name_check CHECK ((length(TRIM(BOTH FROM name)) >= 2))
+);
 
 
 --
@@ -15838,20 +15333,6 @@ CREATE TABLE public.memberships (
 
 
 --
--- Name: TABLE memberships; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.memberships IS 'Links users to organizations with specific roles and optional custom permissions';
-
-
---
--- Name: COLUMN memberships.custom_permissions; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.memberships.custom_permissions IS 'User-specific permission overrides. Merges with role permissions.';
-
-
---
 -- Name: nlu_entity_synonyms; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -15863,15 +15344,15 @@ CREATE TABLE public.nlu_entity_synonyms (
     canonical_value text NOT NULL,
     confidence double precision DEFAULT 0.8,
     created_at timestamp with time zone DEFAULT now(),
-    updated_at timestamp with time zone DEFAULT now()
+    updated_at timestamp with time zone DEFAULT now(),
+    enabled boolean DEFAULT true,
+    match_type character varying(20) DEFAULT 'exact'::character varying,
+    case_sensitive boolean DEFAULT false,
+    priority integer DEFAULT 0,
+    vertical_code character varying(50) DEFAULT NULL::character varying,
+    channel character varying(50) DEFAULT NULL::character varying,
+    language character varying(10) DEFAULT NULL::character varying
 );
-
-
---
--- Name: TABLE nlu_entity_synonyms; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.nlu_entity_synonyms IS 'Sinónimos de entidades para NLU';
 
 
 --
@@ -15896,7 +15377,9 @@ CREATE TABLE public.nlu_heuristic_rules (
     description text,
     enabled boolean DEFAULT true,
     created_at timestamp with time zone DEFAULT now(),
-    updated_at timestamp with time zone DEFAULT now()
+    updated_at timestamp with time zone DEFAULT now(),
+    applicable_roles text[],
+    minimum_role_level integer
 );
 
 
@@ -15915,34 +15398,6 @@ CREATE TABLE public.nlu_intent_examples (
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone DEFAULT now()
 );
-
-
---
--- Name: TABLE nlu_intent_examples; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.nlu_intent_examples IS 'Stores example phrases for intent classification using embeddings';
-
-
---
--- Name: COLUMN nlu_intent_examples.organization_id; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.nlu_intent_examples.organization_id IS 'NULL = global example, UUID = org-specific';
-
-
---
--- Name: COLUMN nlu_intent_examples.intent; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.nlu_intent_examples.intent IS 'Intent name: create_appointment, greeting, acknowledgment, farewell, etc.';
-
-
---
--- Name: COLUMN nlu_intent_examples.embedding; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.nlu_intent_examples.embedding IS 'Vector embedding for semantic similarity search';
 
 
 --
@@ -15967,34 +15422,6 @@ CREATE TABLE public.nlu_intent_signals (
 
 
 --
--- Name: TABLE nlu_intent_signals; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.nlu_intent_signals IS 'Pattern-based signals for intent classification';
-
-
---
--- Name: COLUMN nlu_intent_signals.signal_type; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.nlu_intent_signals.signal_type IS 'pattern=regex, keyword=word boundary, phrase=contains';
-
-
---
--- Name: COLUMN nlu_intent_signals.is_required; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.nlu_intent_signals.is_required IS 'If true, signal must match for intent to be detected';
-
-
---
--- Name: COLUMN nlu_intent_signals.is_negative; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.nlu_intent_signals.is_negative IS 'If true, signal negates the intent (anti-pattern)';
-
-
---
 -- Name: nlu_keywords; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -16009,27 +15436,6 @@ CREATE TABLE public.nlu_keywords (
     created_at timestamp with time zone DEFAULT now(),
     CONSTRAINT nlu_keywords_category_check CHECK ((category = ANY (ARRAY['action'::text, 'acknowledgment'::text, 'farewell'::text, 'new_appointment'::text, 'affirmative'::text, 'negative'::text, 'question'::text, 'service'::text, 'registration'::text, 'greeting'::text, 'service_inquiry'::text, 'third_party_booking'::text, 'return_ticket'::text, 'reschedule'::text, 'wait_time'::text, 'price_inquiry'::text, 'availability'::text, 'cancellation'::text, 'confirmation'::text])))
 );
-
-
---
--- Name: TABLE nlu_keywords; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.nlu_keywords IS 'Database-driven keywords for NLU intent detection';
-
-
---
--- Name: COLUMN nlu_keywords.category; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.nlu_keywords.category IS 'Keyword category: action, acknowledgment, farewell, new_appointment, etc.';
-
-
---
--- Name: COLUMN nlu_keywords.weight; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.nlu_keywords.weight IS 'Scoring weight (1.0 = normal, higher = more important)';
 
 
 --
@@ -16067,34 +15473,6 @@ CREATE TABLE public.nlu_training_logs (
 
 
 --
--- Name: TABLE nlu_training_logs; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.nlu_training_logs IS 'Stores NLU extractions for Active Learning and BERT fine-tuning';
-
-
---
--- Name: COLUMN nlu_training_logs.extraction_path; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.nlu_training_logs.extraction_path IS 'Which NLU path was used: pattern (fast) or llm (smart)';
-
-
---
--- Name: COLUMN nlu_training_logs.corrected_intent; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.nlu_training_logs.corrected_intent IS 'Human-corrected intent (if different from extracted)';
-
-
---
--- Name: COLUMN nlu_training_logs.quality_score; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.nlu_training_logs.quality_score IS 'Human rating 1-5 of extraction quality';
-
-
---
 -- Name: nlu_review_queue; Type: VIEW; Schema: public; Owner: -
 --
 
@@ -16111,13 +15489,6 @@ CREATE VIEW public.nlu_review_queue AS
    FROM public.nlu_training_logs
   WHERE ((NOT reviewed) AND ((extracted_confidence < (0.7)::double precision) OR needs_clarification))
   ORDER BY extracted_confidence, created_at DESC;
-
-
---
--- Name: VIEW nlu_review_queue; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON VIEW public.nlu_review_queue IS 'Queue of NLU extractions needing human review';
 
 
 --
@@ -16158,27 +15529,6 @@ CREATE TABLE public.nlu_typo_corrections (
 
 
 --
--- Name: TABLE nlu_typo_corrections; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.nlu_typo_corrections IS 'Database-driven typo and abbreviation corrections';
-
-
---
--- Name: COLUMN nlu_typo_corrections.typo; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.nlu_typo_corrections.typo IS 'The misspelling or abbreviation to correct';
-
-
---
--- Name: COLUMN nlu_typo_corrections.correction; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.nlu_typo_corrections.correction IS 'The correct form';
-
-
---
 -- Name: notification_queue; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -16195,10 +15545,25 @@ CREATE TABLE public.notification_queue (
 
 
 --
--- Name: TABLE notification_queue; Type: COMMENT; Schema: public; Owner: -
+-- Name: odometer_readings; Type: TABLE; Schema: public; Owner: -
 --
 
-COMMENT ON TABLE public.notification_queue IS 'Cola de notificaciones pendientes de envío por WhatsApp/SMS';
+CREATE TABLE public.odometer_readings (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    organization_id uuid NOT NULL,
+    asset_id uuid NOT NULL,
+    reading_km numeric(12,2) NOT NULL,
+    source text DEFAULT 'manual'::text NOT NULL,
+    recorded_at timestamp with time zone DEFAULT now() NOT NULL,
+    recorded_by uuid,
+    confidence_score numeric(3,2),
+    raw_payload jsonb DEFAULT '{}'::jsonb,
+    notes text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT odometer_readings_source_check CHECK ((source = ANY (ARRAY['manual'::text, 'telematics'::text, 'import'::text]))),
+    CONSTRAINT odometer_readings_value_check CHECK ((reading_km >= (0)::numeric))
+);
 
 
 --
@@ -16219,13 +15584,6 @@ CREATE TABLE public.orders (
 
 
 --
--- Name: TABLE orders; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.orders IS 'Órdenes simples creadas por el bot';
-
-
---
 -- Name: organization_configs; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -16236,13 +15594,6 @@ CREATE TABLE public.organization_configs (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
-
-
---
--- Name: TABLE organization_configs; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.organization_configs IS 'Key-value JSON configs per organization (e.g., whatsapp_vocabulary)';
 
 
 --
@@ -16263,13 +15614,6 @@ CREATE TABLE public.organization_policies (
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone DEFAULT now()
 );
-
-
---
--- Name: TABLE organization_policies; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.organization_policies IS 'Políticas y configuración de IA por organización. Controla límites, compliance y moderación.';
 
 
 --
@@ -16297,48 +15641,6 @@ CREATE TABLE public.organization_verticals (
     created_by uuid,
     updated_by uuid
 );
-
-
---
--- Name: TABLE organization_verticals; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.organization_verticals IS 'Master configuration for organization verticals (industries) with terminology and feature customization';
-
-
---
--- Name: COLUMN organization_verticals.code; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.organization_verticals.code IS 'Unique code identifier for programmatic use (e.g., healthcare, beauty_salon)';
-
-
---
--- Name: COLUMN organization_verticals.terminology_config; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.organization_verticals.terminology_config IS 'JSONB configuration for adapting UI labels per vertical';
-
-
---
--- Name: COLUMN organization_verticals.features_config; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.organization_verticals.features_config IS 'JSONB configuration for enabling/disabling features per vertical';
-
-
---
--- Name: COLUMN organization_verticals.field_visibility_config; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.organization_verticals.field_visibility_config IS 'JSONB configuration for showing/hiding form fields per vertical';
-
-
---
--- Name: COLUMN organization_verticals.is_system; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.organization_verticals.is_system IS 'System verticals are protected and cannot be deleted by users';
 
 
 --
@@ -16390,167 +15692,6 @@ CREATE TABLE public.organizations (
 
 
 --
--- Name: TABLE organizations; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.organizations IS 'Multi-tenant organizations - root of data isolation';
-
-
---
--- Name: COLUMN organizations.tax_id; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.organizations.tax_id IS 'Tax identification number';
-
-
---
--- Name: COLUMN organizations.custom_fields; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.organizations.custom_fields IS 'Flexible JSON storage for organization-specific fields';
-
-
---
--- Name: COLUMN organizations.vertical_id; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.organizations.vertical_id IS 'Reference to the configured vertical for this organization';
-
-
---
--- Name: COLUMN organizations.whatsapp_config; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.organizations.whatsapp_config IS 'WhatsApp Business API configuration for this organization. Structure:
-{
-  "phone_number_id": "string",
-  "business_account_id": "string", 
-  "access_token": "encrypted_string",
-  "verify_token": "string",
-  "enabled": boolean
-}';
-
-
---
--- Name: COLUMN organizations.vertical_code; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.organizations.vertical_code IS 'Business vertical code (healthcare, beauty, retail, etc.)';
-
-
---
--- Name: COLUMN organizations.email; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.organizations.email IS 'Primary email address (legacy - prefer emails JSONB array)';
-
-
---
--- Name: COLUMN organizations.phone; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.organizations.phone IS 'Primary phone number (legacy - prefer phones JSONB array)';
-
-
---
--- Name: COLUMN organizations.legal_name; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.organizations.legal_name IS 'Legal registered name (Razón Social)';
-
-
---
--- Name: COLUMN organizations.trade_name; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.organizations.trade_name IS 'Trade/commercial name (Nombre Comercial)';
-
-
---
--- Name: COLUMN organizations.rnc; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.organizations.rnc IS 'Dominican Republic Tax ID (Registro Nacional del Contribuyente)';
-
-
---
--- Name: COLUMN organizations.country; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.organizations.country IS 'Primary country code (ISO 3166-1 alpha-2)';
-
-
---
--- Name: COLUMN organizations.industry; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.organizations.industry IS 'Industry/sector classification';
-
-
---
--- Name: COLUMN organizations.addresses; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.organizations.addresses IS 'JSONB array of address objects';
-
-
---
--- Name: COLUMN organizations.phones; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.organizations.phones IS 'JSONB array of phone objects';
-
-
---
--- Name: COLUMN organizations.emails; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.organizations.emails IS 'JSONB array of email objects';
-
-
---
--- Name: COLUMN organizations.contacts; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.organizations.contacts IS 'JSONB array of contact person objects';
-
-
---
--- Name: COLUMN organizations.business_hours; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.organizations.business_hours IS 'JSONB object with business hours by day';
-
-
---
--- Name: COLUMN organizations.social_links; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.organizations.social_links IS 'JSONB object with social media links';
-
-
---
--- Name: COLUMN organizations.tax_info; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.organizations.tax_info IS 'JSONB object with tax/fiscal information';
-
-
---
--- Name: COLUMN organizations.org_type; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.organizations.org_type IS 'Organization type: company (parent) or branch (child)';
-
-
---
--- Name: COLUMN organizations.parent_id; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.organizations.parent_id IS 'Parent organization ID for branches';
-
-
---
 -- Name: patient_code_sequences; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -16560,20 +15701,6 @@ CREATE TABLE public.patient_code_sequences (
     prefix text DEFAULT 'PAT'::text NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
-
-
---
--- Name: TABLE patient_code_sequences; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.patient_code_sequences IS 'Stores the current sequence number for patient codes per organization';
-
-
---
--- Name: COLUMN patient_code_sequences.prefix; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.patient_code_sequences.prefix IS 'Organization-specific prefix for patient codes (e.g., BF, CLI, SPA)';
 
 
 --
@@ -16604,48 +15731,6 @@ CREATE TABLE public.patient_notes (
 
 
 --
--- Name: TABLE patient_notes; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.patient_notes IS 'Notas y comentarios de visitas de pacientes';
-
-
---
--- Name: COLUMN patient_notes.note_type; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.patient_notes.note_type IS 'Tipo: general, clinical, billing, internal, follow_up, phone_call, email, visit';
-
-
---
--- Name: COLUMN patient_notes.visit_date; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.patient_notes.visit_date IS 'Fecha de la visita/contacto (puede diferir de created_at)';
-
-
---
--- Name: COLUMN patient_notes.is_private; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.patient_notes.is_private IS 'Si es true, solo visible para el creador';
-
-
---
--- Name: COLUMN patient_notes.is_pinned; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.patient_notes.is_pinned IS 'Notas fijadas aparecen primero en el timeline';
-
-
---
--- Name: COLUMN patient_notes.attachments; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.patient_notes.attachments IS 'Array JSON de archivos adjuntos [{url, name, type, size}]';
-
-
---
 -- Name: positions; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -16669,10 +15754,74 @@ CREATE TABLE public.positions (
 
 
 --
--- Name: TABLE positions; Type: COMMENT; Schema: public; Owner: -
+-- Name: price_list_items; Type: TABLE; Schema: public; Owner: -
 --
 
-COMMENT ON TABLE public.positions IS 'Specific roles linking jobs to departments, can be filled by employees';
+CREATE TABLE public.price_list_items (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    price_list_id uuid NOT NULL,
+    catalog_item_id uuid NOT NULL,
+    price numeric(12,4) NOT NULL,
+    min_quantity integer DEFAULT 1,
+    start_date timestamp with time zone,
+    end_date timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: price_lists; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.price_lists (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    organization_id uuid NOT NULL,
+    name character varying(255) NOT NULL,
+    code character varying(50),
+    description text,
+    currency character varying(3) DEFAULT 'USD'::character varying,
+    price_list_type character varying(50) DEFAULT 'percentage_discount'::character varying,
+    discount_percent numeric(5,2) DEFAULT 0,
+    discount_amount numeric(12,4) DEFAULT 0,
+    margin_percent numeric(5,2) DEFAULT 0,
+    min_order_amount numeric(12,4),
+    start_date timestamp with time zone,
+    end_date timestamp with time zone,
+    country_codes text[] DEFAULT '{}'::text[],
+    customer_group_ids uuid[] DEFAULT '{}'::uuid[],
+    priority integer DEFAULT 10,
+    is_default boolean DEFAULT false,
+    is_active boolean DEFAULT true,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    created_by uuid,
+    updated_by uuid,
+    validity_range tstzrange GENERATED ALWAYS AS (tstzrange(COALESCE(start_date, '-infinity'::timestamp with time zone), COALESCE(end_date, 'infinity'::timestamp with time zone), '[)'::text)) STORED,
+    CONSTRAINT price_lists_price_list_type_check CHECK (((price_list_type)::text = ANY ((ARRAY['fixed_price'::character varying, 'percentage_discount'::character varying, 'fixed_discount'::character varying, 'formula'::character varying])::text[])))
+);
+
+
+--
+-- Name: product_categories; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.product_categories (
+    code character varying(30) NOT NULL,
+    name text NOT NULL,
+    name_es text NOT NULL,
+    description text,
+    icon character varying(50),
+    color character varying(7),
+    optimal_photos integer DEFAULT 2 NOT NULL,
+    has_nutrition boolean DEFAULT false NOT NULL,
+    has_ingredients boolean DEFAULT false NOT NULL,
+    has_drug_info boolean DEFAULT false NOT NULL,
+    has_technical_specs boolean DEFAULT false NOT NULL,
+    has_care_instructions boolean DEFAULT false NOT NULL,
+    display_order integer DEFAULT 100 NOT NULL,
+    is_active boolean DEFAULT true NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
 
 
 --
@@ -16690,13 +15839,6 @@ CREATE TABLE public.products (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
-
-
---
--- Name: TABLE products; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.products IS 'Catálogo de productos por organización';
 
 
 --
@@ -16727,13 +15869,6 @@ CREATE TABLE public.profiles (
 
 
 --
--- Name: TABLE profiles; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.profiles IS 'User profiles with preferences and settings';
-
-
---
 -- Name: promotion_analytics; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -16749,13 +15884,6 @@ CREATE TABLE public.promotion_analytics (
     channel_breakdown jsonb DEFAULT '{}'::jsonb,
     vertical_breakdown jsonb DEFAULT '{}'::jsonb
 );
-
-
---
--- Name: TABLE promotion_analytics; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.promotion_analytics IS 'AI-Native analytics for promotion effectiveness tracking and learning';
 
 
 --
@@ -16781,7 +15909,7 @@ CREATE TABLE public.promotion_rule_items (
     catalog_item_id uuid NOT NULL,
     override_discount numeric(10,2),
     role character varying(20) DEFAULT 'both'::character varying,
-    CONSTRAINT promotion_rule_items_role_check CHECK (((role)::text = ANY ((ARRAY['qualifying'::character varying, 'reward'::character varying, 'both'::character varying])::text[])))
+    CONSTRAINT promotion_rule_items_role_check CHECK (((role)::text = ANY (ARRAY[('qualifying'::character varying)::text, ('reward'::character varying)::text, ('both'::character varying)::text])))
 );
 
 
@@ -16805,15 +15933,8 @@ CREATE TABLE public.promotion_rules (
     vertical_rule_config jsonb DEFAULT '{}'::jsonb,
     is_active boolean DEFAULT true,
     created_at timestamp with time zone DEFAULT now(),
-    CONSTRAINT promotion_rules_apply_on_check CHECK (((apply_on)::text = ANY ((ARRAY['all'::character varying, 'category'::character varying, 'items'::character varying, 'item_type'::character varying, 'tags'::character varying, 'price_range'::character varying, 'resource_type'::character varying, 'vertical_specific'::character varying])::text[])))
+    CONSTRAINT promotion_rules_apply_on_check CHECK (((apply_on)::text = ANY (ARRAY[('all'::character varying)::text, ('category'::character varying)::text, ('items'::character varying)::text, ('item_type'::character varying)::text, ('tags'::character varying)::text, ('price_range'::character varying)::text, ('resource_type'::character varying)::text, ('vertical_specific'::character varying)::text])))
 );
-
-
---
--- Name: TABLE promotion_rules; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.promotion_rules IS 'Defines WHERE a promotion applies - supports multi-vertical targeting';
 
 
 --
@@ -16833,6 +15954,26 @@ CREATE TABLE public.promotion_tiers (
     bonus_points integer,
     tier_order integer NOT NULL,
     CONSTRAINT tier_has_range CHECK (((min_quantity IS NOT NULL) OR (min_amount IS NOT NULL)))
+);
+
+
+--
+-- Name: promotion_usage; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.promotion_usage (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    promotion_id uuid NOT NULL,
+    organization_id uuid NOT NULL,
+    customer_id uuid,
+    user_id uuid,
+    order_id uuid,
+    order_type character varying(50),
+    discount_applied numeric(12,4) NOT NULL,
+    original_amount numeric(12,4),
+    final_amount numeric(12,4),
+    promo_code_used character varying(50),
+    created_at timestamp with time zone DEFAULT now()
 );
 
 
@@ -16893,39 +16034,12 @@ CREATE TABLE public.promotions (
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone DEFAULT now(),
     created_by uuid,
-    CONSTRAINT promotions_promo_type_check CHECK (((promo_type)::text = ANY ((ARRAY['percentage'::character varying, 'fixed_amount'::character varying, 'fixed_price'::character varying, 'buy_x_get_y'::character varying, 'free_item'::character varying, 'free_shipping'::character varying, 'bundle_price'::character varying, 'tiered'::character varying, 'loyalty_points'::character varying, 'first_visit'::character varying, 'referral'::character varying])::text[]))),
+    validity_range tstzrange GENERATED ALWAYS AS (tstzrange(COALESCE(valid_from, '-infinity'::timestamp with time zone), COALESCE(valid_until, 'infinity'::timestamp with time zone), '[)'::text)) STORED,
+    CONSTRAINT promotions_promo_type_check CHECK (((promo_type)::text = ANY (ARRAY[('percentage'::character varying)::text, ('fixed_amount'::character varying)::text, ('fixed_price'::character varying)::text, ('buy_x_get_y'::character varying)::text, ('free_item'::character varying)::text, ('free_shipping'::character varying)::text, ('bundle_price'::character varying)::text, ('tiered'::character varying)::text, ('loyalty_points'::character varying)::text, ('first_visit'::character varying)::text, ('referral'::character varying)::text]))),
     CONSTRAINT valid_buy_get CHECK ((((promo_type)::text <> 'buy_x_get_y'::text) OR ((buy_quantity IS NOT NULL) AND (buy_quantity > 0) AND (get_quantity IS NOT NULL) AND (get_quantity > 0)))),
     CONSTRAINT valid_fixed_price CHECK ((((promo_type)::text <> 'fixed_price'::text) OR (fixed_price IS NOT NULL))),
     CONSTRAINT valid_percentage CHECK ((((promo_type)::text <> 'percentage'::text) OR ((discount_percentage IS NOT NULL) AND ((discount_percentage >= (0)::numeric) AND (discount_percentage <= (100)::numeric)))))
 );
-
-
---
--- Name: TABLE promotions; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.promotions IS 'AI-Native Multi-Vertical Promotions System v2.0 - Supports all promo types with semantic search and vertical-specific rules';
-
-
---
--- Name: COLUMN promotions.vertical_config; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.promotions.vertical_config IS 'Vertical-specific rules: salon (stylist_commission), clinic (requires_prescription), retail (online_only)';
-
-
---
--- Name: COLUMN promotions.embedding; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.promotions.embedding IS 'Vector embedding for semantic search: "find promotions for hair services"';
-
-
---
--- Name: COLUMN promotions.nlu_triggers; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.promotions.nlu_triggers IS 'NLU integration: intents, keywords, and contexts that trigger this promotion';
 
 
 --
@@ -16949,13 +16063,6 @@ CREATE TABLE public.provider_schedule_exceptions (
 
 
 --
--- Name: TABLE provider_schedule_exceptions; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.provider_schedule_exceptions IS 'Exceptions to regular schedules (vacations, special hours, etc.)';
-
-
---
 -- Name: provider_schedules; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -16972,13 +16079,6 @@ CREATE TABLE public.provider_schedules (
     CONSTRAINT provider_schedules_day_of_week_check CHECK (((day_of_week >= 1) AND (day_of_week <= 7))),
     CONSTRAINT provider_schedules_time_check CHECK ((end_time > start_time))
 );
-
-
---
--- Name: TABLE provider_schedules; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.provider_schedules IS 'Regular weekly schedules for providers';
 
 
 --
@@ -17001,13 +16101,6 @@ CREATE TABLE public.provider_skills (
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT provider_skills_proficiency_level_check CHECK (((proficiency_level >= 1) AND (proficiency_level <= 5)))
 );
-
-
---
--- Name: TABLE provider_skills; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.provider_skills IS 'Tracks skills and certifications that providers have';
 
 
 --
@@ -17037,13 +16130,6 @@ CREATE TABLE public.resource_availability (
     CONSTRAINT resource_availability_max_concurrent_appointments_check CHECK ((max_concurrent_appointments > 0)),
     CONSTRAINT resource_availability_time_check CHECK ((end_time > start_time))
 );
-
-
---
--- Name: TABLE resource_availability; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.resource_availability IS 'Recurring availability schedules for any resource type';
 
 
 --
@@ -17087,27 +16173,6 @@ CREATE TABLE public.resource_capabilities (
 
 
 --
--- Name: TABLE resource_capabilities; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.resource_capabilities IS 'Defines WHAT a resource can provide (capability). Multi-tenant, multi-vertical, multi-currency.';
-
-
---
--- Name: COLUMN resource_capabilities.attributes; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.resource_capabilities.attributes IS 'Flexible JSONB for multi-vertical attributes: modality, languages, certifications, tags, etc.';
-
-
---
--- Name: COLUMN resource_capabilities.valid_from; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.resource_capabilities.valid_from IS 'Start of validity period. Allows historical tracking of capability/pricing changes.';
-
-
---
 -- Name: resource_capability_availability; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -17125,20 +16190,6 @@ CREATE TABLE public.resource_capability_availability (
     CONSTRAINT chk_days_not_empty CHECK (((days_of_week IS NOT NULL) AND (cardinality(days_of_week) > 0))),
     CONSTRAINT chk_time_range CHECK ((time_from < time_until))
 );
-
-
---
--- Name: TABLE resource_capability_availability; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.resource_capability_availability IS 'Defines WHEN a resource can provide a capability. Supports multiple time slots per capability.';
-
-
---
--- Name: COLUMN resource_capability_availability.rules; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.resource_capability_availability.rules IS 'Flexible rules: max_bookings_per_day, blocked_dates, channels, priority, etc.';
 
 
 --
@@ -17163,13 +16214,6 @@ CREATE TABLE public.resource_unavailability (
 
 
 --
--- Name: TABLE resource_unavailability; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.resource_unavailability IS 'Exception periods (vacations, maintenance, etc)';
-
-
---
 -- Name: roles; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -17188,34 +16232,6 @@ CREATE TABLE public.roles (
     CONSTRAINT roles_level_check CHECK (((level >= 0) AND (level <= 300))),
     CONSTRAINT valid_permissions CHECK ((jsonb_typeof(permissions) = 'object'::text))
 );
-
-
---
--- Name: TABLE roles; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.roles IS 'Hierarchical role system with JSONB permissions for flexible access control';
-
-
---
--- Name: COLUMN roles.key; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.roles.key IS 'Unique identifier for the role (e.g., owner, admin, manager)';
-
-
---
--- Name: COLUMN roles.level; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.roles.level IS 'Hierarchy level: owner=100, admin=80, manager=60, staff=40, accountant=30, viewer=10';
-
-
---
--- Name: COLUMN roles.permissions; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.roles.permissions IS 'JSONB permissions: {"resource": {"action": true|false|"all"|"own"}}';
 
 
 --
@@ -17248,13 +16264,6 @@ CREATE TABLE public.scheduled_shifts (
 
 
 --
--- Name: TABLE scheduled_shifts; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.scheduled_shifts IS 'Specific shifts assigned to employees for particular dates';
-
-
---
 -- Name: service_providers; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -17268,13 +16277,6 @@ CREATE TABLE public.service_providers (
     custom_fields jsonb DEFAULT '{}'::jsonb,
     created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
 );
-
-
---
--- Name: TABLE service_providers; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.service_providers IS 'Links services to providers who can perform them';
 
 
 --
@@ -17308,13 +16310,6 @@ END))::integer / 60)) STORED,
 
 
 --
--- Name: TABLE shift_templates; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.shift_templates IS 'Reusable shift patterns with break configurations';
-
-
---
 -- Name: skill_access; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -17330,27 +16325,6 @@ CREATE TABLE public.skill_access (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
-
-
---
--- Name: TABLE skill_access; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.skill_access IS 'Controls which roles can execute which CoPilot skills';
-
-
---
--- Name: COLUMN skill_access.modules; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.skill_access.modules IS 'If set, skill only available in these modules';
-
-
---
--- Name: COLUMN skill_access.verticals; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.skill_access.verticals IS 'If set, skill only available in these verticals';
 
 
 --
@@ -17378,13 +16352,6 @@ CREATE TABLE public.subscription_plans (
 
 
 --
--- Name: TABLE subscription_plans; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.subscription_plans IS 'Available subscription plans for organizations';
-
-
---
 -- Name: subscriptions; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -17407,10 +16374,49 @@ CREATE TABLE public.subscriptions (
 
 
 --
--- Name: TABLE subscriptions; Type: COMMENT; Schema: public; Owner: -
+-- Name: suppliers; Type: TABLE; Schema: public; Owner: -
 --
 
-COMMENT ON TABLE public.subscriptions IS 'Organization subscriptions linking to plans';
+CREATE TABLE public.suppliers (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    entity_id uuid NOT NULL,
+    organization_id uuid NOT NULL,
+    supplier_code character varying(50),
+    external_id character varying(100),
+    company_name character varying(200),
+    trade_name character varying(200),
+    tax_id character varying(100),
+    industry character varying(120),
+    website character varying(200),
+    legal_representative character varying(200),
+    legal_representative_phone character varying(50),
+    legal_representative_email character varying(200),
+    supplier_type public.supplier_type DEFAULT 'business'::public.supplier_type NOT NULL,
+    status public.entity_status DEFAULT 'active'::public.entity_status NOT NULL,
+    category public.supplier_category DEFAULT 'standard'::public.supplier_category,
+    risk_level public.supplier_risk_level DEFAULT 'low'::public.supplier_risk_level,
+    lead_time_days integer,
+    min_order_value numeric(12,2),
+    rating numeric(3,2),
+    last_order_date date,
+    payment_terms jsonb DEFAULT '{}'::jsonb,
+    credit_terms jsonb DEFAULT '{}'::jsonb,
+    banking_info jsonb DEFAULT '{}'::jsonb,
+    tax_info jsonb DEFAULT '{}'::jsonb,
+    performance_metrics jsonb DEFAULT '{}'::jsonb,
+    notes text,
+    vertical_fields jsonb DEFAULT '{}'::jsonb,
+    ai_insights jsonb DEFAULT '{}'::jsonb,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    created_by uuid,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_by uuid,
+    deleted_at timestamp with time zone,
+    deleted_by uuid,
+    embedding extensions.vector(1536),
+    has_embedding boolean DEFAULT false,
+    CONSTRAINT suppliers_rating_check CHECK (((rating IS NULL) OR ((rating >= (0)::numeric) AND (rating <= (5)::numeric))))
+);
 
 
 --
@@ -17457,13 +16463,6 @@ CREATE TABLE public.time_entries (
 
 
 --
--- Name: TABLE time_entries; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.time_entries IS 'Immutable time punch events - Event Sourcing pattern for T&A';
-
-
---
 -- Name: time_entry_modifications; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -17483,10 +16482,41 @@ CREATE TABLE public.time_entry_modifications (
 
 
 --
--- Name: TABLE time_entry_modifications; Type: COMMENT; Schema: public; Owner: -
+-- Name: transaction_line_items; Type: TABLE; Schema: public; Owner: -
 --
 
-COMMENT ON TABLE public.time_entry_modifications IS 'Audit trail for all time entry modifications';
+CREATE TABLE public.transaction_line_items (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    organization_id uuid NOT NULL,
+    transaction_type text NOT NULL,
+    transaction_id uuid NOT NULL,
+    catalog_item_id uuid,
+    catalog_item_name text,
+    catalog_item_type text,
+    provider_entity_id uuid,
+    provider_name text,
+    quantity numeric(10,2) DEFAULT 1 NOT NULL,
+    unit_price numeric(12,2),
+    discount_amount numeric(12,2) DEFAULT 0,
+    discount_percent numeric(5,2) DEFAULT 0,
+    tax_amount numeric(12,2) DEFAULT 0,
+    total_price numeric(12,2) GENERATED ALWAYS AS (((((quantity * COALESCE(unit_price, (0)::numeric)) - COALESCE(discount_amount, (0)::numeric)) - (((quantity * COALESCE(unit_price, (0)::numeric)) * COALESCE(discount_percent, (0)::numeric)) / (100)::numeric)) + COALESCE(tax_amount, (0)::numeric))) STORED,
+    status text DEFAULT 'pending'::text NOT NULL,
+    estimated_duration_minutes integer,
+    started_at timestamp with time zone,
+    completed_at timestamp with time zone,
+    sort_order integer DEFAULT 0,
+    notes text,
+    internal_notes text,
+    metadata jsonb DEFAULT '{}'::jsonb,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    created_by uuid,
+    updated_by uuid,
+    deleted_at timestamp with time zone,
+    CONSTRAINT transaction_line_items_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'in_progress'::text, 'completed'::text, 'cancelled'::text, 'refunded'::text]))),
+    CONSTRAINT transaction_line_items_transaction_type_check CHECK ((transaction_type = ANY (ARRAY['appointment'::text, 'order'::text, 'reservation'::text, 'work_order'::text, 'invoice'::text, 'quote'::text])))
+);
 
 
 --
@@ -17520,6 +16550,29 @@ CREATE TABLE public.user_sessions (
 
 
 --
+-- Name: v_active_promotions_timeline; Type: VIEW; Schema: public; Owner: -
+--
+
+CREATE VIEW public.v_active_promotions_timeline AS
+ SELECT id,
+    organization_id,
+    name,
+    promo_type,
+    valid_from,
+    valid_until,
+    validity_range,
+    (EXTRACT(epoch FROM (COALESCE(valid_until, (now() + '1 year'::interval)) - COALESCE(valid_from, now()))) / (86400)::numeric) AS duration_days,
+        CASE
+            WHEN (valid_from > now()) THEN 'scheduled'::text
+            WHEN (valid_until < now()) THEN 'expired'::text
+            ELSE 'active'::text
+        END AS status
+   FROM public.promotions p
+  WHERE (is_active = true)
+  ORDER BY organization_id, valid_from;
+
+
+--
 -- Name: v_ai_embedding_system_status; Type: VIEW; Schema: public; Owner: -
 --
 
@@ -17546,13 +16599,6 @@ CREATE VIEW public.v_ai_embedding_system_status AS
 
 
 --
--- Name: VIEW v_ai_embedding_system_status; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON VIEW public.v_ai_embedding_system_status IS 'Overview of all tables with auto-embeddings configured';
-
-
---
 -- Name: v_billing_contacts; Type: VIEW; Schema: public; Owner: -
 --
 
@@ -17574,13 +16620,6 @@ CREATE VIEW public.v_billing_contacts AS
      JOIN public.entities b ON ((b.id = er.target_entity_id)))
   WHERE ((er.is_billing_contact = true) AND (er.status = 'active'::public.relationship_status) AND (er.deleted_at IS NULL) AND (b.deleted_at IS NULL) AND ((er.valid_until IS NULL) OR (er.valid_until >= CURRENT_DATE)))
   ORDER BY er.priority, er.is_primary DESC;
-
-
---
--- Name: VIEW v_billing_contacts; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON VIEW public.v_billing_contacts IS 'Entities responsible for billing/invoicing';
 
 
 --
@@ -17705,13 +16744,6 @@ CREATE VIEW public.v_emergency_contacts AS
 
 
 --
--- Name: VIEW v_emergency_contacts; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON VIEW public.v_emergency_contacts IS 'Emergency contacts for entities';
-
-
---
 -- Name: v_employee_hierarchy; Type: VIEW; Schema: public; Owner: -
 --
 
@@ -17761,13 +16793,6 @@ CREATE VIEW public.v_employee_hierarchy AS
 
 
 --
--- Name: VIEW v_employee_hierarchy; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON VIEW public.v_employee_hierarchy IS 'Recursive employee hierarchy showing reporting structure';
-
-
---
 -- Name: v_employees_ai_dashboard; Type: VIEW; Schema: public; Owner: -
 --
 
@@ -17796,13 +16821,6 @@ CREATE VIEW public.v_employees_ai_dashboard AS
 
 
 --
--- Name: VIEW v_employees_ai_dashboard; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON VIEW public.v_employees_ai_dashboard IS 'AI-powered employee dashboard with skills, predictions, and analytics';
-
-
---
 -- Name: v_employees_by_department; Type: VIEW; Schema: public; Owner: -
 --
 
@@ -17821,13 +16839,6 @@ CREATE VIEW public.v_employees_by_department AS
   WHERE (deleted_at IS NULL)
   GROUP BY organization_id, department
   ORDER BY organization_id, (count(*)) DESC;
-
-
---
--- Name: VIEW v_employees_by_department; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON VIEW public.v_employees_by_department IS 'Employee statistics aggregated by department';
 
 
 --
@@ -17885,13 +16896,6 @@ CREATE VIEW public.v_employees_full AS
 
 
 --
--- Name: VIEW v_employees_full; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON VIEW public.v_employees_full IS 'Full employee view with entity and manager information';
-
-
---
 -- Name: v_entity_guardians; Type: VIEW; Schema: public; Owner: -
 --
 
@@ -17916,13 +16920,6 @@ CREATE VIEW public.v_entity_guardians AS
      JOIN public.entities g ON ((g.id = er.target_entity_id)))
   WHERE ((er.relationship_type = ANY (ARRAY['parent'::public.entity_relationship_type, 'legal_guardian'::public.entity_relationship_type, 'grandparent'::public.entity_relationship_type])) AND (er.status = 'active'::public.relationship_status) AND (er.deleted_at IS NULL) AND (g.deleted_at IS NULL) AND ((er.valid_until IS NULL) OR (er.valid_until >= CURRENT_DATE)))
   ORDER BY er.priority, er.is_primary DESC;
-
-
---
--- Name: VIEW v_entity_guardians; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON VIEW public.v_entity_guardians IS 'Parents and guardians for minor entities';
 
 
 --
@@ -17968,13 +16965,6 @@ CREATE VIEW public.v_entity_relationships_full AS
      JOIN public.entities source ON ((source.id = er.source_entity_id)))
      JOIN public.entities target ON ((target.id = er.target_entity_id)))
   WHERE ((er.deleted_at IS NULL) AND (source.deleted_at IS NULL) AND (target.deleted_at IS NULL));
-
-
---
--- Name: VIEW v_entity_relationships_full; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON VIEW public.v_entity_relationships_full IS 'Complete view of entity relationships with source and target entity details';
 
 
 --
@@ -18055,13 +17045,6 @@ CREATE VIEW public.v_patients_with_allergies AS
 
 
 --
--- Name: VIEW v_patients_with_allergies; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON VIEW public.v_patients_with_allergies IS 'Patients with documented allergies (safety-critical).';
-
-
---
 -- Name: v_pediatric_patients; Type: VIEW; Schema: public; Owner: -
 --
 
@@ -18081,10 +17064,107 @@ CREATE VIEW public.v_pediatric_patients AS
 
 
 --
--- Name: VIEW v_pediatric_patients; Type: COMMENT; Schema: public; Owner: -
+-- Name: v_promotion_overlaps; Type: VIEW; Schema: public; Owner: -
 --
 
-COMMENT ON VIEW public.v_pediatric_patients IS 'Pediatric patients (age < 18).';
+CREATE VIEW public.v_promotion_overlaps AS
+ SELECT p1.organization_id,
+    p1.id AS promotion_1_id,
+    p1.name AS promotion_1_name,
+    p2.id AS promotion_2_id,
+    p2.name AS promotion_2_name,
+    (p1.validity_range * p2.validity_range) AS overlap_range,
+        CASE
+            WHEN (p1.validity_range = p2.validity_range) THEN 'exact_match'::text
+            WHEN (p1.validity_range @> p2.validity_range) THEN 'p1_contains_p2'::text
+            WHEN (p2.validity_range @> p1.validity_range) THEN 'p2_contains_p1'::text
+            ELSE 'partial'::text
+        END AS overlap_type
+   FROM (public.promotions p1
+     JOIN public.promotions p2 ON (((p1.organization_id = p2.organization_id) AND (p1.id < p2.id) AND (p1.validity_range && p2.validity_range) AND (p1.is_active = true) AND (p2.is_active = true))));
+
+
+--
+-- Name: v_suppliers_full; Type: VIEW; Schema: public; Owner: -
+--
+
+CREATE VIEW public.v_suppliers_full AS
+ SELECT s.id,
+    s.entity_id,
+    s.organization_id,
+    s.supplier_code,
+    s.external_id,
+    s.company_name,
+    s.trade_name,
+    s.tax_id,
+    s.industry,
+    s.website,
+    s.legal_representative,
+    s.legal_representative_phone,
+    s.legal_representative_email,
+    s.supplier_type,
+    s.status,
+    s.category,
+    s.risk_level,
+    s.lead_time_days,
+    s.min_order_value,
+    s.rating,
+    s.last_order_date,
+    s.payment_terms,
+    s.credit_terms,
+    s.banking_info,
+    s.tax_info,
+    s.performance_metrics,
+    s.notes,
+    s.vertical_fields,
+    s.ai_insights,
+    s.created_at,
+    s.created_by,
+    s.updated_at,
+    s.updated_by,
+    s.deleted_at,
+    s.deleted_by,
+    s.embedding,
+    s.has_embedding,
+    e.display_name,
+    e.phone,
+    e.mobile,
+    e.email,
+    e.legal_name,
+    e.tax_id AS entity_tax_id
+   FROM (public.suppliers s
+     LEFT JOIN public.entities e ON ((e.id = s.entity_id)));
+
+
+--
+-- Name: v_suppliers_summary; Type: VIEW; Schema: public; Owner: -
+--
+
+CREATE VIEW public.v_suppliers_summary AS
+ SELECT s.id,
+    s.entity_id,
+    s.organization_id,
+    e.display_name,
+    e.phone,
+    e.email,
+    s.supplier_code,
+    s.created_at,
+    s.updated_at,
+    s.deleted_at,
+    s.status,
+    s.company_name,
+    s.trade_name,
+    s.tax_id,
+    s.supplier_type,
+    s.category,
+    s.risk_level,
+    s.rating,
+    s.lead_time_days,
+    s.last_order_date,
+    s.min_order_value
+   FROM (public.suppliers s
+     JOIN public.entities e ON ((e.id = s.entity_id)))
+  WHERE ((s.deleted_at IS NULL) AND (e.deleted_at IS NULL));
 
 
 --
@@ -18108,13 +17188,6 @@ CREATE VIEW public.v_upcoming_reviews AS
      LEFT JOIN public.entities mgr_ent ON ((mgr.entity_id = mgr_ent.id)))
   WHERE ((e.deleted_at IS NULL) AND (e.employment_status = 'active'::public.employment_status_enum) AND ((e.next_review_date <= (CURRENT_DATE + '30 days'::interval)) OR (e.next_review_date IS NULL)))
   ORDER BY e.next_review_date;
-
-
---
--- Name: VIEW v_upcoming_reviews; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON VIEW public.v_upcoming_reviews IS 'Employees with upcoming or overdue performance reviews';
 
 
 --
@@ -18166,13 +17239,6 @@ CREATE VIEW public.v_vip_patients AS
 
 
 --
--- Name: VIEW v_vip_patients; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON VIEW public.v_vip_patients IS 'VIP patients with lifetime value estimates.';
-
-
---
 -- Name: vertical_configs; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -18190,24 +17256,48 @@ CREATE TABLE public.vertical_configs (
 
 
 --
--- Name: TABLE vertical_configs; Type: COMMENT; Schema: public; Owner: -
+-- Name: vision_scan_sessions; Type: TABLE; Schema: public; Owner: -
 --
 
-COMMENT ON TABLE public.vertical_configs IS 'Industry-specific configurations and terminology';
+CREATE TABLE public.vision_scan_sessions (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    organization_id uuid NOT NULL,
+    product_category character varying(30),
+    business_vertical character varying(50),
+    status character varying(20) DEFAULT 'in_progress'::character varying NOT NULL,
+    photos_captured jsonb DEFAULT '[]'::jsonb,
+    photos_count integer GENERATED ALWAYS AS (jsonb_array_length(photos_captured)) STORED,
+    current_product jsonb,
+    confidence numeric(3,2),
+    completeness numeric(3,2),
+    missing_fields text[],
+    catalog_item_id uuid,
+    started_at timestamp with time zone DEFAULT now() NOT NULL,
+    completed_at timestamp with time zone,
+    total_processing_ms integer,
+    created_by uuid,
+    device_info jsonb
+);
 
 
 --
--- Name: COLUMN vertical_configs.vertical; Type: COMMENT; Schema: public; Owner: -
+-- Name: vision_scan_analytics; Type: VIEW; Schema: public; Owner: -
 --
 
-COMMENT ON COLUMN public.vertical_configs.vertical IS 'Industry vertical: healthcare, dental, beauty, etc.';
-
-
---
--- Name: COLUMN vertical_configs.config; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.vertical_configs.config IS 'JSONB config with terminology, prompts, business rules';
+CREATE VIEW public.vision_scan_analytics AS
+ SELECT vss.organization_id,
+    vss.product_category,
+    pc.name_es AS category_name,
+    count(*) AS total_scans,
+    count(*) FILTER (WHERE ((vss.status)::text = 'completed'::text)) AS completed_scans,
+    avg(vss.confidence) FILTER (WHERE ((vss.status)::text = 'completed'::text)) AS avg_confidence,
+    avg(vss.completeness) FILTER (WHERE ((vss.status)::text = 'completed'::text)) AS avg_completeness,
+    avg(vss.photos_count) FILTER (WHERE ((vss.status)::text = 'completed'::text)) AS avg_photos_used,
+    avg(vss.total_processing_ms) FILTER (WHERE ((vss.status)::text = 'completed'::text)) AS avg_processing_ms,
+    date_trunc('day'::text, vss.started_at) AS scan_date
+   FROM (public.vision_scan_sessions vss
+     LEFT JOIN public.product_categories pc ON (((pc.code)::text = (vss.product_category)::text)))
+  GROUP BY vss.organization_id, vss.product_category, pc.name_es, (date_trunc('day'::text, vss.started_at));
 
 
 --
@@ -18361,27 +17451,6 @@ CREATE TABLE public.whatsapp_messages (
 
 
 --
--- Name: TABLE whatsapp_messages; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.whatsapp_messages IS 'Stores individual WhatsApp messages with full media and interaction support';
-
-
---
--- Name: COLUMN whatsapp_messages.interactive_data; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.whatsapp_messages.interactive_data IS 'Stores button/list configuration for interactive messages';
-
-
---
--- Name: COLUMN whatsapp_messages.orchestrator_response; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.whatsapp_messages.orchestrator_response IS 'Stores full orchestrator response for analytics and debugging';
-
-
---
 -- Name: whatsapp_appointment_success_rate; Type: VIEW; Schema: public; Owner: -
 --
 
@@ -18395,13 +17464,6 @@ CREATE VIEW public.whatsapp_appointment_success_rate AS
   WHERE ((direction = 'outbound'::text) AND (orchestrator_response IS NOT NULL) AND (sent_at >= (CURRENT_DATE - '30 days'::interval)))
   GROUP BY (date(sent_at))
   ORDER BY (date(sent_at)) DESC;
-
-
---
--- Name: VIEW whatsapp_appointment_success_rate; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON VIEW public.whatsapp_appointment_success_rate IS 'Daily success rate for appointment creation via WhatsApp';
 
 
 --
@@ -18432,62 +17494,6 @@ CREATE TABLE public.whatsapp_conversations (
 
 
 --
--- Name: TABLE whatsapp_conversations; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.whatsapp_conversations IS 'Stores WhatsApp conversation sessions with context and state for multi-turn interactions';
-
-
---
--- Name: COLUMN whatsapp_conversations.conversation_state; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.whatsapp_conversations.conversation_state IS 'Tracks the current state of the conversation for multi-turn interactions. Structure:
-{
-  "pending_action": "create_appointment",
-  "collected_data": {
-    "doctor": "Dr. Pérez",
-    "date": "2025-11-28",
-    "time": "10:00"
-  },
-  "missing_fields": ["service_type"],
-  "last_question": "¿Qué tipo de consulta necesitas?",
-  "question_count": 1,
-  "started_at": "2025-11-27T22:00:00Z",
-  "expires_at": "2025-11-27T22:15:00Z"
-}';
-
-
---
--- Name: COLUMN whatsapp_conversations.context; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.whatsapp_conversations.context IS 'JSONB field storing partial appointment data, user preferences, and conversation state';
-
-
---
--- Name: COLUMN whatsapp_conversations.flow_state; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.whatsapp_conversations.flow_state IS 'Tracks multi-turn conversation flow state for collecting information. Structure:
-{
-  "pending_action": "create_appointment",
-  "collected_data": {"doctor": "Dr. Pérez", "date": "2025-11-28"},
-  "missing_fields": ["time", "service"],
-  "question_count": 1,
-  "started_at": "2025-11-27T22:00:00Z",
-  "expires_at": "2025-11-27T22:15:00Z"
-}';
-
-
---
--- Name: COLUMN whatsapp_conversations.pending_action; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.whatsapp_conversations.pending_action IS 'Pending action awaiting user confirmation (e.g., appointment to be created)';
-
-
---
 -- Name: whatsapp_message_stats; Type: VIEW; Schema: public; Owner: -
 --
 
@@ -18503,13 +17509,6 @@ CREATE VIEW public.whatsapp_message_stats AS
   WHERE (sent_at >= (CURRENT_DATE - '30 days'::interval))
   GROUP BY (date(sent_at)), direction, message_type
   ORDER BY (date(sent_at)) DESC, direction, message_type;
-
-
---
--- Name: VIEW whatsapp_message_stats; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON VIEW public.whatsapp_message_stats IS 'Daily aggregated statistics for WhatsApp messages';
 
 
 --
@@ -18545,34 +17544,6 @@ CREATE TABLE public.whatsapp_org_config (
 
 
 --
--- Name: TABLE whatsapp_org_config; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.whatsapp_org_config IS 'Per-organization WhatsApp styling and UX configuration';
-
-
---
--- Name: COLUMN whatsapp_org_config.use_emojis; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.whatsapp_org_config.use_emojis IS 'Whether to include emojis in messages';
-
-
---
--- Name: COLUMN whatsapp_org_config.use_formatting; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.whatsapp_org_config.use_formatting IS 'Whether to use WhatsApp formatting (*bold*, _italic_)';
-
-
---
--- Name: COLUMN whatsapp_org_config.emoji_mappings; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.whatsapp_org_config.emoji_mappings IS 'Custom emoji overrides for different message contexts';
-
-
---
 -- Name: whatsapp_response_times; Type: VIEW; Schema: public; Owner: -
 --
 
@@ -18592,10 +17563,153 @@ CREATE VIEW public.whatsapp_response_times AS
 
 
 --
--- Name: VIEW whatsapp_response_times; Type: COMMENT; Schema: public; Owner: -
+-- Name: work_order_appointments; Type: TABLE; Schema: public; Owner: -
 --
 
-COMMENT ON VIEW public.whatsapp_response_times IS 'Average and percentile response times for WhatsApp messages';
+CREATE TABLE public.work_order_appointments (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    work_order_id uuid NOT NULL,
+    appointment_id uuid NOT NULL,
+    role text DEFAULT 'primary'::text NOT NULL
+);
+
+
+--
+-- Name: work_order_checklist; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.work_order_checklist (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    work_order_id uuid NOT NULL,
+    item_label text NOT NULL,
+    result text DEFAULT 'na'::text NOT NULL,
+    notes text,
+    evidence_urls text[],
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT work_order_checklist_result_check CHECK ((result = ANY (ARRAY['pass'::text, 'fail'::text, 'na'::text])))
+);
+
+
+--
+-- Name: work_order_events; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.work_order_events (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    work_order_id uuid NOT NULL,
+    event_type text NOT NULL,
+    event_data jsonb DEFAULT '{}'::jsonb,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    created_by uuid
+);
+
+
+--
+-- Name: work_order_labor; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.work_order_labor (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    work_order_id uuid NOT NULL,
+    technician_entity_id uuid,
+    start_at timestamp with time zone,
+    end_at timestamp with time zone,
+    minutes integer,
+    hourly_rate numeric(12,2),
+    cost numeric(12,2),
+    notes text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: work_order_parts; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.work_order_parts (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    work_order_id uuid NOT NULL,
+    catalog_item_id uuid,
+    quantity numeric(12,2) DEFAULT 1 NOT NULL,
+    unit_cost numeric(12,2),
+    total_cost numeric(12,2),
+    notes text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: work_order_sla; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.work_order_sla (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    work_order_id uuid NOT NULL,
+    response_due_at timestamp with time zone,
+    resolve_due_at timestamp with time zone,
+    response_met boolean,
+    resolve_met boolean,
+    breach_reason text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: work_order_tasks; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.work_order_tasks (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    work_order_id uuid NOT NULL,
+    catalog_item_id uuid,
+    sequence integer DEFAULT 0 NOT NULL,
+    status text DEFAULT 'pending'::text NOT NULL,
+    estimated_minutes integer,
+    actual_minutes integer,
+    notes text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT work_order_tasks_sequence_check CHECK ((sequence >= 0)),
+    CONSTRAINT work_order_tasks_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'in_progress'::text, 'done'::text, 'skipped'::text])))
+);
+
+
+--
+-- Name: work_orders; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.work_orders (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    organization_id uuid NOT NULL,
+    wo_code character varying(50) NOT NULL,
+    asset_id uuid,
+    requester_entity_id uuid,
+    assigned_entity_id uuid,
+    catalog_item_id uuid,
+    status text DEFAULT 'draft'::text NOT NULL,
+    priority text DEFAULT 'medium'::text NOT NULL,
+    work_type text DEFAULT 'corrective'::text NOT NULL,
+    requested_at timestamp with time zone DEFAULT now(),
+    scheduled_start timestamp with time zone,
+    scheduled_end timestamp with time zone,
+    started_at timestamp with time zone,
+    completed_at timestamp with time zone,
+    sla_due_at timestamp with time zone,
+    summary text,
+    problem_description text,
+    resolution_notes text,
+    custom_fields jsonb DEFAULT '{}'::jsonb,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    deleted_at timestamp with time zone,
+    CONSTRAINT work_orders_priority_check CHECK ((priority = ANY (ARRAY['low'::text, 'medium'::text, 'high'::text, 'critical'::text]))),
+    CONSTRAINT work_orders_status_check CHECK ((status = ANY (ARRAY['draft'::text, 'scheduled'::text, 'in_progress'::text, 'paused'::text, 'completed'::text, 'cancelled'::text]))),
+    CONSTRAINT work_orders_type_check CHECK ((work_type = ANY (ARRAY['corrective'::text, 'preventive'::text, 'inspection'::text, 'emergency'::text])))
+);
 
 
 --
@@ -18629,13 +17743,6 @@ CREATE TABLE public.work_policies (
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone DEFAULT now()
 );
-
-
---
--- Name: TABLE work_policies; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.work_policies IS 'Labor policies for organizations (RD Ley 16-92 compliant)';
 
 
 --
@@ -18850,6 +17957,14 @@ ALTER TABLE ONLY public._migrations
 
 
 --
+-- Name: ai_approval_requests ai_approval_requests_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ai_approval_requests
+    ADD CONSTRAINT ai_approval_requests_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: ai_cache ai_cache_cache_key_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -18991,6 +18106,22 @@ ALTER TABLE ONLY public.appointment_resources
 
 ALTER TABLE ONLY public.appointments
     ADD CONSTRAINT appointments_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: asset_registry asset_registry_code_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.asset_registry
+    ADD CONSTRAINT asset_registry_code_unique UNIQUE (organization_id, asset_code);
+
+
+--
+-- Name: asset_registry asset_registry_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.asset_registry
+    ADD CONSTRAINT asset_registry_pkey PRIMARY KEY (id);
 
 
 --
@@ -19378,6 +18509,46 @@ ALTER TABLE ONLY public.external_calendar_events
 
 
 --
+-- Name: fuel_accounts fuel_accounts_code_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fuel_accounts
+    ADD CONSTRAINT fuel_accounts_code_unique UNIQUE (organization_id, account_code);
+
+
+--
+-- Name: fuel_accounts fuel_accounts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fuel_accounts
+    ADD CONSTRAINT fuel_accounts_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: fuel_cards fuel_cards_code_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fuel_cards
+    ADD CONSTRAINT fuel_cards_code_unique UNIQUE (organization_id, card_code);
+
+
+--
+-- Name: fuel_cards fuel_cards_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fuel_cards
+    ADD CONSTRAINT fuel_cards_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: fuel_transactions fuel_transactions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fuel_transactions
+    ADD CONSTRAINT fuel_transactions_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: identification_document_types identification_document_types_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -19538,6 +18709,30 @@ ALTER TABLE ONLY public.llm_prompts
 
 
 --
+-- Name: maintenance_plan_tasks maintenance_plan_tasks_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maintenance_plan_tasks
+    ADD CONSTRAINT maintenance_plan_tasks_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: maintenance_plans maintenance_plans_code_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maintenance_plans
+    ADD CONSTRAINT maintenance_plans_code_unique UNIQUE (organization_id, plan_code);
+
+
+--
+-- Name: maintenance_plans maintenance_plans_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maintenance_plans
+    ADD CONSTRAINT maintenance_plans_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: memberships memberships_organization_id_user_id_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -19655,6 +18850,14 @@ ALTER TABLE ONLY public.nlu_typo_corrections
 
 ALTER TABLE ONLY public.notification_queue
     ADD CONSTRAINT notification_queue_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: odometer_readings odometer_readings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.odometer_readings
+    ADD CONSTRAINT odometer_readings_pkey PRIMARY KEY (id);
 
 
 --
@@ -19794,6 +18997,30 @@ ALTER TABLE ONLY public.positions
 
 
 --
+-- Name: price_list_items price_list_items_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.price_list_items
+    ADD CONSTRAINT price_list_items_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: price_lists price_lists_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.price_lists
+    ADD CONSTRAINT price_lists_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: product_categories product_categories_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.product_categories
+    ADD CONSTRAINT product_categories_pkey PRIMARY KEY (code);
+
+
+--
 -- Name: products products_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -19863,6 +19090,14 @@ ALTER TABLE ONLY public.promotion_rules
 
 ALTER TABLE ONLY public.promotion_tiers
     ADD CONSTRAINT promotion_tiers_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: promotion_usage promotion_usage_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.promotion_usage
+    ADD CONSTRAINT promotion_usage_pkey PRIMARY KEY (id);
 
 
 --
@@ -20050,6 +19285,30 @@ ALTER TABLE ONLY public.subscriptions
 
 
 --
+-- Name: suppliers suppliers_code_org_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.suppliers
+    ADD CONSTRAINT suppliers_code_org_unique UNIQUE (organization_id, supplier_code);
+
+
+--
+-- Name: suppliers suppliers_entity_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.suppliers
+    ADD CONSTRAINT suppliers_entity_unique UNIQUE (entity_id);
+
+
+--
+-- Name: suppliers suppliers_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.suppliers
+    ADD CONSTRAINT suppliers_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: time_entries time_entries_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -20063,6 +19322,14 @@ ALTER TABLE ONLY public.time_entries
 
 ALTER TABLE ONLY public.time_entry_modifications
     ADD CONSTRAINT time_entry_modifications_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: transaction_line_items transaction_line_items_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.transaction_line_items
+    ADD CONSTRAINT transaction_line_items_pkey PRIMARY KEY (id);
 
 
 --
@@ -20194,6 +19461,22 @@ ALTER TABLE ONLY public.entity_insurance_policies
 
 
 --
+-- Name: price_lists uq_price_list_code_org; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.price_lists
+    ADD CONSTRAINT uq_price_list_code_org UNIQUE (organization_id, code);
+
+
+--
+-- Name: price_list_items uq_price_list_item; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.price_list_items
+    ADD CONSTRAINT uq_price_list_item UNIQUE (price_list_id, catalog_item_id, min_quantity);
+
+
+--
 -- Name: services uq_service_code_org; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -20247,6 +19530,14 @@ ALTER TABLE ONLY public.vertical_configs
 
 ALTER TABLE ONLY public.vertical_configs
     ADD CONSTRAINT vertical_configs_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: vision_scan_sessions vision_scan_sessions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.vision_scan_sessions
+    ADD CONSTRAINT vision_scan_sessions_pkey PRIMARY KEY (id);
 
 
 --
@@ -20311,6 +19602,78 @@ ALTER TABLE ONLY public.whatsapp_org_config
 
 ALTER TABLE ONLY public.whatsapp_org_config
     ADD CONSTRAINT whatsapp_org_config_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: work_order_appointments work_order_appointments_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.work_order_appointments
+    ADD CONSTRAINT work_order_appointments_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: work_order_checklist work_order_checklist_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.work_order_checklist
+    ADD CONSTRAINT work_order_checklist_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: work_order_events work_order_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.work_order_events
+    ADD CONSTRAINT work_order_events_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: work_order_labor work_order_labor_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.work_order_labor
+    ADD CONSTRAINT work_order_labor_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: work_order_parts work_order_parts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.work_order_parts
+    ADD CONSTRAINT work_order_parts_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: work_order_sla work_order_sla_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.work_order_sla
+    ADD CONSTRAINT work_order_sla_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: work_order_tasks work_order_tasks_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.work_order_tasks
+    ADD CONSTRAINT work_order_tasks_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: work_orders work_orders_code_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.work_orders
+    ADD CONSTRAINT work_orders_code_unique UNIQUE (organization_id, wo_code);
+
+
+--
+-- Name: work_orders work_orders_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.work_orders
+    ADD CONSTRAINT work_orders_pkey PRIMARY KEY (id);
 
 
 --
@@ -20498,13 +19861,6 @@ CREATE INDEX idx_ai_embeddings_source ON public.ai_embeddings USING btree (sourc
 --
 
 CREATE INDEX idx_ai_embeddings_vector_hnsw ON public.ai_embeddings USING hnsw (embedding extensions.vector_cosine_ops) WITH (m='16', ef_construction='64');
-
-
---
--- Name: INDEX idx_ai_embeddings_vector_hnsw; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON INDEX public.idx_ai_embeddings_vector_hnsw IS 'HNSW index for fast approximate nearest neighbor search';
 
 
 --
@@ -20701,6 +20057,48 @@ CREATE INDEX idx_appointments_service ON public.appointments USING btree (catalo
 --
 
 CREATE INDEX idx_appointments_status ON public.appointments USING btree (status, organization_id, appointment_date) WHERE (deleted_at IS NULL);
+
+
+--
+-- Name: idx_approval_requests_channel; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_approval_requests_channel ON public.ai_approval_requests USING btree (channel, channel_user_id) WHERE (status = 'pending'::text);
+
+
+--
+-- Name: idx_approval_requests_expires; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_approval_requests_expires ON public.ai_approval_requests USING btree (expires_at) WHERE (status = 'pending'::text);
+
+
+--
+-- Name: idx_approval_requests_org_pending; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_approval_requests_org_pending ON public.ai_approval_requests USING btree (organization_id, status, created_at) WHERE (status = 'pending'::text);
+
+
+--
+-- Name: idx_asset_registry_entity; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_asset_registry_entity ON public.asset_registry USING btree (entity_id) WHERE ((deleted_at IS NULL) AND (entity_id IS NOT NULL));
+
+
+--
+-- Name: idx_asset_registry_location; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_asset_registry_location ON public.asset_registry USING btree (location_entity_id) WHERE ((deleted_at IS NULL) AND (location_entity_id IS NOT NULL));
+
+
+--
+-- Name: idx_asset_registry_org; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_asset_registry_org ON public.asset_registry USING btree (organization_id) WHERE (deleted_at IS NULL);
 
 
 --
@@ -21009,6 +20407,13 @@ CREATE INDEX idx_catalog_items_org_active ON public.catalog_items USING btree (o
 --
 
 CREATE INDEX idx_catalog_items_parent ON public.catalog_items USING btree (parent_id) WHERE ((parent_id IS NOT NULL) AND (deleted_at IS NULL));
+
+
+--
+-- Name: idx_catalog_items_product_category; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_catalog_items_product_category ON public.catalog_items USING btree (organization_id, product_category) WHERE ((product_category IS NOT NULL) AND (deleted_at IS NULL));
 
 
 --
@@ -21376,24 +20781,10 @@ CREATE INDEX idx_employees_ai_features ON public.employees USING gin (ai_feature
 
 
 --
--- Name: INDEX idx_employees_ai_features; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON INDEX public.idx_employees_ai_features IS 'GIN index for AI predictions, embeddings similarity, and model scores';
-
-
---
 -- Name: idx_employees_analytics_snapshot; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX idx_employees_analytics_snapshot ON public.employees USING gin (analytics_snapshot) WHERE (deleted_at IS NULL);
-
-
---
--- Name: INDEX idx_employees_analytics_snapshot; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON INDEX public.idx_employees_analytics_snapshot IS 'GIN index for fast KPI queries and aggregated metrics';
 
 
 --
@@ -21520,13 +20911,6 @@ CREATE INDEX idx_employees_review_dates ON public.employees USING btree (next_re
 --
 
 CREATE INDEX idx_employees_skills ON public.employees USING gin (skills) WHERE (deleted_at IS NULL);
-
-
---
--- Name: INDEX idx_employees_skills; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON INDEX public.idx_employees_skills IS 'GIN index for fast skill-based queries and talent matching';
 
 
 --
@@ -21985,6 +21369,83 @@ CREATE INDEX idx_flow_states_expires ON public.conversation_flow_states USING bt
 
 
 --
+-- Name: idx_fuel_accounts_org; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_fuel_accounts_org ON public.fuel_accounts USING btree (organization_id) WHERE (deleted_at IS NULL);
+
+
+--
+-- Name: idx_fuel_accounts_provider; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_fuel_accounts_provider ON public.fuel_accounts USING btree (provider_entity_id) WHERE ((deleted_at IS NULL) AND (provider_entity_id IS NOT NULL));
+
+
+--
+-- Name: idx_fuel_cards_account; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_fuel_cards_account ON public.fuel_cards USING btree (account_id) WHERE ((deleted_at IS NULL) AND (account_id IS NOT NULL));
+
+
+--
+-- Name: idx_fuel_cards_assigned_asset; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_fuel_cards_assigned_asset ON public.fuel_cards USING btree (assigned_asset_id) WHERE ((deleted_at IS NULL) AND (assigned_asset_id IS NOT NULL));
+
+
+--
+-- Name: idx_fuel_cards_assigned_entity; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_fuel_cards_assigned_entity ON public.fuel_cards USING btree (assigned_entity_id) WHERE ((deleted_at IS NULL) AND (assigned_entity_id IS NOT NULL));
+
+
+--
+-- Name: idx_fuel_cards_org; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_fuel_cards_org ON public.fuel_cards USING btree (organization_id) WHERE (deleted_at IS NULL);
+
+
+--
+-- Name: idx_fuel_transactions_asset; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_fuel_transactions_asset ON public.fuel_transactions USING btree (asset_id, occurred_at DESC) WHERE ((deleted_at IS NULL) AND (asset_id IS NOT NULL));
+
+
+--
+-- Name: idx_fuel_transactions_card; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_fuel_transactions_card ON public.fuel_transactions USING btree (fuel_card_id) WHERE ((deleted_at IS NULL) AND (fuel_card_id IS NOT NULL));
+
+
+--
+-- Name: idx_fuel_transactions_driver; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_fuel_transactions_driver ON public.fuel_transactions USING btree (driver_entity_id) WHERE ((deleted_at IS NULL) AND (driver_entity_id IS NOT NULL));
+
+
+--
+-- Name: idx_fuel_transactions_org; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_fuel_transactions_org ON public.fuel_transactions USING btree (organization_id) WHERE (deleted_at IS NULL);
+
+
+--
+-- Name: idx_fuel_transactions_supplier; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_fuel_transactions_supplier ON public.fuel_transactions USING btree (supplier_entity_id) WHERE ((deleted_at IS NULL) AND (supplier_entity_id IS NOT NULL));
+
+
+--
 -- Name: idx_heuristic_rules_enabled; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -21992,10 +21453,24 @@ CREATE INDEX idx_heuristic_rules_enabled ON public.nlu_heuristic_rules USING btr
 
 
 --
+-- Name: idx_heuristic_rules_level; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_heuristic_rules_level ON public.nlu_heuristic_rules USING btree (minimum_role_level) WHERE (minimum_role_level IS NOT NULL);
+
+
+--
 -- Name: idx_heuristic_rules_org; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX idx_heuristic_rules_org ON public.nlu_heuristic_rules USING btree (organization_id) WHERE (organization_id IS NOT NULL);
+
+
+--
+-- Name: idx_heuristic_rules_roles; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_heuristic_rules_roles ON public.nlu_heuristic_rules USING gin (applicable_roles);
 
 
 --
@@ -22258,6 +21733,27 @@ CREATE INDEX idx_llm_prompts_vertical ON public.llm_prompts USING btree (vertica
 
 
 --
+-- Name: idx_maintenance_plan_tasks_plan; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_maintenance_plan_tasks_plan ON public.maintenance_plan_tasks USING btree (plan_id);
+
+
+--
+-- Name: idx_maintenance_plans_asset; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_maintenance_plans_asset ON public.maintenance_plans USING btree (asset_id) WHERE (deleted_at IS NULL);
+
+
+--
+-- Name: idx_maintenance_plans_org; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_maintenance_plans_org ON public.maintenance_plans USING btree (organization_id) WHERE (deleted_at IS NULL);
+
+
+--
 -- Name: idx_memberships_custom_permissions_gin; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -22363,6 +21859,13 @@ CREATE INDEX idx_nlu_keywords_org_category ON public.nlu_keywords USING btree (o
 
 
 --
+-- Name: idx_nlu_synonyms_synonym_trgm; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_nlu_synonyms_synonym_trgm ON public.nlu_entity_synonyms USING gin (lower(synonym) extensions.gin_trgm_ops);
+
+
+--
 -- Name: idx_nlu_training_logs_confidence; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -22423,6 +21926,27 @@ CREATE INDEX idx_nlu_typo_corrections_typo_gin ON public.nlu_typo_corrections US
 --
 
 CREATE INDEX idx_notification_queue_status ON public.notification_queue USING btree (status) WHERE (status = 'pending'::text);
+
+
+--
+-- Name: idx_odometer_readings_asset; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_odometer_readings_asset ON public.odometer_readings USING btree (asset_id, recorded_at DESC);
+
+
+--
+-- Name: idx_odometer_readings_org; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_odometer_readings_org ON public.odometer_readings USING btree (organization_id);
+
+
+--
+-- Name: idx_odometer_readings_source; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_odometer_readings_source ON public.odometer_readings USING btree (source);
 
 
 --
@@ -22937,6 +22461,62 @@ CREATE INDEX idx_positions_reports_to ON public.positions USING btree (reports_t
 
 
 --
+-- Name: idx_price_list_default; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_price_list_default ON public.price_lists USING btree (organization_id) WHERE (is_default = true);
+
+
+--
+-- Name: idx_price_list_items_catalog; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_price_list_items_catalog ON public.price_list_items USING btree (catalog_item_id);
+
+
+--
+-- Name: idx_price_list_items_list; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_price_list_items_list ON public.price_list_items USING btree (price_list_id);
+
+
+--
+-- Name: idx_price_lists_active; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_price_lists_active ON public.price_lists USING btree (organization_id, is_active);
+
+
+--
+-- Name: idx_price_lists_dates; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_price_lists_dates ON public.price_lists USING btree (start_date, end_date) WHERE (start_date IS NOT NULL);
+
+
+--
+-- Name: idx_price_lists_org; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_price_lists_org ON public.price_lists USING btree (organization_id);
+
+
+--
+-- Name: idx_price_lists_priority; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_price_lists_priority ON public.price_lists USING btree (organization_id, priority);
+
+
+--
+-- Name: idx_price_lists_validity_range; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_price_lists_validity_range ON public.price_lists USING gist (validity_range);
+
+
+--
 -- Name: idx_profiles_preferences; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -22993,6 +22573,69 @@ CREATE INDEX idx_promo_tiers_promotion ON public.promotion_tiers USING btree (pr
 
 
 --
+-- Name: idx_promotion_bundle_items_item; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_promotion_bundle_items_item ON public.promotion_bundle_items USING btree (catalog_item_id);
+
+
+--
+-- Name: idx_promotion_bundle_items_promo; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_promotion_bundle_items_promo ON public.promotion_bundle_items USING btree (promotion_id);
+
+
+--
+-- Name: idx_promotion_rules_category; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_promotion_rules_category ON public.promotion_rules USING btree (category_id) WHERE (category_id IS NOT NULL);
+
+
+--
+-- Name: idx_promotion_rules_promo; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_promotion_rules_promo ON public.promotion_rules USING btree (promotion_id);
+
+
+--
+-- Name: idx_promotion_tiers_promo; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_promotion_tiers_promo ON public.promotion_tiers USING btree (promotion_id, tier_order);
+
+
+--
+-- Name: idx_promotion_usage_customer; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_promotion_usage_customer ON public.promotion_usage USING btree (customer_id) WHERE (customer_id IS NOT NULL);
+
+
+--
+-- Name: idx_promotion_usage_date; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_promotion_usage_date ON public.promotion_usage USING btree (created_at);
+
+
+--
+-- Name: idx_promotion_usage_promo; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_promotion_usage_promo ON public.promotion_usage USING btree (promotion_id);
+
+
+--
+-- Name: idx_promotions_active; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_promotions_active ON public.promotions USING btree (organization_id, is_active);
+
+
+--
 -- Name: idx_promotions_ai_keywords; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -23028,6 +22671,13 @@ CREATE INDEX idx_promotions_nlu_triggers ON public.promotions USING gin (nlu_tri
 
 
 --
+-- Name: idx_promotions_org; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_promotions_org ON public.promotions USING btree (organization_id);
+
+
+--
 -- Name: idx_promotions_org_active; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -23035,10 +22685,24 @@ CREATE INDEX idx_promotions_org_active ON public.promotions USING btree (organiz
 
 
 --
+-- Name: idx_promotions_org_validity; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_promotions_org_validity ON public.promotions USING gist (organization_id, validity_range);
+
+
+--
 -- Name: idx_promotions_type; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX idx_promotions_type ON public.promotions USING btree (promo_type, organization_id) WHERE (is_active = true);
+
+
+--
+-- Name: idx_promotions_validity_range; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_promotions_validity_range ON public.promotions USING gist (validity_range);
 
 
 --
@@ -23287,38 +22951,17 @@ CREATE INDEX idx_skill_definitions_path_gist ON public.skill_definitions USING g
 
 
 --
--- Name: idx_skill_executions_conversation; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_skill_executions_denied; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_skill_executions_conversation ON public.ai_skill_executions USING btree (conversation_id) WHERE (conversation_id IS NOT NULL);
-
-
---
--- Name: idx_skill_executions_org; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_skill_executions_org ON public.ai_skill_executions USING btree (organization_id, created_at DESC);
+CREATE INDEX idx_skill_executions_denied ON public.ai_skill_executions USING btree (organization_id) WHERE (was_allowed = false);
 
 
 --
--- Name: idx_skill_executions_pending; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_skill_executions_org_date; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_skill_executions_pending ON public.ai_skill_executions USING btree (status) WHERE (status = ANY (ARRAY['pending'::public.skill_execution_status, 'pending_approval'::public.skill_execution_status]));
-
-
---
--- Name: idx_skill_executions_skill; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_skill_executions_skill ON public.ai_skill_executions USING btree (skill_id, status);
-
-
---
--- Name: idx_skill_executions_user; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_skill_executions_user ON public.ai_skill_executions USING btree (user_id, created_at DESC);
+CREATE INDEX idx_skill_executions_org_date ON public.ai_skill_executions USING btree (organization_id, created_at DESC);
 
 
 --
@@ -23347,6 +22990,104 @@ CREATE INDEX idx_subscriptions_status ON public.subscriptions USING btree (statu
 --
 
 CREATE INDEX idx_subscriptions_trial_ends ON public.subscriptions USING btree (trial_ends_at) WHERE (status = 'trial'::text);
+
+
+--
+-- Name: idx_suppliers_ai_insights; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_suppliers_ai_insights ON public.suppliers USING gin (ai_insights);
+
+
+--
+-- Name: idx_suppliers_category; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_suppliers_category ON public.suppliers USING btree (organization_id, category) WHERE (deleted_at IS NULL);
+
+
+--
+-- Name: idx_suppliers_credit_terms; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_suppliers_credit_terms ON public.suppliers USING gin (credit_terms);
+
+
+--
+-- Name: idx_suppliers_embedding; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_suppliers_embedding ON public.suppliers USING ivfflat (embedding extensions.vector_cosine_ops) WITH (lists='100') WHERE (embedding IS NOT NULL);
+
+
+--
+-- Name: idx_suppliers_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_suppliers_entity_id ON public.suppliers USING btree (entity_id);
+
+
+--
+-- Name: idx_suppliers_last_order; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_suppliers_last_order ON public.suppliers USING btree (organization_id, last_order_date DESC) WHERE (deleted_at IS NULL);
+
+
+--
+-- Name: idx_suppliers_lead_time; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_suppliers_lead_time ON public.suppliers USING btree (organization_id, lead_time_days) WHERE (deleted_at IS NULL);
+
+
+--
+-- Name: idx_suppliers_org_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_suppliers_org_status ON public.suppliers USING btree (organization_id, status) WHERE (deleted_at IS NULL);
+
+
+--
+-- Name: idx_suppliers_organization_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_suppliers_organization_id ON public.suppliers USING btree (organization_id);
+
+
+--
+-- Name: idx_suppliers_payment_terms; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_suppliers_payment_terms ON public.suppliers USING gin (payment_terms);
+
+
+--
+-- Name: idx_suppliers_performance_metrics; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_suppliers_performance_metrics ON public.suppliers USING gin (performance_metrics);
+
+
+--
+-- Name: idx_suppliers_rating; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_suppliers_rating ON public.suppliers USING btree (organization_id, rating DESC) WHERE (deleted_at IS NULL);
+
+
+--
+-- Name: idx_suppliers_risk_level; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_suppliers_risk_level ON public.suppliers USING btree (organization_id, risk_level) WHERE (deleted_at IS NULL);
+
+
+--
+-- Name: idx_suppliers_vertical_fields; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_suppliers_vertical_fields ON public.suppliers USING gin (vertical_fields);
 
 
 --
@@ -23413,6 +23154,48 @@ CREATE INDEX idx_time_entry_mods_user ON public.time_entry_modifications USING b
 
 
 --
+-- Name: idx_tli_catalog_item; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_tli_catalog_item ON public.transaction_line_items USING btree (catalog_item_id);
+
+
+--
+-- Name: idx_tli_created; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_tli_created ON public.transaction_line_items USING btree (created_at DESC);
+
+
+--
+-- Name: idx_tli_organization; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_tli_organization ON public.transaction_line_items USING btree (organization_id);
+
+
+--
+-- Name: idx_tli_provider; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_tli_provider ON public.transaction_line_items USING btree (provider_entity_id);
+
+
+--
+-- Name: idx_tli_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_tli_status ON public.transaction_line_items USING btree (status);
+
+
+--
+-- Name: idx_tli_transaction; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_tli_transaction ON public.transaction_line_items USING btree (transaction_type, transaction_id);
+
+
+--
 -- Name: idx_user_sessions_active_org; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -23445,6 +23228,20 @@ CREATE INDEX idx_vertical_configs_org ON public.vertical_configs USING btree (or
 --
 
 CREATE INDEX idx_vertical_configs_vertical ON public.vertical_configs USING btree (vertical) WHERE (is_active = true);
+
+
+--
+-- Name: idx_vision_scan_sessions_org; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_vision_scan_sessions_org ON public.vision_scan_sessions USING btree (organization_id, started_at DESC);
+
+
+--
+-- Name: idx_vision_scan_sessions_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_vision_scan_sessions_status ON public.vision_scan_sessions USING btree (status) WHERE ((status)::text = 'in_progress'::text);
 
 
 --
@@ -23623,6 +23420,83 @@ CREATE INDEX idx_whatsapp_org_config_org ON public.whatsapp_org_config USING btr
 
 
 --
+-- Name: idx_work_order_appointments_appt; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_work_order_appointments_appt ON public.work_order_appointments USING btree (appointment_id);
+
+
+--
+-- Name: idx_work_order_appointments_wo; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_work_order_appointments_wo ON public.work_order_appointments USING btree (work_order_id);
+
+
+--
+-- Name: idx_work_order_checklist_work_order; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_work_order_checklist_work_order ON public.work_order_checklist USING btree (work_order_id);
+
+
+--
+-- Name: idx_work_order_events_work_order; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_work_order_events_work_order ON public.work_order_events USING btree (work_order_id);
+
+
+--
+-- Name: idx_work_order_labor_work_order; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_work_order_labor_work_order ON public.work_order_labor USING btree (work_order_id);
+
+
+--
+-- Name: idx_work_order_parts_work_order; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_work_order_parts_work_order ON public.work_order_parts USING btree (work_order_id);
+
+
+--
+-- Name: idx_work_order_sla_work_order; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_work_order_sla_work_order ON public.work_order_sla USING btree (work_order_id);
+
+
+--
+-- Name: idx_work_order_tasks_work_order; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_work_order_tasks_work_order ON public.work_order_tasks USING btree (work_order_id);
+
+
+--
+-- Name: idx_work_orders_asset; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_work_orders_asset ON public.work_orders USING btree (asset_id) WHERE ((deleted_at IS NULL) AND (asset_id IS NOT NULL));
+
+
+--
+-- Name: idx_work_orders_org; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_work_orders_org ON public.work_orders USING btree (organization_id) WHERE (deleted_at IS NULL);
+
+
+--
+-- Name: idx_work_orders_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_work_orders_status ON public.work_orders USING btree (status, organization_id) WHERE (deleted_at IS NULL);
+
+
+--
 -- Name: idx_work_policies_default; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -23711,6 +23585,13 @@ CREATE INDEX profiles_role_idx ON public.profiles USING btree (role);
 --
 
 CREATE INDEX services_embedding_idx ON public.services USING ivfflat (embedding extensions.vector_cosine_ops) WITH (lists='100') WHERE (embedding IS NOT NULL);
+
+
+--
+-- Name: unique_global_rule_name; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX unique_global_rule_name ON public.nlu_heuristic_rules USING btree (rule_name) WHERE (organization_id IS NULL);
 
 
 --
@@ -24022,6 +23903,20 @@ CREATE TRIGGER set_patients_updated_at BEFORE UPDATE ON public.patients FOR EACH
 
 
 --
+-- Name: suppliers suppliers_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER suppliers_updated_at BEFORE UPDATE ON public.suppliers FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: transaction_line_items tli_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER tli_updated_at BEFORE UPDATE ON public.transaction_line_items FOR EACH ROW EXECUTE FUNCTION public.update_tli_timestamp();
+
+
+--
 -- Name: resource_capability_availability tr_availability_updated_at; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -24141,6 +24036,13 @@ CREATE TRIGGER trg_entity_insurance_updated BEFORE UPDATE ON public.entity_insur
 
 
 --
+-- Name: item_providers trg_item_providers_bookable; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_item_providers_bookable AFTER INSERT OR DELETE ON public.item_providers FOR EACH ROW EXECUTE FUNCTION public.update_entity_bookable_status();
+
+
+--
 -- Name: jobs trg_jobs_updated; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -24190,6 +24092,13 @@ CREATE TRIGGER trg_scheduled_shifts_updated BEFORE UPDATE ON public.scheduled_sh
 
 
 --
+-- Name: service_providers trg_service_providers_bookable; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_service_providers_bookable AFTER INSERT OR DELETE ON public.service_providers FOR EACH ROW EXECUTE FUNCTION public.update_entity_bookable_status();
+
+
+--
 -- Name: shift_templates trg_shift_templates_updated; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -24236,13 +24145,6 @@ CREATE TRIGGER trg_time_entry_derived BEFORE INSERT OR UPDATE OF entry_timestamp
 --
 
 CREATE TRIGGER trg_time_entry_recalc AFTER INSERT OR UPDATE ON public.time_entries FOR EACH ROW EXECUTE FUNCTION public.queue_time_summary_recalculation();
-
-
---
--- Name: ai_skill_executions trg_update_skill_metrics; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER trg_update_skill_metrics AFTER INSERT OR UPDATE OF status ON public.ai_skill_executions FOR EACH ROW EXECUTE FUNCTION public.update_skill_metrics();
 
 
 --
@@ -24323,6 +24225,13 @@ CREATE TRIGGER update_appointments_updated_at BEFORE UPDATE ON public.appointmen
 
 
 --
+-- Name: asset_registry update_asset_registry_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER update_asset_registry_updated_at BEFORE UPDATE ON public.asset_registry FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
 -- Name: booking_configurations update_booking_configurations_updated_at; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -24379,6 +24288,48 @@ CREATE TRIGGER update_entity_metrics_cache_updated_at BEFORE UPDATE ON public.en
 
 
 --
+-- Name: fuel_accounts update_fuel_accounts_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER update_fuel_accounts_updated_at BEFORE UPDATE ON public.fuel_accounts FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: fuel_cards update_fuel_cards_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER update_fuel_cards_updated_at BEFORE UPDATE ON public.fuel_cards FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: fuel_transactions update_fuel_transactions_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER update_fuel_transactions_updated_at BEFORE UPDATE ON public.fuel_transactions FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: maintenance_plan_tasks update_maintenance_plan_tasks_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER update_maintenance_plan_tasks_updated_at BEFORE UPDATE ON public.maintenance_plan_tasks FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: maintenance_plans update_maintenance_plans_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER update_maintenance_plans_updated_at BEFORE UPDATE ON public.maintenance_plans FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: odometer_readings update_odometer_readings_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER update_odometer_readings_updated_at BEFORE UPDATE ON public.odometer_readings FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
 -- Name: organization_verticals update_organization_verticals_updated_at; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -24393,10 +24344,24 @@ CREATE TRIGGER update_organizations_updated_at BEFORE UPDATE ON public.organizat
 
 
 --
+-- Name: price_lists update_price_lists_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER update_price_lists_updated_at BEFORE UPDATE ON public.price_lists FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
 -- Name: profiles update_profiles_updated_at; Type: TRIGGER; Schema: public; Owner: -
 --
 
 CREATE TRIGGER update_profiles_updated_at BEFORE UPDATE ON public.profiles FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: promotions update_promotions_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER update_promotions_updated_at BEFORE UPDATE ON public.promotions FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 
 --
@@ -24418,6 +24383,48 @@ CREATE TRIGGER update_resource_unavailability_updated_at BEFORE UPDATE ON public
 --
 
 CREATE TRIGGER update_services_updated_at BEFORE UPDATE ON public.services FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: work_order_checklist update_work_order_checklist_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER update_work_order_checklist_updated_at BEFORE UPDATE ON public.work_order_checklist FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: work_order_labor update_work_order_labor_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER update_work_order_labor_updated_at BEFORE UPDATE ON public.work_order_labor FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: work_order_parts update_work_order_parts_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER update_work_order_parts_updated_at BEFORE UPDATE ON public.work_order_parts FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: work_order_sla update_work_order_sla_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER update_work_order_sla_updated_at BEFORE UPDATE ON public.work_order_sla FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: work_order_tasks update_work_order_tasks_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER update_work_order_tasks_updated_at BEFORE UPDATE ON public.work_order_tasks FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: work_orders update_work_orders_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER update_work_orders_updated_at BEFORE UPDATE ON public.work_orders FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 
 --
@@ -24446,6 +24453,30 @@ CREATE TRIGGER walkin_config_updated_at BEFORE UPDATE ON public.walkin_configura
 --
 
 CREATE TRIGGER walkin_entries_updated_at BEFORE UPDATE ON public.walkin_entries FOR EACH ROW EXECUTE FUNCTION public.update_walkin_updated_at();
+
+
+--
+-- Name: ai_approval_requests ai_approval_requests_approver_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ai_approval_requests
+    ADD CONSTRAINT ai_approval_requests_approver_user_id_fkey FOREIGN KEY (approver_user_id) REFERENCES auth.users(id);
+
+
+--
+-- Name: ai_approval_requests ai_approval_requests_organization_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ai_approval_requests
+    ADD CONSTRAINT ai_approval_requests_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id);
+
+
+--
+-- Name: ai_approval_requests ai_approval_requests_requester_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ai_approval_requests
+    ADD CONSTRAINT ai_approval_requests_requester_user_id_fkey FOREIGN KEY (requester_user_id) REFERENCES auth.users(id);
 
 
 --
@@ -24518,38 +24549,6 @@ ALTER TABLE ONLY public.ai_search_logs
 
 ALTER TABLE ONLY public.ai_search_logs
     ADD CONSTRAINT ai_search_logs_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
-
-
---
--- Name: ai_skill_executions ai_skill_executions_approved_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.ai_skill_executions
-    ADD CONSTRAINT ai_skill_executions_approved_by_fkey FOREIGN KEY (approved_by) REFERENCES auth.users(id);
-
-
---
--- Name: ai_skill_executions ai_skill_executions_organization_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.ai_skill_executions
-    ADD CONSTRAINT ai_skill_executions_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id) ON DELETE CASCADE;
-
-
---
--- Name: ai_skill_executions ai_skill_executions_skill_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.ai_skill_executions
-    ADD CONSTRAINT ai_skill_executions_skill_id_fkey FOREIGN KEY (skill_id) REFERENCES public.ai_skills(id) ON DELETE CASCADE;
-
-
---
--- Name: ai_skill_executions ai_skill_executions_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.ai_skill_executions
-    ADD CONSTRAINT ai_skill_executions_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id);
 
 
 --
@@ -24662,6 +24661,30 @@ ALTER TABLE ONLY public.appointments
 
 ALTER TABLE ONLY public.appointments
     ADD CONSTRAINT appointments_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES auth.users(id);
+
+
+--
+-- Name: asset_registry asset_registry_entity_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.asset_registry
+    ADD CONSTRAINT asset_registry_entity_id_fkey FOREIGN KEY (entity_id) REFERENCES public.entities(id) ON DELETE SET NULL;
+
+
+--
+-- Name: asset_registry asset_registry_location_entity_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.asset_registry
+    ADD CONSTRAINT asset_registry_location_entity_id_fkey FOREIGN KEY (location_entity_id) REFERENCES public.entities(id) ON DELETE SET NULL;
+
+
+--
+-- Name: asset_registry asset_registry_organization_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.asset_registry
+    ADD CONSTRAINT asset_registry_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id) ON DELETE CASCADE;
 
 
 --
@@ -24806,6 +24829,14 @@ ALTER TABLE ONLY public.catalog_items
 
 ALTER TABLE ONLY public.catalog_items
     ADD CONSTRAINT catalog_items_parent_id_fkey FOREIGN KEY (parent_id) REFERENCES public.catalog_items(id) ON DELETE CASCADE;
+
+
+--
+-- Name: catalog_items catalog_items_product_category_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.catalog_items
+    ADD CONSTRAINT catalog_items_product_category_fkey FOREIGN KEY (product_category) REFERENCES public.product_categories(code);
 
 
 --
@@ -25385,6 +25416,118 @@ ALTER TABLE ONLY public.employees
 
 
 --
+-- Name: transaction_line_items fk_organization; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.transaction_line_items
+    ADD CONSTRAINT fk_organization FOREIGN KEY (organization_id) REFERENCES public.organizations(id);
+
+
+--
+-- Name: fuel_accounts fuel_accounts_organization_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fuel_accounts
+    ADD CONSTRAINT fuel_accounts_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id) ON DELETE CASCADE;
+
+
+--
+-- Name: fuel_accounts fuel_accounts_provider_entity_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fuel_accounts
+    ADD CONSTRAINT fuel_accounts_provider_entity_id_fkey FOREIGN KEY (provider_entity_id) REFERENCES public.entities(id) ON DELETE SET NULL;
+
+
+--
+-- Name: fuel_cards fuel_cards_account_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fuel_cards
+    ADD CONSTRAINT fuel_cards_account_id_fkey FOREIGN KEY (account_id) REFERENCES public.fuel_accounts(id) ON DELETE SET NULL;
+
+
+--
+-- Name: fuel_cards fuel_cards_assigned_asset_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fuel_cards
+    ADD CONSTRAINT fuel_cards_assigned_asset_id_fkey FOREIGN KEY (assigned_asset_id) REFERENCES public.asset_registry(id) ON DELETE SET NULL;
+
+
+--
+-- Name: fuel_cards fuel_cards_assigned_entity_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fuel_cards
+    ADD CONSTRAINT fuel_cards_assigned_entity_id_fkey FOREIGN KEY (assigned_entity_id) REFERENCES public.entities(id) ON DELETE SET NULL;
+
+
+--
+-- Name: fuel_cards fuel_cards_organization_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fuel_cards
+    ADD CONSTRAINT fuel_cards_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id) ON DELETE CASCADE;
+
+
+--
+-- Name: fuel_cards fuel_cards_provider_entity_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fuel_cards
+    ADD CONSTRAINT fuel_cards_provider_entity_id_fkey FOREIGN KEY (provider_entity_id) REFERENCES public.entities(id) ON DELETE SET NULL;
+
+
+--
+-- Name: fuel_transactions fuel_transactions_asset_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fuel_transactions
+    ADD CONSTRAINT fuel_transactions_asset_id_fkey FOREIGN KEY (asset_id) REFERENCES public.asset_registry(id) ON DELETE SET NULL;
+
+
+--
+-- Name: fuel_transactions fuel_transactions_driver_entity_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fuel_transactions
+    ADD CONSTRAINT fuel_transactions_driver_entity_id_fkey FOREIGN KEY (driver_entity_id) REFERENCES public.entities(id) ON DELETE SET NULL;
+
+
+--
+-- Name: fuel_transactions fuel_transactions_fuel_card_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fuel_transactions
+    ADD CONSTRAINT fuel_transactions_fuel_card_id_fkey FOREIGN KEY (fuel_card_id) REFERENCES public.fuel_cards(id) ON DELETE SET NULL;
+
+
+--
+-- Name: fuel_transactions fuel_transactions_location_entity_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fuel_transactions
+    ADD CONSTRAINT fuel_transactions_location_entity_id_fkey FOREIGN KEY (location_entity_id) REFERENCES public.entities(id) ON DELETE SET NULL;
+
+
+--
+-- Name: fuel_transactions fuel_transactions_organization_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fuel_transactions
+    ADD CONSTRAINT fuel_transactions_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id) ON DELETE CASCADE;
+
+
+--
+-- Name: fuel_transactions fuel_transactions_supplier_entity_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fuel_transactions
+    ADD CONSTRAINT fuel_transactions_supplier_entity_id_fkey FOREIGN KEY (supplier_entity_id) REFERENCES public.entities(id) ON DELETE SET NULL;
+
+
+--
 -- Name: identification_document_types identification_document_types_organization_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -25625,6 +25768,38 @@ ALTER TABLE ONLY public.llm_prompts
 
 
 --
+-- Name: maintenance_plan_tasks maintenance_plan_tasks_catalog_item_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maintenance_plan_tasks
+    ADD CONSTRAINT maintenance_plan_tasks_catalog_item_id_fkey FOREIGN KEY (catalog_item_id) REFERENCES public.catalog_items(id) ON DELETE SET NULL;
+
+
+--
+-- Name: maintenance_plan_tasks maintenance_plan_tasks_plan_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maintenance_plan_tasks
+    ADD CONSTRAINT maintenance_plan_tasks_plan_id_fkey FOREIGN KEY (plan_id) REFERENCES public.maintenance_plans(id) ON DELETE CASCADE;
+
+
+--
+-- Name: maintenance_plans maintenance_plans_asset_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maintenance_plans
+    ADD CONSTRAINT maintenance_plans_asset_id_fkey FOREIGN KEY (asset_id) REFERENCES public.asset_registry(id) ON DELETE CASCADE;
+
+
+--
+-- Name: maintenance_plans maintenance_plans_organization_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maintenance_plans
+    ADD CONSTRAINT maintenance_plans_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id) ON DELETE CASCADE;
+
+
+--
 -- Name: memberships memberships_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -25718,6 +25893,30 @@ ALTER TABLE ONLY public.nlu_training_logs
 
 ALTER TABLE ONLY public.nlu_typo_corrections
     ADD CONSTRAINT nlu_typo_corrections_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id) ON DELETE CASCADE;
+
+
+--
+-- Name: odometer_readings odometer_readings_asset_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.odometer_readings
+    ADD CONSTRAINT odometer_readings_asset_id_fkey FOREIGN KEY (asset_id) REFERENCES public.asset_registry(id) ON DELETE CASCADE;
+
+
+--
+-- Name: odometer_readings odometer_readings_organization_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.odometer_readings
+    ADD CONSTRAINT odometer_readings_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id) ON DELETE CASCADE;
+
+
+--
+-- Name: odometer_readings odometer_readings_recorded_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.odometer_readings
+    ADD CONSTRAINT odometer_readings_recorded_by_fkey FOREIGN KEY (recorded_by) REFERENCES auth.users(id) ON DELETE SET NULL;
 
 
 --
@@ -25921,6 +26120,46 @@ ALTER TABLE ONLY public.positions
 
 
 --
+-- Name: price_list_items price_list_items_catalog_item_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.price_list_items
+    ADD CONSTRAINT price_list_items_catalog_item_id_fkey FOREIGN KEY (catalog_item_id) REFERENCES public.catalog_items(id) ON DELETE CASCADE;
+
+
+--
+-- Name: price_list_items price_list_items_price_list_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.price_list_items
+    ADD CONSTRAINT price_list_items_price_list_id_fkey FOREIGN KEY (price_list_id) REFERENCES public.price_lists(id) ON DELETE CASCADE;
+
+
+--
+-- Name: price_lists price_lists_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.price_lists
+    ADD CONSTRAINT price_lists_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id);
+
+
+--
+-- Name: price_lists price_lists_organization_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.price_lists
+    ADD CONSTRAINT price_lists_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id) ON DELETE CASCADE;
+
+
+--
+-- Name: price_lists price_lists_updated_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.price_lists
+    ADD CONSTRAINT price_lists_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES auth.users(id);
+
+
+--
 -- Name: profiles profiles_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -25990,6 +26229,30 @@ ALTER TABLE ONLY public.promotion_rules
 
 ALTER TABLE ONLY public.promotion_tiers
     ADD CONSTRAINT promotion_tiers_promotion_id_fkey FOREIGN KEY (promotion_id) REFERENCES public.promotions(id) ON DELETE CASCADE;
+
+
+--
+-- Name: promotion_usage promotion_usage_organization_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.promotion_usage
+    ADD CONSTRAINT promotion_usage_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id) ON DELETE CASCADE;
+
+
+--
+-- Name: promotion_usage promotion_usage_promotion_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.promotion_usage
+    ADD CONSTRAINT promotion_usage_promotion_id_fkey FOREIGN KEY (promotion_id) REFERENCES public.promotions(id) ON DELETE CASCADE;
+
+
+--
+-- Name: promotion_usage promotion_usage_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.promotion_usage
+    ADD CONSTRAINT promotion_usage_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id);
 
 
 --
@@ -26313,6 +26576,46 @@ ALTER TABLE ONLY public.subscriptions
 
 
 --
+-- Name: suppliers suppliers_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.suppliers
+    ADD CONSTRAINT suppliers_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id);
+
+
+--
+-- Name: suppliers suppliers_deleted_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.suppliers
+    ADD CONSTRAINT suppliers_deleted_by_fkey FOREIGN KEY (deleted_by) REFERENCES auth.users(id);
+
+
+--
+-- Name: suppliers suppliers_entity_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.suppliers
+    ADD CONSTRAINT suppliers_entity_id_fkey FOREIGN KEY (entity_id) REFERENCES public.entities(id) ON DELETE CASCADE;
+
+
+--
+-- Name: suppliers suppliers_organization_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.suppliers
+    ADD CONSTRAINT suppliers_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id) ON DELETE CASCADE;
+
+
+--
+-- Name: suppliers suppliers_updated_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.suppliers
+    ADD CONSTRAINT suppliers_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES auth.users(id);
+
+
+--
 -- Name: time_entries time_entries_approved_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -26385,6 +26688,30 @@ ALTER TABLE ONLY public.time_entry_modifications
 
 
 --
+-- Name: transaction_line_items transaction_line_items_catalog_item_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.transaction_line_items
+    ADD CONSTRAINT transaction_line_items_catalog_item_id_fkey FOREIGN KEY (catalog_item_id) REFERENCES public.catalog_items(id);
+
+
+--
+-- Name: transaction_line_items transaction_line_items_organization_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.transaction_line_items
+    ADD CONSTRAINT transaction_line_items_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id);
+
+
+--
+-- Name: transaction_line_items transaction_line_items_provider_entity_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.transaction_line_items
+    ADD CONSTRAINT transaction_line_items_provider_entity_id_fkey FOREIGN KEY (provider_entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: user_roles user_roles_granted_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -26430,6 +26757,30 @@ ALTER TABLE ONLY public.user_sessions
 
 ALTER TABLE ONLY public.vertical_configs
     ADD CONSTRAINT vertical_configs_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id) ON DELETE CASCADE;
+
+
+--
+-- Name: vision_scan_sessions vision_scan_sessions_catalog_item_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.vision_scan_sessions
+    ADD CONSTRAINT vision_scan_sessions_catalog_item_id_fkey FOREIGN KEY (catalog_item_id) REFERENCES public.catalog_items(id) ON DELETE SET NULL;
+
+
+--
+-- Name: vision_scan_sessions vision_scan_sessions_organization_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.vision_scan_sessions
+    ADD CONSTRAINT vision_scan_sessions_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id) ON DELETE CASCADE;
+
+
+--
+-- Name: vision_scan_sessions vision_scan_sessions_product_category_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.vision_scan_sessions
+    ADD CONSTRAINT vision_scan_sessions_product_category_fkey FOREIGN KEY (product_category) REFERENCES public.product_categories(code);
 
 
 --
@@ -26657,6 +27008,142 @@ ALTER TABLE ONLY public.whatsapp_org_config
 
 
 --
+-- Name: work_order_appointments work_order_appointments_appointment_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.work_order_appointments
+    ADD CONSTRAINT work_order_appointments_appointment_id_fkey FOREIGN KEY (appointment_id) REFERENCES public.appointments(id) ON DELETE CASCADE;
+
+
+--
+-- Name: work_order_appointments work_order_appointments_work_order_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.work_order_appointments
+    ADD CONSTRAINT work_order_appointments_work_order_id_fkey FOREIGN KEY (work_order_id) REFERENCES public.work_orders(id) ON DELETE CASCADE;
+
+
+--
+-- Name: work_order_checklist work_order_checklist_work_order_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.work_order_checklist
+    ADD CONSTRAINT work_order_checklist_work_order_id_fkey FOREIGN KEY (work_order_id) REFERENCES public.work_orders(id) ON DELETE CASCADE;
+
+
+--
+-- Name: work_order_events work_order_events_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.work_order_events
+    ADD CONSTRAINT work_order_events_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id);
+
+
+--
+-- Name: work_order_events work_order_events_work_order_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.work_order_events
+    ADD CONSTRAINT work_order_events_work_order_id_fkey FOREIGN KEY (work_order_id) REFERENCES public.work_orders(id) ON DELETE CASCADE;
+
+
+--
+-- Name: work_order_labor work_order_labor_technician_entity_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.work_order_labor
+    ADD CONSTRAINT work_order_labor_technician_entity_id_fkey FOREIGN KEY (technician_entity_id) REFERENCES public.entities(id) ON DELETE SET NULL;
+
+
+--
+-- Name: work_order_labor work_order_labor_work_order_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.work_order_labor
+    ADD CONSTRAINT work_order_labor_work_order_id_fkey FOREIGN KEY (work_order_id) REFERENCES public.work_orders(id) ON DELETE CASCADE;
+
+
+--
+-- Name: work_order_parts work_order_parts_catalog_item_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.work_order_parts
+    ADD CONSTRAINT work_order_parts_catalog_item_id_fkey FOREIGN KEY (catalog_item_id) REFERENCES public.catalog_items(id) ON DELETE SET NULL;
+
+
+--
+-- Name: work_order_parts work_order_parts_work_order_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.work_order_parts
+    ADD CONSTRAINT work_order_parts_work_order_id_fkey FOREIGN KEY (work_order_id) REFERENCES public.work_orders(id) ON DELETE CASCADE;
+
+
+--
+-- Name: work_order_sla work_order_sla_work_order_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.work_order_sla
+    ADD CONSTRAINT work_order_sla_work_order_id_fkey FOREIGN KEY (work_order_id) REFERENCES public.work_orders(id) ON DELETE CASCADE;
+
+
+--
+-- Name: work_order_tasks work_order_tasks_catalog_item_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.work_order_tasks
+    ADD CONSTRAINT work_order_tasks_catalog_item_id_fkey FOREIGN KEY (catalog_item_id) REFERENCES public.catalog_items(id) ON DELETE SET NULL;
+
+
+--
+-- Name: work_order_tasks work_order_tasks_work_order_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.work_order_tasks
+    ADD CONSTRAINT work_order_tasks_work_order_id_fkey FOREIGN KEY (work_order_id) REFERENCES public.work_orders(id) ON DELETE CASCADE;
+
+
+--
+-- Name: work_orders work_orders_asset_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.work_orders
+    ADD CONSTRAINT work_orders_asset_id_fkey FOREIGN KEY (asset_id) REFERENCES public.asset_registry(id) ON DELETE SET NULL;
+
+
+--
+-- Name: work_orders work_orders_assigned_entity_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.work_orders
+    ADD CONSTRAINT work_orders_assigned_entity_id_fkey FOREIGN KEY (assigned_entity_id) REFERENCES public.entities(id) ON DELETE SET NULL;
+
+
+--
+-- Name: work_orders work_orders_catalog_item_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.work_orders
+    ADD CONSTRAINT work_orders_catalog_item_id_fkey FOREIGN KEY (catalog_item_id) REFERENCES public.catalog_items(id) ON DELETE SET NULL;
+
+
+--
+-- Name: work_orders work_orders_organization_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.work_orders
+    ADD CONSTRAINT work_orders_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id) ON DELETE CASCADE;
+
+
+--
+-- Name: work_orders work_orders_requester_entity_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.work_orders
+    ADD CONSTRAINT work_orders_requester_entity_id_fkey FOREIGN KEY (requester_entity_id) REFERENCES public.entities(id) ON DELETE SET NULL;
+
+
+--
 -- Name: work_policies work_policies_organization_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -26669,15 +27156,6 @@ ALTER TABLE ONLY public.work_policies
 --
 
 CREATE POLICY "Anyone can view active plans" ON public.subscription_plans FOR SELECT USING (((is_active = true) AND (is_public = true)));
-
-
---
--- Name: ai_skill_executions Executions are scoped to organization; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY "Executions are scoped to organization" ON public.ai_skill_executions TO authenticated USING ((organization_id IN ( SELECT employees.organization_id
-   FROM public.employees
-  WHERE (ai_skill_executions.user_id = auth.uid()))));
 
 
 --
@@ -26721,13 +27199,6 @@ CREATE POLICY "Platform admins can view all roles" ON public.user_roles FOR SELE
 CREATE POLICY "Platform admins can view all subscriptions" ON public.subscriptions FOR SELECT USING ((EXISTS ( SELECT 1
    FROM public.user_roles
   WHERE ((user_roles.user_id = auth.uid()) AND (user_roles.role_key = 'platform_admin'::text)))));
-
-
---
--- Name: ai_skill_executions Service role can manage executions; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY "Service role can manage executions" ON public.ai_skill_executions TO service_role USING (true) WITH CHECK (true);
 
 
 --
@@ -26928,13 +27399,6 @@ CREATE POLICY ai_cache_select_policy ON public.ai_cache FOR SELECT USING (((orga
 
 
 --
--- Name: POLICY ai_cache_select_policy ON ai_cache; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON POLICY ai_cache_select_policy ON public.ai_cache IS 'Cache can be shared across organization for efficiency. Service role manages cache lifecycle.';
-
-
---
 -- Name: ai_cache ai_cache_update_policy; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -26966,13 +27430,6 @@ CREATE POLICY ai_conversations_insert_policy ON public.ai_conversations FOR INSE
 --
 
 CREATE POLICY ai_conversations_select_policy ON public.ai_conversations FOR SELECT USING (((user_id = auth.uid()) OR (auth.role() = 'service_role'::text)));
-
-
---
--- Name: POLICY ai_conversations_select_policy ON ai_conversations; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON POLICY ai_conversations_select_policy ON public.ai_conversations IS 'Users can only access their own AI conversations. Full isolation between users.';
 
 
 --
@@ -27044,13 +27501,6 @@ CREATE POLICY ai_embeddings_select_policy ON public.ai_embeddings FOR SELECT USI
 
 
 --
--- Name: POLICY ai_embeddings_select_policy ON ai_embeddings; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON POLICY ai_embeddings_select_policy ON public.ai_embeddings IS 'Users can view embeddings from their organization. Service role has full access.';
-
-
---
 -- Name: ai_embeddings ai_embeddings_update_policy; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -27091,24 +27541,11 @@ CREATE POLICY ai_search_logs_select_policy ON public.ai_search_logs FOR SELECT U
 
 
 --
--- Name: POLICY ai_search_logs_select_policy ON ai_search_logs; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON POLICY ai_search_logs_select_policy ON public.ai_search_logs IS 'Organization members can view search analytics. Logs are org-scoped for privacy.';
-
-
---
 -- Name: ai_search_logs ai_search_logs_update_policy; Type: POLICY; Schema: public; Owner: -
 --
 
 CREATE POLICY ai_search_logs_update_policy ON public.ai_search_logs FOR UPDATE USING ((auth.role() = 'service_role'::text));
 
-
---
--- Name: ai_skill_executions; Type: ROW SECURITY; Schema: public; Owner: -
---
-
-ALTER TABLE public.ai_skill_executions ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: ai_skills; Type: ROW SECURITY; Schema: public; Owner: -
@@ -27184,6 +27621,41 @@ CREATE POLICY appointments_select_policy ON public.appointments FOR SELECT USING
 --
 
 CREATE POLICY appointments_update_policy ON public.appointments FOR UPDATE USING ((organization_id = public.current_org_id()));
+
+
+--
+-- Name: asset_registry; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.asset_registry ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: asset_registry asset_registry_insert_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY asset_registry_insert_policy ON public.asset_registry FOR INSERT WITH CHECK (((organization_id IN ( SELECT memberships.organization_id
+   FROM public.memberships
+  WHERE ((memberships.user_id = auth.uid()) AND (memberships.status = 'active'::text)))) OR (auth.role() = 'service_role'::text)));
+
+
+--
+-- Name: asset_registry asset_registry_select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY asset_registry_select_policy ON public.asset_registry FOR SELECT USING (((organization_id IN ( SELECT memberships.organization_id
+   FROM public.memberships
+  WHERE ((memberships.user_id = auth.uid()) AND (memberships.status = 'active'::text)))) OR (auth.role() = 'service_role'::text)));
+
+
+--
+-- Name: asset_registry asset_registry_update_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY asset_registry_update_policy ON public.asset_registry FOR UPDATE USING (((organization_id IN ( SELECT memberships.organization_id
+   FROM public.memberships
+  WHERE ((memberships.user_id = auth.uid()) AND (memberships.status = 'active'::text)))) OR (auth.role() = 'service_role'::text))) WITH CHECK (((organization_id IN ( SELECT memberships.organization_id
+   FROM public.memberships
+  WHERE ((memberships.user_id = auth.uid()) AND (memberships.status = 'active'::text)))) OR (auth.role() = 'service_role'::text)));
 
 
 --
@@ -27834,6 +28306,111 @@ CREATE POLICY flow_states_service ON public.conversation_flow_states TO service_
 
 
 --
+-- Name: fuel_accounts; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.fuel_accounts ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: fuel_accounts fuel_accounts_insert_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY fuel_accounts_insert_policy ON public.fuel_accounts FOR INSERT WITH CHECK (((organization_id IN ( SELECT memberships.organization_id
+   FROM public.memberships
+  WHERE ((memberships.user_id = auth.uid()) AND (memberships.status = 'active'::text)))) OR (auth.role() = 'service_role'::text)));
+
+
+--
+-- Name: fuel_accounts fuel_accounts_select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY fuel_accounts_select_policy ON public.fuel_accounts FOR SELECT USING (((organization_id IN ( SELECT memberships.organization_id
+   FROM public.memberships
+  WHERE ((memberships.user_id = auth.uid()) AND (memberships.status = 'active'::text)))) OR (auth.role() = 'service_role'::text)));
+
+
+--
+-- Name: fuel_accounts fuel_accounts_update_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY fuel_accounts_update_policy ON public.fuel_accounts FOR UPDATE USING (((organization_id IN ( SELECT memberships.organization_id
+   FROM public.memberships
+  WHERE ((memberships.user_id = auth.uid()) AND (memberships.status = 'active'::text)))) OR (auth.role() = 'service_role'::text))) WITH CHECK (((organization_id IN ( SELECT memberships.organization_id
+   FROM public.memberships
+  WHERE ((memberships.user_id = auth.uid()) AND (memberships.status = 'active'::text)))) OR (auth.role() = 'service_role'::text)));
+
+
+--
+-- Name: fuel_cards; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.fuel_cards ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: fuel_cards fuel_cards_insert_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY fuel_cards_insert_policy ON public.fuel_cards FOR INSERT WITH CHECK (((organization_id IN ( SELECT memberships.organization_id
+   FROM public.memberships
+  WHERE ((memberships.user_id = auth.uid()) AND (memberships.status = 'active'::text)))) OR (auth.role() = 'service_role'::text)));
+
+
+--
+-- Name: fuel_cards fuel_cards_select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY fuel_cards_select_policy ON public.fuel_cards FOR SELECT USING (((organization_id IN ( SELECT memberships.organization_id
+   FROM public.memberships
+  WHERE ((memberships.user_id = auth.uid()) AND (memberships.status = 'active'::text)))) OR (auth.role() = 'service_role'::text)));
+
+
+--
+-- Name: fuel_cards fuel_cards_update_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY fuel_cards_update_policy ON public.fuel_cards FOR UPDATE USING (((organization_id IN ( SELECT memberships.organization_id
+   FROM public.memberships
+  WHERE ((memberships.user_id = auth.uid()) AND (memberships.status = 'active'::text)))) OR (auth.role() = 'service_role'::text))) WITH CHECK (((organization_id IN ( SELECT memberships.organization_id
+   FROM public.memberships
+  WHERE ((memberships.user_id = auth.uid()) AND (memberships.status = 'active'::text)))) OR (auth.role() = 'service_role'::text)));
+
+
+--
+-- Name: fuel_transactions; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.fuel_transactions ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: fuel_transactions fuel_transactions_insert_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY fuel_transactions_insert_policy ON public.fuel_transactions FOR INSERT WITH CHECK (((organization_id IN ( SELECT memberships.organization_id
+   FROM public.memberships
+  WHERE ((memberships.user_id = auth.uid()) AND (memberships.status = 'active'::text)))) OR (auth.role() = 'service_role'::text)));
+
+
+--
+-- Name: fuel_transactions fuel_transactions_select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY fuel_transactions_select_policy ON public.fuel_transactions FOR SELECT USING (((organization_id IN ( SELECT memberships.organization_id
+   FROM public.memberships
+  WHERE ((memberships.user_id = auth.uid()) AND (memberships.status = 'active'::text)))) OR (auth.role() = 'service_role'::text)));
+
+
+--
+-- Name: fuel_transactions fuel_transactions_update_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY fuel_transactions_update_policy ON public.fuel_transactions FOR UPDATE USING (((organization_id IN ( SELECT memberships.organization_id
+   FROM public.memberships
+  WHERE ((memberships.user_id = auth.uid()) AND (memberships.status = 'active'::text)))) OR (auth.role() = 'service_role'::text))) WITH CHECK (((organization_id IN ( SELECT memberships.organization_id
+   FROM public.memberships
+  WHERE ((memberships.user_id = auth.uid()) AND (memberships.status = 'active'::text)))) OR (auth.role() = 'service_role'::text)));
+
+
+--
 -- Name: entity_insurance_policies insurance_delete_org; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -28123,6 +28700,58 @@ CREATE POLICY llm_prompts_service_full ON public.llm_prompts TO service_role USI
 
 
 --
+-- Name: maintenance_plan_tasks; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.maintenance_plan_tasks ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: maintenance_plan_tasks maintenance_plan_tasks_select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY maintenance_plan_tasks_select_policy ON public.maintenance_plan_tasks FOR SELECT USING (((plan_id IN ( SELECT maintenance_plans.id
+   FROM public.maintenance_plans
+  WHERE (maintenance_plans.organization_id IN ( SELECT memberships.organization_id
+           FROM public.memberships
+          WHERE ((memberships.user_id = auth.uid()) AND (memberships.status = 'active'::text)))))) OR (auth.role() = 'service_role'::text)));
+
+
+--
+-- Name: maintenance_plans; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.maintenance_plans ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: maintenance_plans maintenance_plans_insert_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY maintenance_plans_insert_policy ON public.maintenance_plans FOR INSERT WITH CHECK (((organization_id IN ( SELECT memberships.organization_id
+   FROM public.memberships
+  WHERE ((memberships.user_id = auth.uid()) AND (memberships.status = 'active'::text)))) OR (auth.role() = 'service_role'::text)));
+
+
+--
+-- Name: maintenance_plans maintenance_plans_select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY maintenance_plans_select_policy ON public.maintenance_plans FOR SELECT USING (((organization_id IN ( SELECT memberships.organization_id
+   FROM public.memberships
+  WHERE ((memberships.user_id = auth.uid()) AND (memberships.status = 'active'::text)))) OR (auth.role() = 'service_role'::text)));
+
+
+--
+-- Name: maintenance_plans maintenance_plans_update_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY maintenance_plans_update_policy ON public.maintenance_plans FOR UPDATE USING (((organization_id IN ( SELECT memberships.organization_id
+   FROM public.memberships
+  WHERE ((memberships.user_id = auth.uid()) AND (memberships.status = 'active'::text)))) OR (auth.role() = 'service_role'::text))) WITH CHECK (((organization_id IN ( SELECT memberships.organization_id
+   FROM public.memberships
+  WHERE ((memberships.user_id = auth.uid()) AND (memberships.status = 'active'::text)))) OR (auth.role() = 'service_role'::text)));
+
+
+--
 -- Name: memberships; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -28151,6 +28780,41 @@ ALTER TABLE public.nlu_keywords ENABLE ROW LEVEL SECURITY;
 --
 
 ALTER TABLE public.nlu_typo_corrections ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: odometer_readings; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.odometer_readings ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: odometer_readings odometer_readings_insert_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY odometer_readings_insert_policy ON public.odometer_readings FOR INSERT WITH CHECK (((organization_id IN ( SELECT memberships.organization_id
+   FROM public.memberships
+  WHERE ((memberships.user_id = auth.uid()) AND (memberships.status = 'active'::text)))) OR (auth.role() = 'service_role'::text)));
+
+
+--
+-- Name: odometer_readings odometer_readings_select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY odometer_readings_select_policy ON public.odometer_readings FOR SELECT USING (((organization_id IN ( SELECT memberships.organization_id
+   FROM public.memberships
+  WHERE ((memberships.user_id = auth.uid()) AND (memberships.status = 'active'::text)))) OR (auth.role() = 'service_role'::text)));
+
+
+--
+-- Name: odometer_readings odometer_readings_update_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY odometer_readings_update_policy ON public.odometer_readings FOR UPDATE USING (((organization_id IN ( SELECT memberships.organization_id
+   FROM public.memberships
+  WHERE ((memberships.user_id = auth.uid()) AND (memberships.status = 'active'::text)))) OR (auth.role() = 'service_role'::text))) WITH CHECK (((organization_id IN ( SELECT memberships.organization_id
+   FROM public.memberships
+  WHERE ((memberships.user_id = auth.uid()) AND (memberships.status = 'active'::text)))) OR (auth.role() = 'service_role'::text)));
+
 
 --
 -- Name: org_knowledge_base; Type: ROW SECURITY; Schema: public; Owner: -
@@ -28296,13 +28960,6 @@ CREATE POLICY patients_delete_policy ON public.patients FOR DELETE TO authentica
 
 
 --
--- Name: POLICY patients_delete_policy ON patients; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON POLICY patients_delete_policy ON public.patients IS 'Hard deletes are disabled. Use soft delete via deleted_at column.';
-
-
---
 -- Name: patients patients_insert_policy; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -28366,6 +29023,51 @@ CREATE POLICY positions_update_policy ON public.positions FOR UPDATE USING (((or
 
 
 --
+-- Name: price_list_items; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.price_list_items ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: price_list_items price_list_items_org_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY price_list_items_org_isolation ON public.price_list_items USING (((price_list_id IN ( SELECT price_lists.id
+   FROM public.price_lists
+  WHERE (price_lists.organization_id IN ( SELECT memberships.organization_id
+           FROM public.memberships
+          WHERE ((memberships.user_id = auth.uid()) AND (memberships.status = 'active'::text)))))) OR (auth.role() = 'service_role'::text)));
+
+
+--
+-- Name: price_lists; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.price_lists ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: price_lists price_lists_org_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY price_lists_org_isolation ON public.price_lists USING (((organization_id IN ( SELECT memberships.organization_id
+   FROM public.memberships
+  WHERE ((memberships.user_id = auth.uid()) AND (memberships.status = 'active'::text)))) OR (auth.role() = 'service_role'::text)));
+
+
+--
+-- Name: product_categories; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.product_categories ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: product_categories product_categories_read_all; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY product_categories_read_all ON public.product_categories FOR SELECT USING (true);
+
+
+--
 -- Name: profiles; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -28400,6 +29102,72 @@ CREATE POLICY profiles_update_policy ON public.profiles FOR UPDATE USING (((user
 
 
 --
+-- Name: promotion_bundle_items; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.promotion_bundle_items ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: promotion_bundle_items promotion_bundle_items_org_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY promotion_bundle_items_org_isolation ON public.promotion_bundle_items USING (((promotion_id IN ( SELECT promotions.id
+   FROM public.promotions
+  WHERE (promotions.organization_id IN ( SELECT memberships.organization_id
+           FROM public.memberships
+          WHERE ((memberships.user_id = auth.uid()) AND (memberships.status = 'active'::text)))))) OR (auth.role() = 'service_role'::text)));
+
+
+--
+-- Name: promotion_rules; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.promotion_rules ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: promotion_rules promotion_rules_org_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY promotion_rules_org_isolation ON public.promotion_rules USING (((promotion_id IN ( SELECT promotions.id
+   FROM public.promotions
+  WHERE (promotions.organization_id IN ( SELECT memberships.organization_id
+           FROM public.memberships
+          WHERE ((memberships.user_id = auth.uid()) AND (memberships.status = 'active'::text)))))) OR (auth.role() = 'service_role'::text)));
+
+
+--
+-- Name: promotion_tiers; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.promotion_tiers ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: promotion_tiers promotion_tiers_org_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY promotion_tiers_org_isolation ON public.promotion_tiers USING (((promotion_id IN ( SELECT promotions.id
+   FROM public.promotions
+  WHERE (promotions.organization_id IN ( SELECT memberships.organization_id
+           FROM public.memberships
+          WHERE ((memberships.user_id = auth.uid()) AND (memberships.status = 'active'::text)))))) OR (auth.role() = 'service_role'::text)));
+
+
+--
+-- Name: promotion_usage; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.promotion_usage ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: promotion_usage promotion_usage_org_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY promotion_usage_org_isolation ON public.promotion_usage USING (((organization_id IN ( SELECT memberships.organization_id
+   FROM public.memberships
+  WHERE ((memberships.user_id = auth.uid()) AND (memberships.status = 'active'::text)))) OR (auth.role() = 'service_role'::text)));
+
+
+--
 -- Name: promotions; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -28409,7 +29177,9 @@ ALTER TABLE public.promotions ENABLE ROW LEVEL SECURITY;
 -- Name: promotions promotions_org_isolation; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY promotions_org_isolation ON public.promotions USING ((organization_id = COALESCE((current_setting('app.current_organization_id'::text, true))::uuid, organization_id)));
+CREATE POLICY promotions_org_isolation ON public.promotions USING (((organization_id IN ( SELECT memberships.organization_id
+   FROM public.memberships
+  WHERE ((memberships.user_id = auth.uid()) AND (memberships.status = 'active'::text)))) OR (auth.role() = 'service_role'::text)));
 
 
 --
@@ -28783,6 +29553,28 @@ ALTER TABLE public.subscription_plans ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.subscriptions ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: suppliers; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.suppliers ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: suppliers suppliers_org_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY suppliers_org_isolation ON public.suppliers USING ((organization_id IN ( SELECT memberships.organization_id
+   FROM public.memberships
+  WHERE (memberships.user_id = auth.uid()))));
+
+
+--
+-- Name: suppliers suppliers_service_role; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY suppliers_service_role ON public.suppliers TO service_role USING (true) WITH CHECK (true);
+
+
+--
 -- Name: time_entries; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -28834,6 +29626,68 @@ CREATE POLICY time_entry_mods_select_policy ON public.time_entry_modifications F
 
 
 --
+-- Name: transaction_line_items tli_delete_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY tli_delete_policy ON public.transaction_line_items FOR DELETE USING ((organization_id = public.current_org_id()));
+
+
+--
+-- Name: transaction_line_items tli_insert_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY tli_insert_policy ON public.transaction_line_items FOR INSERT WITH CHECK ((organization_id = public.current_org_id()));
+
+
+--
+-- Name: transaction_line_items tli_select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY tli_select_policy ON public.transaction_line_items FOR SELECT USING ((organization_id = public.current_org_id()));
+
+
+--
+-- Name: transaction_line_items tli_service_delete; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY tli_service_delete ON public.transaction_line_items FOR DELETE TO service_role USING (true);
+
+
+--
+-- Name: transaction_line_items tli_service_insert; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY tli_service_insert ON public.transaction_line_items FOR INSERT TO service_role WITH CHECK (true);
+
+
+--
+-- Name: transaction_line_items tli_service_select; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY tli_service_select ON public.transaction_line_items FOR SELECT TO service_role USING (true);
+
+
+--
+-- Name: transaction_line_items tli_service_update; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY tli_service_update ON public.transaction_line_items FOR UPDATE TO service_role USING (true);
+
+
+--
+-- Name: transaction_line_items tli_update_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY tli_update_policy ON public.transaction_line_items FOR UPDATE USING ((organization_id = public.current_org_id()));
+
+
+--
+-- Name: transaction_line_items; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.transaction_line_items ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: user_roles; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -28878,6 +29732,21 @@ CREATE POLICY users_see_own_org_usage ON public.ai_usage FOR SELECT USING ((orga
 --
 
 ALTER TABLE public.vertical_configs ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: vision_scan_sessions; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.vision_scan_sessions ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: vision_scan_sessions vision_scan_sessions_org_access; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY vision_scan_sessions_org_access ON public.vision_scan_sessions USING ((organization_id IN ( SELECT memberships.organization_id
+   FROM public.memberships
+  WHERE (memberships.user_id = auth.uid()))));
+
 
 --
 -- Name: waitlist_configurations waitlist_config_insert; Type: POLICY; Schema: public; Owner: -
@@ -29078,6 +29947,160 @@ CREATE POLICY whatsapp_messages_user_access ON public.whatsapp_messages FOR SELE
 ALTER TABLE public.whatsapp_org_config ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: work_order_appointments; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.work_order_appointments ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: work_order_appointments work_order_appointments_select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY work_order_appointments_select_policy ON public.work_order_appointments FOR SELECT USING (((work_order_id IN ( SELECT work_orders.id
+   FROM public.work_orders
+  WHERE (work_orders.organization_id IN ( SELECT memberships.organization_id
+           FROM public.memberships
+          WHERE ((memberships.user_id = auth.uid()) AND (memberships.status = 'active'::text)))))) OR (auth.role() = 'service_role'::text)));
+
+
+--
+-- Name: work_order_checklist; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.work_order_checklist ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: work_order_checklist work_order_checklist_select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY work_order_checklist_select_policy ON public.work_order_checklist FOR SELECT USING (((work_order_id IN ( SELECT work_orders.id
+   FROM public.work_orders
+  WHERE (work_orders.organization_id IN ( SELECT memberships.organization_id
+           FROM public.memberships
+          WHERE ((memberships.user_id = auth.uid()) AND (memberships.status = 'active'::text)))))) OR (auth.role() = 'service_role'::text)));
+
+
+--
+-- Name: work_order_events; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.work_order_events ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: work_order_events work_order_events_select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY work_order_events_select_policy ON public.work_order_events FOR SELECT USING (((work_order_id IN ( SELECT work_orders.id
+   FROM public.work_orders
+  WHERE (work_orders.organization_id IN ( SELECT memberships.organization_id
+           FROM public.memberships
+          WHERE ((memberships.user_id = auth.uid()) AND (memberships.status = 'active'::text)))))) OR (auth.role() = 'service_role'::text)));
+
+
+--
+-- Name: work_order_labor; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.work_order_labor ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: work_order_labor work_order_labor_select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY work_order_labor_select_policy ON public.work_order_labor FOR SELECT USING (((work_order_id IN ( SELECT work_orders.id
+   FROM public.work_orders
+  WHERE (work_orders.organization_id IN ( SELECT memberships.organization_id
+           FROM public.memberships
+          WHERE ((memberships.user_id = auth.uid()) AND (memberships.status = 'active'::text)))))) OR (auth.role() = 'service_role'::text)));
+
+
+--
+-- Name: work_order_parts; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.work_order_parts ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: work_order_parts work_order_parts_select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY work_order_parts_select_policy ON public.work_order_parts FOR SELECT USING (((work_order_id IN ( SELECT work_orders.id
+   FROM public.work_orders
+  WHERE (work_orders.organization_id IN ( SELECT memberships.organization_id
+           FROM public.memberships
+          WHERE ((memberships.user_id = auth.uid()) AND (memberships.status = 'active'::text)))))) OR (auth.role() = 'service_role'::text)));
+
+
+--
+-- Name: work_order_sla; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.work_order_sla ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: work_order_sla work_order_sla_select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY work_order_sla_select_policy ON public.work_order_sla FOR SELECT USING (((work_order_id IN ( SELECT work_orders.id
+   FROM public.work_orders
+  WHERE (work_orders.organization_id IN ( SELECT memberships.organization_id
+           FROM public.memberships
+          WHERE ((memberships.user_id = auth.uid()) AND (memberships.status = 'active'::text)))))) OR (auth.role() = 'service_role'::text)));
+
+
+--
+-- Name: work_order_tasks; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.work_order_tasks ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: work_order_tasks work_order_tasks_select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY work_order_tasks_select_policy ON public.work_order_tasks FOR SELECT USING (((work_order_id IN ( SELECT work_orders.id
+   FROM public.work_orders
+  WHERE (work_orders.organization_id IN ( SELECT memberships.organization_id
+           FROM public.memberships
+          WHERE ((memberships.user_id = auth.uid()) AND (memberships.status = 'active'::text)))))) OR (auth.role() = 'service_role'::text)));
+
+
+--
+-- Name: work_orders; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.work_orders ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: work_orders work_orders_insert_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY work_orders_insert_policy ON public.work_orders FOR INSERT WITH CHECK (((organization_id IN ( SELECT memberships.organization_id
+   FROM public.memberships
+  WHERE ((memberships.user_id = auth.uid()) AND (memberships.status = 'active'::text)))) OR (auth.role() = 'service_role'::text)));
+
+
+--
+-- Name: work_orders work_orders_select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY work_orders_select_policy ON public.work_orders FOR SELECT USING (((organization_id IN ( SELECT memberships.organization_id
+   FROM public.memberships
+  WHERE ((memberships.user_id = auth.uid()) AND (memberships.status = 'active'::text)))) OR (auth.role() = 'service_role'::text)));
+
+
+--
+-- Name: work_orders work_orders_update_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY work_orders_update_policy ON public.work_orders FOR UPDATE USING (((organization_id IN ( SELECT memberships.organization_id
+   FROM public.memberships
+  WHERE ((memberships.user_id = auth.uid()) AND (memberships.status = 'active'::text)))) OR (auth.role() = 'service_role'::text))) WITH CHECK (((organization_id IN ( SELECT memberships.organization_id
+   FROM public.memberships
+  WHERE ((memberships.user_id = auth.uid()) AND (memberships.status = 'active'::text)))) OR (auth.role() = 'service_role'::text)));
+
+
+--
 -- Name: work_policies; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -29096,5 +30119,5 @@ CREATE POLICY work_policies_org_access ON public.work_policies USING ((organizat
 -- PostgreSQL database dump complete
 --
 
-\unrestrict p12L0QOdpdXbBKr98WuOiwqwK06CIeOtomGGVtCyttI4XMMJhem0frKXDbW7wGu
+\unrestrict uzj9VT0tCso77MH1m6VOtysBCrTBSH6xNqJrstqDAmOZySUjTa4yblVNbQylbu6
 

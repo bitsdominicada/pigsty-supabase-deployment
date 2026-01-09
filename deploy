@@ -26,7 +26,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PIGSTY_VERSION="v4.0.0-c1"
+PIGSTY_VERSION="v4.0.0"
 
 # Colors
 RED='\033[0;31m'
@@ -73,6 +73,84 @@ scp_file() {
         "$1" "${SSH_USER:-ubuntu}@${VPS_HOST}:$2"
 }
 
+# Wait for PostgreSQL to be ready (max 90 seconds)
+wait_for_postgres() {
+    log_info "Waiting for PostgreSQL to be ready..."
+    local max_attempts=18
+    local attempt=1
+    while [[ $attempt -le $max_attempts ]]; do
+        if ssh_cmd "sudo -u postgres psql -c 'SELECT 1' &>/dev/null"; then
+            log_success "PostgreSQL is ready"
+            return 0
+        fi
+        echo "  Attempt $attempt/$max_attempts - waiting..."
+        sleep 5
+        ((attempt++))
+    done
+    log_error "PostgreSQL did not become ready in time"
+    return 1
+}
+
+# Wait for Patroni to be Leader (max 90 seconds)
+wait_for_patroni_leader() {
+    log_info "Waiting for Patroni to become Leader..."
+    local max_attempts=18
+    local attempt=1
+    while [[ $attempt -le $max_attempts ]]; do
+        local status=$(ssh_cmd "sudo patronictl -c /etc/patroni/patroni.yml list 2>/dev/null | grep -E 'Leader.*running'" || true)
+        if [[ -n "$status" ]]; then
+            log_success "Patroni is Leader and running"
+            return 0
+        fi
+        echo "  Attempt $attempt/$max_attempts - waiting..."
+        sleep 5
+        ((attempt++))
+    done
+    log_error "Patroni did not become Leader in time"
+    return 1
+}
+
+# Restart Patroni safely and wait for it to be ready
+restart_patroni_safe() {
+    log_info "Restarting Patroni safely..."
+    # Force kill and restart - systemctl restart often hangs
+    ssh_cmd "sudo systemctl kill patroni 2>/dev/null || true; sleep 3; sudo systemctl start patroni"
+    sleep 10
+    wait_for_patroni_leader
+    wait_for_postgres
+}
+
+# Ensure Supabase containers are healthy
+ensure_supabase_healthy() {
+    log_info "Ensuring Supabase containers are healthy..."
+    local max_attempts=3
+    local attempt=1
+    while [[ $attempt -le $max_attempts ]]; do
+        local running=$(ssh_cmd "docker ps --format '{{.Names}}' 2>/dev/null | grep -c supabase" || echo "0")
+        local healthy=$(ssh_cmd "docker ps --filter 'health=healthy' --format '{{.Names}}' 2>/dev/null | grep -c supabase" || echo "0")
+
+        if [[ "$running" -ge 10 ]] && [[ "$healthy" -ge 6 ]]; then
+            log_success "Supabase containers healthy ($running running, $healthy healthy)"
+            return 0
+        fi
+
+        log_warn "Attempt $attempt/$max_attempts - restarting containers..."
+        ssh_cmd "cd /opt/supabase && sudo docker compose restart" || true
+        sleep 30
+        ((attempt++))
+    done
+
+    # Final check
+    local running=$(ssh_cmd "docker ps --format '{{.Names}}' 2>/dev/null | grep -c supabase" || echo "0")
+    if [[ "$running" -ge 10 ]]; then
+        log_success "Supabase containers running ($running/11)"
+        return 0
+    fi
+
+    log_error "Supabase containers not healthy after $max_attempts attempts"
+    return 1
+}
+
 #==============================================================================#
 # PHASE 1: SETUP (Generate configuration)
 #==============================================================================#
@@ -99,6 +177,12 @@ do_install() {
     log_info "Domain: ${SUPABASE_DOMAIN}"
     echo ""
 
+    # Step 0: Configure DNS first (so SSL works later)
+    if [[ -n "${SUPABASE_DOMAIN:-}" ]] && [[ -x "$SCRIPT_DIR/scripts/cloudflare-dns.sh" ]]; then
+        log_info "Configuring DNS for ${SUPABASE_DOMAIN}..."
+        "$SCRIPT_DIR/scripts/cloudflare-dns.sh" create "${CLIENT_NAME}" "${VPS_HOST}" || log_warn "DNS config failed - continuing anyway"
+    fi
+
     # Step 1: Test SSH connection
     log_info "Testing SSH connection..."
     if ! ssh_cmd "echo 'connected'" &>/dev/null; then
@@ -108,12 +192,38 @@ do_install() {
     fi
     log_success "SSH connection OK"
 
-    # Step 2: Download Pigsty
+    # Step 2: Prepare fresh system
+    log_info "Preparing system (cleaning previous installs, disabling auto-updates)..."
+    ssh_cmd "
+        # Wait for any apt processes to finish (max 5 minutes)
+        for i in {1..60}; do
+            if ! fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 && \
+               ! fuser /var/lib/apt/lists/lock >/dev/null 2>&1; then
+                break
+            fi
+            echo 'Waiting for apt lock to be released...'
+            sleep 5
+        done
+
+        # Disable unattended-upgrades to prevent future locks
+        sudo systemctl stop unattended-upgrades 2>/dev/null || true
+        sudo systemctl disable unattended-upgrades 2>/dev/null || true
+        sudo apt-get remove -y unattended-upgrades 2>/dev/null || true
+
+        # Clean any previous Pigsty installation completely
+        rm -rf ~/pigsty
+        sudo rm -rf /www/pigsty 2>/dev/null || true
+        sudo rm -f /etc/apt/sources.list.d/pigsty-local.list 2>/dev/null || true
+        sudo apt-get update -qq 2>/dev/null || true
+    "
+    log_success "System prepared"
+
+    # Step 3: Download Pigsty
     log_info "Downloading Pigsty ${PIGSTY_VERSION}..."
     ssh_cmd "curl -fsSL https://repo.pigsty.io/get | bash -s ${PIGSTY_VERSION}"
     log_success "Pigsty downloaded"
 
-    # Step 3: Generate pigsty.yml from template
+    # Step 4: Generate and upload pigsty.yml
     log_info "Generating pigsty.yml..."
     source "$SCRIPT_DIR/scripts/generate-config.sh"
     generate_pigsty_yml > /tmp/pigsty.yml
@@ -121,13 +231,31 @@ do_install() {
     rm /tmp/pigsty.yml
     log_success "Configuration uploaded"
 
-    # Step 4: Run deploy.yml (installs everything)
+    # Step 5: Clean old pgBackRest stanza from B2 (prevents system-id mismatch)
+    if [[ -n "${S3_BUCKET:-}" ]]; then
+        log_info "Cleaning old pgBackRest stanza from B2 (if exists)..."
+        ssh_cmd "
+            # Install AWS CLI if not present
+            which aws >/dev/null 2>&1 || sudo apt-get install -y awscli >/dev/null 2>&1
+
+            # Configure AWS CLI for B2
+            export AWS_ACCESS_KEY_ID='${S3_ACCESS_KEY}'
+            export AWS_SECRET_ACCESS_KEY='${S3_SECRET_KEY}'
+
+            # Delete old stanza data from B2
+            aws s3 rm s3://${S3_BUCKET}/pg-backups/archive/pg-${CLIENT_NAME}/ --recursive --endpoint-url=https://s3.${S3_REGION}.backblazeb2.com 2>/dev/null || true
+            aws s3 rm s3://${S3_BUCKET}/pg-backups/backup/pg-${CLIENT_NAME}/ --recursive --endpoint-url=https://s3.${S3_REGION}.backblazeb2.com 2>/dev/null || true
+        " || log_warn "Could not clean B2 stanza (may not exist)"
+        log_success "B2 stanza cleaned"
+    fi
+
+    # Step 6: Run deploy.yml (builds repo + installs everything)
     log_info "Running deploy.yml (this takes 15-20 minutes)..."
     log_info "Installing: PostgreSQL 18, Patroni, etcd, VictoriaMetrics, Grafana..."
     ssh_cmd "cd ~/pigsty && ./deploy.yml"
     log_success "Pigsty installed"
 
-    # Step 5: Run docker.yml
+    # Step 6: Run docker.yml
     log_info "Installing Docker..."
     ssh_cmd "cd ~/pigsty && ./docker.yml"
     log_success "Docker installed"
@@ -144,23 +272,100 @@ do_supabase() {
     load_env
     log_step "SUPABASE: Launch Containers"
 
+    # Create supabase database for Analytics/Logflare
+    log_info "Creating supabase database for Analytics..."
+    ssh_cmd "sudo -u postgres psql -c \"CREATE DATABASE supabase OWNER supabase_admin;\" 2>/dev/null || true"
+
     # Run app.yml to launch Supabase
     log_info "Launching Supabase containers..."
     ssh_cmd "cd ~/pigsty && ./app.yml -e app=supabase"
 
-    # Wait for containers to start
-    log_info "Waiting for containers to start..."
-    sleep 15
+    # Apply Backblaze B2 compatibility fix (TUS_ALLOW_S3_TAGS)
+    # This fix is needed for any S3-compatible storage that doesn't support tagging
+    log_info "Applying S3 storage compatibility fix (TUS_ALLOW_S3_TAGS=false)..."
+    ssh_cmd "cd /opt/supabase && \
+        if ! grep -q 'TUS_ALLOW_S3_TAGS' docker-compose.yml; then
+            sudo sed -i '/GLOBAL_S3_FORCE_PATH_STYLE/a\\      TUS_ALLOW_S3_TAGS: \"false\"' docker-compose.yml
+            echo 'TUS_ALLOW_S3_TAGS fix applied'
+        else
+            echo 'TUS_ALLOW_S3_TAGS already configured'
+        fi && \
+        sudo docker compose up -d storage"
+    log_success "Storage container configured"
 
-    # Check container status
-    local running=$(ssh_cmd "docker ps --format '{{.Names}}' | grep -c supabase" || echo "0")
+    # Expose Studio port (docker-compose doesn't expose it by default)
+    log_info "Configuring Studio port mapping..."
+    ssh_cmd "cd /opt/supabase && \
+        grep -q '3001:3000' docker-compose.yml || \
+        sudo sed -i '/container_name: supabase-studio/a\\    ports:\\n      - \"3001:3000\"' docker-compose.yml"
 
-    if [[ "$running" -ge 10 ]]; then
-        log_success "All Supabase containers running ($running/11)"
-    else
-        log_warn "Only $running/11 containers running"
-        log_info "Check with: ./deploy status"
+    # Update URLs and project name
+    log_info "Configuring Studio..."
+    # Use HTTPS with domain if configured, otherwise HTTP with IP
+    local api_url="http://${VPS_HOST}:8000"
+    local studio_url="http://${VPS_HOST}:3001"
+    if [[ -n "${SUPABASE_DOMAIN:-}" ]]; then
+        api_url="https://api.${SUPABASE_DOMAIN}"
+        studio_url="https://studio.${SUPABASE_DOMAIN}"
     fi
+    ssh_cmd "cd /opt/supabase && \
+        sudo sed -i 's|SUPABASE_PUBLIC_URL=.*|SUPABASE_PUBLIC_URL=${api_url}|' .env && \
+        sudo sed -i 's|API_EXTERNAL_URL=.*|API_EXTERNAL_URL=${api_url}|' .env && \
+        sudo sed -i 's|SITE_URL=.*|SITE_URL=${studio_url}|' .env && \
+        sudo sed -i 's|STUDIO_DEFAULT_PROJECT=.*|STUDIO_DEFAULT_PROJECT=${CLIENT_NAME}|' .env && \
+        sudo sed -i 's|STUDIO_DEFAULT_ORGANIZATION=.*|STUDIO_DEFAULT_ORGANIZATION=${CLIENT_NAME}|' .env && \
+        sudo docker compose up -d studio"
+    log_success "Studio configured with API URL: ${api_url}"
+
+    # Fix pgsodium server key for vault
+    log_info "Configuring pgsodium server key..."
+    ssh_cmd "
+        # Create pgsodium root key if not exists
+        if [ ! -f /pg/data/pgsodium_root.key ]; then
+            sudo head -c 32 /dev/urandom | od -A n -t x1 | tr -d ' \n' | sudo tee /pg/data/pgsodium_root.key > /dev/null
+            sudo chmod 600 /pg/data/pgsodium_root.key
+            sudo chown postgres:postgres /pg/data/pgsodium_root.key
+        fi
+        # Create getkey script
+        sudo mkdir -p /pg/bin
+        echo '#!/bin/bash' | sudo tee /pg/bin/pgsodium_getkey > /dev/null
+        echo 'cat /pg/data/pgsodium_root.key' | sudo tee -a /pg/bin/pgsodium_getkey > /dev/null
+        sudo chmod 755 /pg/bin/pgsodium_getkey
+        sudo chown postgres:postgres /pg/bin/pgsodium_getkey
+    "
+
+    # Restart Patroni safely and wait for it to be ready
+    restart_patroni_safe
+    log_success "pgsodium server key configured"
+
+    # Create pgBackRest stanza (for new installs)
+    log_info "Creating pgBackRest stanza..."
+    ssh_cmd "sudo -u postgres pgbackrest --stanza=pg-${CLIENT_NAME} stanza-create 2>/dev/null || true"
+    log_success "pgBackRest stanza configured"
+
+    # Patch vault functions to use pgsodium native encryption (bypasses server key requirement)
+    log_info "Patching vault functions for pgsodium compatibility..."
+    if [[ -f "$SCRIPT_DIR/config/patches/vault_encryption.sql" ]]; then
+        scp_file "$SCRIPT_DIR/config/patches/vault_encryption.sql" "/tmp/vault_patch.sql"
+        ssh_cmd "sudo chmod 644 /tmp/vault_patch.sql && sudo -u postgres psql -d postgres -f /tmp/vault_patch.sql && rm /tmp/vault_patch.sql"
+        log_success "Vault functions patched"
+    else
+        log_warn "Vault patch file not found at config/patches/vault_encryption.sql - skipping"
+    fi
+
+    # Apply app schema from staging
+    log_info "Applying app schema..."
+    if [[ -f "$SCRIPT_DIR/config/app_schema/app_schema.sql" ]]; then
+        scp_file "$SCRIPT_DIR/config/app_schema/app_schema.sql" "/tmp/app_schema.sql"
+        ssh_cmd "sudo chmod 644 /tmp/app_schema.sql && sudo -u postgres psql -d postgres -f /tmp/app_schema.sql" >/dev/null 2>&1
+        local tables=$(ssh_cmd "sudo -u postgres psql -d postgres -tAc \"SELECT COUNT(*) FROM pg_tables WHERE schemaname = 'public'\"")
+        log_success "App schema applied ($tables tables in public schema)"
+    else
+        log_warn "No app_schema.sql found - skipping"
+    fi
+
+    # Ensure all Supabase containers are healthy (with retries)
+    ensure_supabase_healthy
 
     log_success "Supabase launched!"
     log_info "Next: ./deploy harden"
@@ -195,14 +400,27 @@ do_harden() {
         sudo systemctl start fail2ban"
     log_success "Fail2ban configured"
 
-    # SSL Certificate (if domain configured)
+    # DNS + SSL Certificate (if domain configured)
     if [[ "${USE_LETSENCRYPT:-false}" == "true" ]] && [[ -n "${SUPABASE_DOMAIN:-}" ]]; then
-        log_info "Requesting SSL certificate for ${SUPABASE_DOMAIN}..."
-        ssh_cmd "sudo certbot certonly --nginx --non-interactive --agree-tos \
-            -m ${LETSENCRYPT_EMAIL} \
-            -d ${SUPABASE_DOMAIN} \
-            -d api.${SUPABASE_DOMAIN} \
-            -d studio.${SUPABASE_DOMAIN}" || log_warn "SSL request failed - check DNS"
+        # Configure DNS via Cloudflare (if script exists)
+        if [[ -x "$SCRIPT_DIR/scripts/cloudflare-dns.sh" ]]; then
+            log_info "Configuring DNS for ${SUPABASE_DOMAIN}..."
+            "$SCRIPT_DIR/scripts/cloudflare-dns.sh" "${CLIENT_NAME}" "${VPS_HOST}" || log_warn "DNS config failed"
+            sleep 10  # Wait for DNS propagation
+        fi
+
+        # Use Pigsty's built-in certbot
+        log_info "Requesting SSL certificates via Pigsty..."
+        ssh_cmd "cd ~/pigsty && make cert" || log_warn "SSL request failed - check DNS"
+
+        # Update Supabase URLs to HTTPS
+        log_info "Updating Supabase URLs to HTTPS..."
+        ssh_cmd "cd /opt/supabase && \
+            sudo sed -i 's|SUPABASE_PUBLIC_URL=.*|SUPABASE_PUBLIC_URL=https://${SUPABASE_DOMAIN}|' .env && \
+            sudo sed -i 's|API_EXTERNAL_URL=.*|API_EXTERNAL_URL=https://api.${SUPABASE_DOMAIN}|' .env && \
+            sudo sed -i 's|SITE_URL=.*|SITE_URL=https://${SUPABASE_DOMAIN}|' .env && \
+            sudo docker compose up -d"
+        log_success "SSL configured for ${SUPABASE_DOMAIN}"
     fi
 
     # Health endpoint
@@ -211,7 +429,247 @@ do_harden() {
     setup_health_endpoint
     log_success "Health endpoint at http://${VPS_HOST}:8080/health"
 
+    # Configure Pigsty home at /pigsty/ (since root serves Flutter app)
+    log_info "Configuring Pigsty home at /pigsty/..."
+    ssh_cmd "
+        # Add /pigsty/ route to nginx if not exists
+        if ! grep -q 'location = /pigsty' /etc/nginx/conf.d/home.conf; then
+            sudo sed -i '/location = \\/ {/i\\    # Pigsty home page\\n    location = /pigsty {\\n        alias /www/index.html;\\n        default_type text/html;\\n    }\\n\\n    location /pigsty/ {\\n        alias /www/;\\n        index index.html;\\n    }\\n' /etc/nginx/conf.d/home.conf
+            sudo nginx -t && sudo systemctl reload nginx
+        fi
+    "
+    log_success "Pigsty home available at /pigsty/"
+
     log_success "Hardening complete!"
+}
+
+#==============================================================================#
+# FLUTTER WEB DEPLOYMENT
+#==============================================================================#
+
+do_flutter() {
+    load_env
+    log_step "FLUTTER: Deploy Web Application"
+
+    # Flutter project configuration
+    local FLUTTER_PROJECT="${FLUTTER_PROJECT_PATH:-/Users/andymelo/Projects/bits_flare_platform}"
+    local FLUTTER_APP="${FLUTTER_APP_PATH:-apps/neura_core_app}"
+    local FLUTTER_APP_NAME="${FLUTTER_APP_NAME:-neura}"
+    local FLUTTER_FULL_PATH="${FLUTTER_PROJECT}/${FLUTTER_APP}"
+
+    # Validate Flutter project exists
+    if [[ ! -d "${FLUTTER_FULL_PATH}" ]]; then
+        log_error "Flutter project not found at ${FLUTTER_FULL_PATH}"
+        return 1
+    fi
+
+    # Get Supabase credentials
+    local supabase_url="https://${SUPABASE_DOMAIN}"
+    if [[ -z "${ANON_KEY:-}" ]]; then
+        log_error "ANON_KEY not found in .env"
+        return 1
+    fi
+
+    log_info "Building Flutter Web for: ${supabase_url}"
+
+    # Build Flutter Web (base-href="/" since infra_portal serves from root)
+    cd "${FLUTTER_PROJECT}"
+    flutter pub get
+    cd "${FLUTTER_FULL_PATH}"
+    flutter clean
+    flutter pub get
+    flutter build web --release \
+        --dart-define=SUPABASE_URL="${supabase_url}" \
+        --dart-define=SUPABASE_ANON_KEY="${ANON_KEY}" \
+        --dart-define=DEBUG_MODE=false \
+        --base-href="/"
+
+    log_success "Flutter Web build completed"
+
+    # Create app directory on VPS (must match infra_portal home path)
+    log_info "Uploading to VPS..."
+    ssh_cmd "sudo mkdir -p /var/www/${FLUTTER_APP_NAME} && sudo chown ${SSH_USER}:${SSH_USER} /var/www/${FLUTTER_APP_NAME}"
+
+    # Upload build files
+    local SSH_KEY="${SSH_KEY_PATH:-$HOME/.ssh/id_ed25519}"
+    rsync -avz --delete \
+        -e "ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR" \
+        "${FLUTTER_FULL_PATH}/build/web/" \
+        "${SSH_USER}@${VPS_HOST}:/var/www/${FLUTTER_APP_NAME}/"
+
+    # Nginx is already configured via infra_portal in pigsty.yml
+    # Just reload to pick up any changes
+    ssh_cmd "sudo nginx -t && sudo systemctl reload nginx"
+
+    log_success "Flutter Web deployed!"
+    log_info "Main site: https://${SUPABASE_DOMAIN}/"
+}
+
+#==============================================================================#
+# PGDOG - Advanced PostgreSQL Connection Pooler
+#==============================================================================#
+
+do_pgdog() {
+    load_env
+    log_step "PGDOG: Deploy Connection Pooler"
+
+    # Create PgDog directory
+    ssh_cmd "sudo mkdir -p /opt/pgdog"
+
+    # Pull Docker image
+    log_info "Pulling PgDog Docker image..."
+    ssh_cmd "docker pull ghcr.io/pgdogdev/pgdog:latest"
+
+    # Generate pgdog.toml
+    log_info "Generating PgDog configuration..."
+    ssh_cmd "sudo tee /opt/pgdog/pgdog.toml > /dev/null << 'EOF'
+# PgDog - PostgreSQL Connection Pooler
+# Port 6433 (alternative to PgBouncer on 6432)
+
+[general]
+host = \"0.0.0.0\"
+port = 6433
+workers = 4
+pooler_mode = \"transaction\"
+default_pool_size = 50
+min_pool_size = 2
+connect_timeout = 5000
+idle_timeout = 600000
+checkout_timeout = 30000
+server_lifetime = 3600000
+healthcheck_interval = 30000
+
+[[databases]]
+name = \"postgres\"
+host = \"127.0.0.1\"
+port = 5432
+database_name = \"postgres\"
+user = \"supabase_admin\"
+password = \"${POSTGRES_PASSWORD}\"
+pool_size = 100
+EOF"
+
+    # Generate users.toml with all Supabase users
+    ssh_cmd "sudo tee /opt/pgdog/users.toml > /dev/null << 'EOF'
+# Supabase users for PgDog
+
+[[users]]
+name = \"postgres\"
+password = \"${POSTGRES_PASSWORD}\"
+database = \"postgres\"
+
+[[users]]
+name = \"supabase_admin\"
+password = \"${POSTGRES_PASSWORD}\"
+database = \"postgres\"
+
+[[users]]
+name = \"authenticator\"
+password = \"${POSTGRES_PASSWORD}\"
+database = \"postgres\"
+
+[[users]]
+name = \"supabase_auth_admin\"
+password = \"${POSTGRES_PASSWORD}\"
+database = \"postgres\"
+
+[[users]]
+name = \"supabase_storage_admin\"
+password = \"${POSTGRES_PASSWORD}\"
+database = \"postgres\"
+
+[[users]]
+name = \"supabase_functions_admin\"
+password = \"${POSTGRES_PASSWORD}\"
+database = \"postgres\"
+
+[[users]]
+name = \"supabase_realtime_admin\"
+password = \"${POSTGRES_PASSWORD}\"
+database = \"postgres\"
+
+[[users]]
+name = \"service_role\"
+password = \"${POSTGRES_PASSWORD}\"
+database = \"postgres\"
+
+[[users]]
+name = \"anon\"
+password = \"${POSTGRES_PASSWORD}\"
+database = \"postgres\"
+
+[[users]]
+name = \"authenticated\"
+password = \"${POSTGRES_PASSWORD}\"
+database = \"postgres\"
+EOF"
+
+    # Generate docker-compose.yml
+    ssh_cmd "sudo tee /opt/pgdog/docker-compose.yml > /dev/null << 'EOF'
+services:
+  pgdog:
+    image: ghcr.io/pgdogdev/pgdog:latest
+    container_name: pgdog
+    restart: unless-stopped
+    volumes:
+      - ./pgdog.toml:/etc/pgdog/pgdog.toml:ro
+      - ./users.toml:/etc/pgdog/users.toml:ro
+    command: [\"pgdog\", \"-c\", \"/etc/pgdog/pgdog.toml\", \"-u\", \"/etc/pgdog/users.toml\"]
+    network_mode: host
+    healthcheck:
+      test: [\"CMD\", \"pg_isready\", \"-h\", \"127.0.0.1\", \"-p\", \"6433\"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+EOF"
+
+    # Start PgDog
+    log_info "Starting PgDog..."
+    ssh_cmd "cd /opt/pgdog && sudo docker compose up -d"
+
+    # Wait and verify
+    sleep 5
+    if ssh_cmd "PGPASSWORD='${POSTGRES_PASSWORD}' psql -h 127.0.0.1 -p 6433 -U supabase_admin -d postgres -c 'SELECT 1;' > /dev/null 2>&1"; then
+        log_success "PgDog is running on port 6433"
+    else
+        log_error "PgDog failed to start"
+        ssh_cmd "cd /opt/pgdog && sudo docker compose logs --tail=20"
+        return 1
+    fi
+
+    log_info "Connection poolers available:"
+    log_info "  - PgBouncer: port 6432 (Pigsty managed)"
+    log_info "  - PgDog:     port 6433 (advanced pooling + sharding)"
+}
+
+#==============================================================================#
+# SYNC SCHEMA (from staging)
+#==============================================================================#
+
+do_sync_schema() {
+    log_step "SYNC: Export schema from staging"
+
+    local STAGING_HOST="${1:-194.163.149.70}"
+    local SCHEMA_FILE="$SCRIPT_DIR/config/app_schema/app_schema.sql"
+
+    log_info "Exporting schema from $STAGING_HOST..."
+
+    mkdir -p "$SCRIPT_DIR/config/app_schema"
+
+    ssh "root@${STAGING_HOST}" "sudo -u postgres pg_dump -d postgres \
+        --schema=public \
+        --schema=app \
+        --schema=util \
+        --schema=pgmq \
+        --no-owner \
+        --no-privileges \
+        --no-comments \
+        --schema-only \
+        2>/dev/null" > "$SCHEMA_FILE"
+
+    local lines=$(wc -l < "$SCHEMA_FILE")
+    log_success "Schema exported: $lines lines"
+    log_info "Saved to: config/app_schema/app_schema.sql"
 }
 
 #==============================================================================#
@@ -250,6 +708,22 @@ do_status() {
         echo -e "${RED}Down${NC}"
     fi
 
+    # PgBouncer
+    echo -n "PgBouncer:  "
+    if ssh_cmd "systemctl is-active pgbouncer" &>/dev/null; then
+        echo -e "${GREEN}Running (port 6432)${NC}"
+    else
+        echo -e "${RED}Down${NC}"
+    fi
+
+    # PgDog
+    echo -n "PgDog:      "
+    if ssh_cmd "docker ps --format '{{.Names}}' | grep -q pgdog" &>/dev/null; then
+        echo -e "${GREEN}Running (port 6433)${NC}"
+    else
+        echo -e "${YELLOW}Not installed${NC}"
+    fi
+
     # Supabase containers
     echo ""
     echo -e "${BOLD}Supabase Containers:${NC}"
@@ -265,6 +739,12 @@ do_status() {
     echo "  Studio:  ${proto}://studio.${SUPABASE_DOMAIN:-$VPS_HOST}:3001"
     echo "  Grafana: http://${VPS_HOST}:3000"
     echo "  Health:  http://${VPS_HOST}:8080/health"
+
+    # Connection Poolers
+    echo ""
+    echo -e "${BOLD}Connection Poolers:${NC}"
+    echo "  PgBouncer: postgresql://user:pass@${VPS_HOST}:6432/postgres"
+    echo "  PgDog:     postgresql://user:pass@${VPS_HOST}:6433/postgres"
 }
 
 #==============================================================================#
@@ -280,6 +760,8 @@ do_all() {
     do_install
     do_supabase
     do_harden
+    do_flutter
+    do_pgdog
     do_status
 
     echo ""
@@ -301,12 +783,15 @@ show_help() {
 Usage: ./deploy [command]
 
 Commands:
-  (none)      Full deployment (setup + install + supabase + harden)
-  setup       Generate .env and pigsty.yml configuration
-  install     Install Pigsty (PostgreSQL, Docker, Monitoring)
-  supabase    Launch Supabase containers
-  harden      Apply security (SSL, Firewall, Health endpoint)
-  status      Check deployment status
+  (none)       Full deployment (setup + install + supabase + harden + flutter + pgdog)
+  setup        Generate .env and pigsty.yml configuration
+  install      Install Pigsty (PostgreSQL, Docker, Monitoring)
+  supabase     Launch Supabase containers + apply app schema
+  harden       Apply security (DNS, SSL, Firewall, Health endpoint)
+  flutter      Build and deploy Flutter Web application
+  pgdog        Deploy PgDog advanced connection pooler (port 6433)
+  status       Check deployment status
+  sync-schema  Export app schema from staging (194.163.149.70)
 
 Examples:
   ./deploy                 # Full deployment with interactive setup
@@ -326,13 +811,16 @@ EOF
 
 main() {
     case "${1:-}" in
-        setup)    do_setup ;;
-        install)  do_install ;;
-        supabase) do_supabase ;;
-        harden)   do_harden ;;
-        status)   do_status ;;
+        setup)       do_setup ;;
+        install)     do_install ;;
+        supabase)    do_supabase ;;
+        harden)      do_harden ;;
+        flutter)     do_flutter ;;
+        pgdog)       do_pgdog ;;
+        status)      do_status ;;
+        sync-schema) do_sync_schema "${2:-}" ;;
         help|-h|--help) show_help ;;
-        "")       do_all ;;
+        "")          do_all ;;
         *)
             log_error "Unknown command: $1"
             show_help
