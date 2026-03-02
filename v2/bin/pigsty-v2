@@ -1,0 +1,186 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+V2_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+FETCH_SCRIPT="${V2_DIR}/scripts/fetch-provider-template.sh"
+PROVIDER_DIR="${V2_DIR}/providers/terraform"
+TF_DIR="${V2_DIR}/terraform"
+ENV_FILE="${V2_DIR}/.env"
+
+usage() {
+  cat << 'USAGE'
+Pigsty Supabase V2 (greenfield)
+
+Commands:
+  provider list
+  provider pull <provider> [pigsty_version]
+  provider use <provider>
+  iac init
+  iac plan
+  iac apply
+  iac destroy
+  iac output
+  doctor
+
+Examples:
+  ./v2/bin/pigsty-v2 provider list
+  ./v2/bin/pigsty-v2 provider pull hetzner v4.2.0
+  ./v2/bin/pigsty-v2 provider use hetzner
+  ./v2/bin/pigsty-v2 iac init
+  ./v2/bin/pigsty-v2 iac plan
+USAGE
+}
+
+load_local_env() {
+  if [[ -f "${ENV_FILE}" ]]; then
+    set -a
+    # shellcheck disable=SC1090
+    source "${ENV_FILE}"
+    set +a
+  fi
+}
+
+require_cmd() {
+  local cmd="$1"
+  if ! command -v "$cmd" >/dev/null 2>&1; then
+    echo "Missing required command: $cmd" >&2
+    exit 1
+  fi
+}
+
+provider_list() {
+  cat << 'PROVIDERS'
+hetzner
+digitalocean
+aws
+gcp
+azure
+vultr
+linode
+aliyun
+qcloud
+PROVIDERS
+}
+
+provider_pull() {
+  local provider="${1:-}"
+  local version="${2:-v4.2.0}"
+  require_cmd curl
+  bash "${FETCH_SCRIPT}" "${provider}" "${version}"
+}
+
+provider_use() {
+  local provider="${1:-}"
+  local source_file="${PROVIDER_DIR}/${provider}.tf"
+  local target_file="${TF_DIR}/terraform.tf"
+
+  if [[ -z "${provider}" ]]; then
+    echo "Usage: provider use <provider>" >&2
+    exit 1
+  fi
+
+  if [[ ! -f "${source_file}" ]]; then
+    echo "Provider template not found: ${source_file}" >&2
+    echo "Run: ./v2/bin/pigsty-v2 provider pull ${provider}" >&2
+    exit 1
+  fi
+
+  cp "${source_file}" "${target_file}"
+  echo "Active provider template: ${provider}"
+  echo "Terraform file: ${target_file}"
+}
+
+iac_run() {
+  local subcmd="$1"
+  require_cmd terraform
+  mkdir -p "${TF_DIR}"
+
+  if [[ ! -f "${TF_DIR}/terraform.tf" ]]; then
+    echo "No active Terraform template. Run: provider use <provider>" >&2
+    exit 1
+  fi
+
+  case "${subcmd}" in
+    init) terraform -chdir="${TF_DIR}" init ;;
+    plan) terraform -chdir="${TF_DIR}" plan ;;
+    apply) terraform -chdir="${TF_DIR}" apply ;;
+    destroy) terraform -chdir="${TF_DIR}" destroy ;;
+    output) terraform -chdir="${TF_DIR}" output ;;
+    *)
+      echo "Unknown iac command: ${subcmd}" >&2
+      exit 1
+      ;;
+  esac
+}
+
+doctor() {
+  echo "Checking local tooling..."
+  for cmd in bash curl; do
+    if command -v "$cmd" >/dev/null 2>&1; then
+      echo "[ok] $cmd"
+    else
+      echo "[missing] $cmd"
+    fi
+  done
+
+  if command -v terraform >/dev/null 2>&1; then
+    echo "[ok] terraform"
+  else
+    echo "[missing] terraform (required for iac commands)"
+  fi
+
+  echo "Checking provider credentials..."
+  for var_name in VULTR_API_KEY HCLOUD_TOKEN DIGITALOCEAN_TOKEN AWS_ACCESS_KEY_ID ARM_CLIENT_ID GOOGLE_APPLICATION_CREDENTIALS LINODE_TOKEN; do
+    if [[ -n "${!var_name:-}" ]]; then
+      echo "[ok] ${var_name}=set"
+    else
+      echo "[missing] ${var_name}"
+    fi
+  done
+
+  echo "V2 directory: ${V2_DIR}"
+  if [[ -f "${ENV_FILE}" ]]; then
+    echo "Local env loaded: ${ENV_FILE}"
+  else
+    echo "Local env not found: ${ENV_FILE} (optional)"
+  fi
+}
+
+main() {
+  load_local_env
+  case "${1:-}" in
+    provider)
+      case "${2:-}" in
+        list)
+          provider_list
+          ;;
+        pull)
+          provider_pull "${3:-}" "${4:-v4.2.0}"
+          ;;
+        use)
+          provider_use "${3:-}"
+          ;;
+        *)
+          usage
+          exit 1
+          ;;
+      esac
+      ;;
+    iac)
+      iac_run "${2:-}"
+      ;;
+    doctor)
+      doctor
+      ;;
+    help|-h|--help|"")
+      usage
+      ;;
+    *)
+      usage
+      exit 1
+      ;;
+  esac
+}
+
+main "$@"

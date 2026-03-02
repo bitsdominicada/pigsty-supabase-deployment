@@ -86,11 +86,33 @@ BANNER
     prompt CLIENT_NAME "Client name (for subdomain)"
     prompt BASE_DOMAIN "Base domain" "bitsneura.com"
 
-    SUPABASE_DOMAIN="${CLIENT_NAME}.${BASE_DOMAIN}"
+    if prompt_yn "Use platform domains (app/api/studio/grafana.${BASE_DOMAIN})?" "y"; then
+        DNS_MODE="platform"
+        APP_DOMAIN="app.${BASE_DOMAIN}"
+        POS_DOMAIN="pos.${BASE_DOMAIN}"
+        AI_DOMAIN="ai.${BASE_DOMAIN}"
+        API_DOMAIN="api.${BASE_DOMAIN}"
+        STUDIO_DOMAIN="studio.${BASE_DOMAIN}"
+        GRAFANA_DOMAIN="grafana.${BASE_DOMAIN}"
+        PROM_DOMAIN="prom.${BASE_DOMAIN}"
+        SUPABASE_DOMAIN="${APP_DOMAIN}"  # backward compatibility
+    else
+        DNS_MODE="client"
+        SUPABASE_DOMAIN="${CLIENT_NAME}.${BASE_DOMAIN}"
+        APP_DOMAIN="${SUPABASE_DOMAIN}"
+        POS_DOMAIN="pos.${SUPABASE_DOMAIN}"
+        AI_DOMAIN="ai.${SUPABASE_DOMAIN}"
+        API_DOMAIN="api.${SUPABASE_DOMAIN}"
+        STUDIO_DOMAIN="studio.${SUPABASE_DOMAIN}"
+        GRAFANA_DOMAIN="grafana.${SUPABASE_DOMAIN}"
+        PROM_DOMAIN="prom.${SUPABASE_DOMAIN}"
+    fi
+
     echo -e "\n  URLs:"
-    echo -e "    App:    https://${SUPABASE_DOMAIN}"
-    echo -e "    API:    https://api.${SUPABASE_DOMAIN}"
-    echo -e "    Studio: https://studio.${SUPABASE_DOMAIN}\n"
+    echo -e "    App:     https://${APP_DOMAIN}"
+    echo -e "    API:     https://${API_DOMAIN}"
+    echo -e "    Studio:  https://${STUDIO_DOMAIN}"
+    echo -e "    Grafana: https://${GRAFANA_DOMAIN}\n"
 
     #--------------------------------------------------------------------------#
     # SSL
@@ -104,6 +126,22 @@ BANNER
     fi
 
     #--------------------------------------------------------------------------#
+    # Cloudflare DNS Automation (optional)
+    #--------------------------------------------------------------------------#
+    echo -e "\n\033[1m━━━ Cloudflare DNS (Optional) ━━━\033[0m\n"
+    if prompt_yn "Configure Cloudflare API for automatic DNS records?" "n"; then
+        prompt_secret CF_API_TOKEN "Cloudflare API token (Zone DNS Edit)"
+        prompt CF_ZONE_ID "Cloudflare Zone ID (optional, auto-detect if empty)" ""
+        prompt CF_PROXIED "Cloudflare proxied (true/false)" "true"
+        prompt CF_TTL "Cloudflare TTL seconds" "300"
+    else
+        CF_API_TOKEN=""
+        CF_ZONE_ID=""
+        CF_PROXIED="true"
+        CF_TTL="300"
+    fi
+
+    #--------------------------------------------------------------------------#
     # Backblaze B2 (Storage + Backups)
     #--------------------------------------------------------------------------#
     echo -e "\n\033[1m━━━ Backblaze B2 Storage ━━━\033[0m\n"
@@ -114,6 +152,7 @@ BANNER
         prompt S3_REGION "B2 Region" "us-east-005"
         prompt S3_ACCESS_KEY "B2 Key ID"
         prompt_secret S3_SECRET_KEY "B2 Application Key"
+        prompt S3_RELAY_IP "S3 relay IP (optional, for blocked egress)" ""
         STORAGE_BACKEND="s3"
     else
         S3_BUCKET=""
@@ -121,6 +160,7 @@ BANNER
         S3_REGION=""
         S3_ACCESS_KEY=""
         S3_SECRET_KEY=""
+        S3_RELAY_IP=""
         STORAGE_BACKEND="minio"
     fi
 
@@ -197,10 +237,24 @@ SSH_KEY=${SSH_KEY}
 CLIENT_NAME=${CLIENT_NAME}
 BASE_DOMAIN=${BASE_DOMAIN}
 SUPABASE_DOMAIN=${SUPABASE_DOMAIN}
+DNS_MODE=${DNS_MODE}
+APP_DOMAIN=${APP_DOMAIN}
+POS_DOMAIN=${POS_DOMAIN}
+AI_DOMAIN=${AI_DOMAIN}
+API_DOMAIN=${API_DOMAIN}
+STUDIO_DOMAIN=${STUDIO_DOMAIN}
+GRAFANA_DOMAIN=${GRAFANA_DOMAIN}
+PROM_DOMAIN=${PROM_DOMAIN}
 
 # SSL
 USE_LETSENCRYPT=${USE_LETSENCRYPT}
 LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL}
+
+# Cloudflare DNS (optional)
+CF_API_TOKEN=${CF_API_TOKEN}
+CF_ZONE_ID=${CF_ZONE_ID}
+CF_PROXIED=${CF_PROXIED}
+CF_TTL=${CF_TTL}
 
 # PostgreSQL
 POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
@@ -233,6 +287,7 @@ S3_ENDPOINT=${S3_ENDPOINT}
 S3_REGION=${S3_REGION}
 S3_ACCESS_KEY=${S3_ACCESS_KEY}
 S3_SECRET_KEY=${S3_SECRET_KEY}
+S3_RELAY_IP=${S3_RELAY_IP}
 
 # Backups
 PGBACKREST_CIPHER_PASS=${PGBACKREST_CIPHER_PASS}
@@ -253,7 +308,10 @@ EOF
     #--------------------------------------------------------------------------#
     echo -e "\n\033[1;32m━━━ Configuration Complete ━━━\033[0m\n"
     echo -e "  VPS:       ${VPS_HOST}"
-    echo -e "  Domain:    ${SUPABASE_DOMAIN}"
+    echo -e "  DNS Mode:  ${DNS_MODE}"
+    echo -e "  App:       ${APP_DOMAIN}"
+    echo -e "  API:       ${API_DOMAIN}"
+    echo -e "  Studio:    ${STUDIO_DOMAIN}"
     echo -e "  Storage:   ${STORAGE_BACKEND^^}"
     echo -e "  SSL:       ${USE_LETSENCRYPT}"
     echo ""

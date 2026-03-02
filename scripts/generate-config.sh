@@ -5,6 +5,12 @@
 #==============================================================================#
 
 generate_pigsty_yml() {
+    local app_domain="${APP_DOMAIN:-${SUPABASE_DOMAIN}}"
+    local api_domain="${API_DOMAIN:-api.${SUPABASE_DOMAIN}}"
+    local studio_domain="${STUDIO_DOMAIN:-studio.${SUPABASE_DOMAIN}}"
+    local grafana_domain="${GRAFANA_DOMAIN:-grafana.${SUPABASE_DOMAIN}}"
+    local prom_domain="${PROM_DOMAIN:-prom.${SUPABASE_DOMAIN}}"
+
     cat << 'PIGSTY_YAML'
 #==============================================================================#
 # Pigsty Supabase Configuration
@@ -27,13 +33,13 @@ PIGSTY_YAML
         infra_portal:
 PIGSTY_YAML
     # Home serves Flutter app as main site
-    echo "          home: { domain: ${SUPABASE_DOMAIN}, path: /var/www/${FLUTTER_APP_NAME:-neura}, certbot: ${SUPABASE_DOMAIN} }"
-    echo "          grafana: { domain: grafana.${SUPABASE_DOMAIN}, endpoint: \"127.0.0.1:3000\" }"
-    echo "          prometheus: { domain: prom.${SUPABASE_DOMAIN}, endpoint: \"127.0.0.1:9090\" }"
-    echo "          supabase: { domain: studio.${SUPABASE_DOMAIN}, endpoint: \"127.0.0.1:3001\", websocket: true, certbot: studio.${SUPABASE_DOMAIN} }"
-    echo "          supabase-api: { domain: api.${SUPABASE_DOMAIN}, endpoint: \"127.0.0.1:8000\", websocket: true, certbot: api.${SUPABASE_DOMAIN} }"
+    echo "          home: { domain: ${app_domain}, path: /var/www/${FLUTTER_APP_NAME:-neura}, certbot: ${app_domain} }"
+    echo "          grafana: { domain: ${grafana_domain}, endpoint: \"127.0.0.1:3000\" }"
+    echo "          prometheus: { domain: ${prom_domain}, endpoint: \"127.0.0.1:9090\" }"
+    echo "          supabase: { domain: ${studio_domain}, endpoint: \"127.0.0.1:3001\", websocket: true, certbot: ${studio_domain} }"
+    echo "          supabase-api: { domain: ${api_domain}, endpoint: \"127.0.0.1:8000\", websocket: true, certbot: ${api_domain} }"
     cat << PIGSTY_YAML
-        certbot_email: ${LETSENCRYPT_EMAIL:-admin@${SUPABASE_DOMAIN}}
+        certbot_email: ${LETSENCRYPT_EMAIL:-admin@${app_domain}}
 
     #--------------------------------------------------------------------------#
     # ETCD: https://pigsty.io/docs/etcd
@@ -101,6 +107,7 @@ PIGSTY_YAML
           - { user: all, db: postgres, addr: 172.17.0.0/16, auth: pwd, title: 'allow access from local docker network' }
 
         node_crontab:
+          - '00 */4 * * * postgres /pg/bin/pg-backup incr'
           - '00 01 * * 0 postgres /pg/bin/pg-backup full'
           - '00 01 * * 1-6 postgres /pg/bin/pg-backup diff'
           - '*  *  * * * postgres /pg/bin/supa-kick'
@@ -157,9 +164,9 @@ PIGSTY_YAML
               SERVICE_ROLE_KEY: "${SERVICE_ROLE_KEY}"
               DASHBOARD_USERNAME: "${DASHBOARD_USERNAME}"
               DASHBOARD_PASSWORD: "${DASHBOARD_PASSWORD}"
-              SITE_URL: "https://${SUPABASE_DOMAIN}"
-              API_EXTERNAL_URL: "https://api.${SUPABASE_DOMAIN}"
-              SUPABASE_PUBLIC_URL: "https://${SUPABASE_DOMAIN}"
+              SITE_URL: "https://${app_domain}"
+              API_EXTERNAL_URL: "https://${api_domain}"
+              SUPABASE_PUBLIC_URL: "https://${app_domain}"
               PG_META_CRYPTO_KEY: "${PG_META_CRYPTO_KEY}"
               SECRET_KEY_BASE: "${SECRET_KEY_BASE}"
               LOGFLARE_API_KEY: "${LOGFLARE_API_KEY}"

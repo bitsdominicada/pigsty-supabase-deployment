@@ -47,6 +47,14 @@ log_warn()    { echo -e "${YELLOW}[WARN]${NC} $1"; }
 log_error()   { echo -e "${RED}[ERROR]${NC} $1"; }
 log_step()    { echo -e "\n${BOLD}━━━ $1 ━━━${NC}\n"; }
 
+ssh_key_path() {
+    echo "${SSH_KEY_PATH:-${SSH_KEY:-$HOME/.ssh/id_ed25519}}"
+}
+
+known_hosts_path() {
+    echo "${SSH_KNOWN_HOSTS:-$HOME/.ssh/known_hosts}"
+}
+
 load_env() {
     if [[ ! -f "$SCRIPT_DIR/.env" ]]; then
         log_error "No .env file found. Run: ./deploy setup"
@@ -58,17 +66,19 @@ load_env() {
 }
 
 ssh_cmd() {
-    ssh -i "${SSH_KEY:-$HOME/.ssh/id_ed25519}" \
-        -o StrictHostKeyChecking=no \
-        -o UserKnownHostsFile=/dev/null \
+    ssh -i "$(ssh_key_path)" \
+        -o BatchMode=yes \
+        -o StrictHostKeyChecking=accept-new \
+        -o UserKnownHostsFile="$(known_hosts_path)" \
         -o LogLevel=ERROR \
         "${SSH_USER:-ubuntu}@${VPS_HOST}" "$@"
 }
 
 scp_file() {
-    scp -i "${SSH_KEY:-$HOME/.ssh/id_ed25519}" \
-        -o StrictHostKeyChecking=no \
-        -o UserKnownHostsFile=/dev/null \
+    scp -i "$(ssh_key_path)" \
+        -o BatchMode=yes \
+        -o StrictHostKeyChecking=accept-new \
+        -o UserKnownHostsFile="$(known_hosts_path)" \
         -o LogLevel=ERROR \
         "$1" "${SSH_USER:-ubuntu}@${VPS_HOST}:$2"
 }
@@ -151,6 +161,98 @@ ensure_supabase_healthy() {
     return 1
 }
 
+# Deployment health gate: fail if app/api/studio or vault are not healthy
+run_health_gate() {
+    load_env
+    log_step "HEALTH GATE: app/api/studio/vault"
+
+    local max_attempts="${HEALTH_GATE_ATTEMPTS:-18}"
+    local sleep_seconds="${HEALTH_GATE_SLEEP_SECONDS:-10}"
+
+    local proto="http"
+    if [[ "${USE_LETSENCRYPT:-false}" == "true" ]]; then
+        proto="https"
+    fi
+
+    local app_host="${APP_DOMAIN:-${SUPABASE_DOMAIN:-$VPS_HOST}}"
+    local api_host="${API_DOMAIN:-api.${SUPABASE_DOMAIN:-$VPS_HOST}}"
+    local studio_host="${STUDIO_DOMAIN:-studio.${SUPABASE_DOMAIN:-$VPS_HOST}}"
+
+    local app_url="${proto}://${app_host}/"
+    local api_url="${proto}://${api_host}/auth/v1/health"
+    local studio_url="${proto}://${studio_host}/"
+
+    local remote_studio_url="http://127.0.0.1:3001/"
+    local remote_api_url="http://127.0.0.1:8000/auth/v1/health"
+
+    local attempt=1
+    while [[ $attempt -le $max_attempts ]]; do
+        log_info "Health gate attempt ${attempt}/${max_attempts}"
+
+        # Internal checks on the VPS origin
+        local local_studio_code local_api_code
+        local_studio_code=$(ssh_cmd "curl -sS -m 8 -o /dev/null -w '%{http_code}' '${remote_studio_url}' || echo 000")
+        local_api_code=$(ssh_cmd "curl -sS -m 8 -o /dev/null -w '%{http_code}' '${remote_api_url}' || echo 000")
+
+        # Public checks (through DNS/CDN)
+        local app_code api_code studio_code
+        app_code=$(curl -k -sS -m 10 -o /dev/null -w '%{http_code}' "${app_url}" || echo "000")
+        api_code=$(curl -k -sS -m 10 -o /dev/null -w '%{http_code}' "${api_url}" || echo "000")
+        studio_code=$(curl -k -sS -m 10 -o /dev/null -w '%{http_code}' "${studio_url}" || echo "000")
+
+        # Expected:
+        # app/studio = 2xx or redirect; api health = 200/401/403
+        local ok=1
+        if [[ ! "$local_studio_code" =~ ^(2[0-9][0-9]|30[1278])$ ]]; then ok=0; fi
+        if [[ ! "$local_api_code" =~ ^(200|401|403)$ ]]; then ok=0; fi
+        if [[ ! "$app_code" =~ ^(2[0-9][0-9]|30[1278])$ ]]; then ok=0; fi
+        if [[ ! "$api_code" =~ ^(200|401|403)$ ]]; then ok=0; fi
+        if [[ ! "$studio_code" =~ ^(2[0-9][0-9]|30[1278])$ ]]; then ok=0; fi
+
+        # Vault probe:
+        # 1) create secret using vault.create_secret
+        # 2) delete it immediately to keep vault clean
+        local vault_status="skip"
+        if [[ $ok -eq 1 ]]; then
+            # Prefer local socket probe on primary (avoids pg_hba issues on external RW endpoint)
+            if ssh_cmd "sudo -u postgres psql -d postgres -Atqc \"select pg_is_in_recovery();\" 2>/dev/null | grep -qx 'f'"; then
+                if ssh_cmd "sudo -u postgres psql -v ON_ERROR_STOP=1 -d postgres -Atqc \
+                  \"DO \\\$\\\$ DECLARE sid uuid; n text := 'gate_probe_' || floor(extract(epoch from clock_timestamp()))::bigint || '_' || substr(md5(random()::text),1,8); BEGIN sid := vault.create_secret('probe', n, 'gate', NULL); DELETE FROM vault.secrets WHERE id = sid; END \\\$\\\$;\""; then
+                    vault_status="ok(local)"
+                else
+                    vault_status="fail(local)"
+                    ok=0
+                fi
+            else
+                if ssh_cmd "cd /opt/supabase && \
+                    set -a && . ./.env && set +a && \
+                    PGPASSWORD=\"\$POSTGRES_PASSWORD\" psql -v ON_ERROR_STOP=1 \
+                      -h \"\$POSTGRES_HOST\" -p \"\$POSTGRES_PORT\" \
+                      -U supabase_admin -d postgres -Atqc \
+                      \"DO \\\$\\\$ DECLARE sid uuid; n text := 'gate_probe_' || floor(extract(epoch from clock_timestamp()))::bigint || '_' || substr(md5(random()::text),1,8); BEGIN sid := vault.create_secret('probe', n, 'gate', NULL); DELETE FROM vault.secrets WHERE id = sid; END \\\$\\\$;\""; then
+                    vault_status="ok(rw)"
+                else
+                    vault_status="fail(rw)"
+                    ok=0
+                fi
+            fi
+        fi
+
+        log_info "Codes: local_studio=${local_studio_code} local_api=${local_api_code} app=${app_code} api=${api_code} studio=${studio_code} vault=${vault_status}"
+
+        if [[ $ok -eq 1 ]]; then
+            log_success "Health gate passed"
+            return 0
+        fi
+
+        sleep "${sleep_seconds}"
+        ((attempt++))
+    done
+
+    log_error "Health gate failed: app/api/studio/vault are not all healthy"
+    return 1
+}
+
 #==============================================================================#
 # PHASE 1: SETUP (Generate configuration)
 #==============================================================================#
@@ -179,8 +281,18 @@ do_install() {
 
     # Step 0: Configure DNS first (so SSL works later)
     if [[ -n "${SUPABASE_DOMAIN:-}" ]] && [[ -x "$SCRIPT_DIR/scripts/cloudflare-dns.sh" ]]; then
-        log_info "Configuring DNS for ${SUPABASE_DOMAIN}..."
-        "$SCRIPT_DIR/scripts/cloudflare-dns.sh" create "${CLIENT_NAME}" "${VPS_HOST}" || log_warn "DNS config failed - continuing anyway"
+        log_info "Configuring DNS records..."
+        if [[ "${DNS_MODE:-platform}" == "platform" ]]; then
+            BASE_DOMAIN="${BASE_DOMAIN:-bitsneura.com}" \
+            CF_API_TOKEN="${CF_API_TOKEN:-}" \
+            CF_ZONE_ID="${CF_ZONE_ID:-}" \
+            "$SCRIPT_DIR/scripts/cloudflare-dns.sh" create-platform "${VPS_HOST}" "${BASE_DOMAIN}" || log_warn "DNS config failed - continuing anyway"
+        else
+            BASE_DOMAIN="${BASE_DOMAIN:-bitsneura.com}" \
+            CF_API_TOKEN="${CF_API_TOKEN:-}" \
+            CF_ZONE_ID="${CF_ZONE_ID:-}" \
+            "$SCRIPT_DIR/scripts/cloudflare-dns.sh" create-client "${CLIENT_NAME}" "${VPS_HOST}" || log_warn "DNS config failed - continuing anyway"
+        fi
     fi
 
     # Step 1: Test SSH connection
@@ -271,6 +383,13 @@ do_install() {
 do_supabase() {
     load_env
     log_step "SUPABASE: Launch Containers"
+    local s3_host=""
+
+    if [[ -n "${S3_ENDPOINT:-}" ]]; then
+        s3_host="${S3_ENDPOINT#http://}"
+        s3_host="${s3_host#https://}"
+        s3_host="${s3_host%%/*}"
+    fi
 
     # Create supabase database for Analytics/Logflare
     log_info "Creating supabase database for Analytics..."
@@ -293,8 +412,34 @@ do_supabase() {
         sudo docker compose up -d storage"
     log_success "Storage container configured"
 
+    # Optional: force storage endpoint through internal relay (for blocked container egress)
+    if [[ -n "${S3_RELAY_IP:-}" ]] && [[ -n "$s3_host" ]]; then
+        log_info "Applying S3 relay host mapping (${s3_host} -> ${S3_RELAY_IP})..."
+        ssh_cmd "cd /opt/supabase && \
+            if grep -q '${s3_host}:${S3_RELAY_IP}' docker-compose.yml; then
+                echo 'S3 relay mapping already configured'
+            elif grep -q '\"sss.pigsty:\${MINIO_DOMAIN_IP}\"' docker-compose.yml; then
+                sudo sed -i '/\"sss.pigsty:\${MINIO_DOMAIN_IP}\"/a\\      - \"${s3_host}:${S3_RELAY_IP}\"' docker-compose.yml
+                echo 'S3 relay mapping added'
+            elif grep -q '^    extra_hosts:' docker-compose.yml; then
+                sudo sed -i '/^    extra_hosts:/a\\      - \"${s3_host}:${S3_RELAY_IP}\"' docker-compose.yml
+                echo 'S3 relay mapping added'
+            else
+                echo 'WARNING: storage.extra_hosts block not found; relay mapping not applied'
+            fi && \
+            sudo docker compose up -d storage"
+        log_success "S3 relay host mapping configured"
+    fi
+
     # Expose Studio port (docker-compose doesn't expose it by default)
     log_info "Configuring Studio port mapping..."
+    # Patch Pigsty template first so manual app.yml re-runs don't regress
+    ssh_cmd "if [ -f /root/pigsty/app/supabase/docker-compose.yml ]; then \
+        cd /root/pigsty/app/supabase && \
+        grep -q '3001:3000' docker-compose.yml || \
+        sudo sed -i '/container_name: supabase-studio/a\\    ports:\\n      - \"3001:3000\"' docker-compose.yml; \
+    fi"
+    # Patch active compose file in /opt/supabase
     ssh_cmd "cd /opt/supabase && \
         grep -q '3001:3000' docker-compose.yml || \
         sudo sed -i '/container_name: supabase-studio/a\\    ports:\\n      - \"3001:3000\"' docker-compose.yml"
@@ -302,16 +447,18 @@ do_supabase() {
     # Update URLs and project name
     log_info "Configuring Studio..."
     # Use HTTPS with domain if configured, otherwise HTTP with IP
+    local app_url="http://${VPS_HOST}:8000"
     local api_url="http://${VPS_HOST}:8000"
     local studio_url="http://${VPS_HOST}:3001"
     if [[ -n "${SUPABASE_DOMAIN:-}" ]]; then
-        api_url="https://api.${SUPABASE_DOMAIN}"
-        studio_url="https://studio.${SUPABASE_DOMAIN}"
+        app_url="https://${APP_DOMAIN:-${SUPABASE_DOMAIN}}"
+        api_url="https://${API_DOMAIN:-api.${SUPABASE_DOMAIN}}"
+        studio_url="https://${STUDIO_DOMAIN:-studio.${SUPABASE_DOMAIN}}"
     fi
     ssh_cmd "cd /opt/supabase && \
-        sudo sed -i 's|SUPABASE_PUBLIC_URL=.*|SUPABASE_PUBLIC_URL=${api_url}|' .env && \
+        sudo sed -i 's|SUPABASE_PUBLIC_URL=.*|SUPABASE_PUBLIC_URL=${app_url}|' .env && \
         sudo sed -i 's|API_EXTERNAL_URL=.*|API_EXTERNAL_URL=${api_url}|' .env && \
-        sudo sed -i 's|SITE_URL=.*|SITE_URL=${studio_url}|' .env && \
+        sudo sed -i 's|SITE_URL=.*|SITE_URL=${app_url}|' .env && \
         sudo sed -i 's|STUDIO_DEFAULT_PROJECT=.*|STUDIO_DEFAULT_PROJECT=${CLIENT_NAME}|' .env && \
         sudo sed -i 's|STUDIO_DEFAULT_ORGANIZATION=.*|STUDIO_DEFAULT_ORGANIZATION=${CLIENT_NAME}|' .env && \
         sudo docker compose up -d studio"
@@ -347,7 +494,21 @@ do_supabase() {
     log_info "Patching vault functions for pgsodium compatibility..."
     if [[ -f "$SCRIPT_DIR/config/patches/vault_encryption.sql" ]]; then
         scp_file "$SCRIPT_DIR/config/patches/vault_encryption.sql" "/tmp/vault_patch.sql"
-        ssh_cmd "sudo chmod 644 /tmp/vault_patch.sql && sudo -u postgres psql -d postgres -f /tmp/vault_patch.sql && rm /tmp/vault_patch.sql"
+        # Use RW endpoint from /opt/supabase/.env (works even when this node is replica)
+        ssh_cmd "sudo chmod 644 /tmp/vault_patch.sql && \
+            cd /opt/supabase && \
+            set -a && . ./.env && set +a && \
+            PGPASSWORD=\"\$POSTGRES_PASSWORD\" psql -v ON_ERROR_STOP=1 \
+              -h \"\$POSTGRES_HOST\" -p \"\$POSTGRES_PORT\" \
+              -U supabase_admin -d postgres -f /tmp/vault_patch.sql && \
+            rm -f /tmp/vault_patch.sql"
+        # Verify patched function signature/body is active
+        ssh_cmd "cd /opt/supabase && \
+            set -a && . ./.env && set +a && \
+            PGPASSWORD=\"\$POSTGRES_PASSWORD\" psql -h \"\$POSTGRES_HOST\" -p \"\$POSTGRES_PORT\" \
+              -U supabase_admin -d postgres -Atqc \
+              \"select pg_get_functiondef('vault.create_secret(text,text,text,uuid)'::regprocedure);\" | \
+              grep -q 'crypto_aead_det_keygen'"
         log_success "Vault functions patched"
     else
         log_warn "Vault patch file not found at config/patches/vault_encryption.sql - skipping"
@@ -357,8 +518,18 @@ do_supabase() {
     log_info "Applying app schema..."
     if [[ -f "$SCRIPT_DIR/config/app_schema/app_schema.sql" ]]; then
         scp_file "$SCRIPT_DIR/config/app_schema/app_schema.sql" "/tmp/app_schema.sql"
-        ssh_cmd "sudo chmod 644 /tmp/app_schema.sql && sudo -u postgres psql -d postgres -f /tmp/app_schema.sql" >/dev/null 2>&1
-        local tables=$(ssh_cmd "sudo -u postgres psql -d postgres -tAc \"SELECT COUNT(*) FROM pg_tables WHERE schemaname = 'public'\"")
+        # Apply schema via RW endpoint so this works regardless of local node role
+        ssh_cmd "sudo chmod 644 /tmp/app_schema.sql && \
+            cd /opt/supabase && \
+            set -a && . ./.env && set +a && \
+            PGPASSWORD=\"\$POSTGRES_PASSWORD\" psql -v ON_ERROR_STOP=1 \
+              -h \"\$POSTGRES_HOST\" -p \"\$POSTGRES_PORT\" \
+              -U supabase_admin -d postgres -f /tmp/app_schema.sql >/dev/null 2>&1 && \
+            rm -f /tmp/app_schema.sql"
+        local tables=$(ssh_cmd "cd /opt/supabase && \
+            set -a && . ./.env && set +a && \
+            PGPASSWORD=\"\$POSTGRES_PASSWORD\" psql -h \"\$POSTGRES_HOST\" -p \"\$POSTGRES_PORT\" \
+              -U supabase_admin -d postgres -tAc \"SELECT COUNT(*) FROM pg_tables WHERE schemaname = 'public'\"")
         log_success "App schema applied ($tables tables in public schema)"
     else
         log_warn "No app_schema.sql found - skipping"
@@ -385,11 +556,11 @@ do_harden() {
         sudo ufw default deny incoming && \
         sudo ufw default allow outgoing && \
         sudo ufw allow 22/tcp && \
+        sudo ufw allow from 10.0.0.0/8 && \
+        sudo ufw allow from 172.16.0.0/12 && \
+        sudo ufw allow from 192.168.0.0/16 && \
         sudo ufw allow 80/tcp && \
         sudo ufw allow 443/tcp && \
-        sudo ufw allow 3000/tcp && \
-        sudo ufw allow 5432/tcp && \
-        sudo ufw allow 8000/tcp && \
         sudo ufw --force enable"
     log_success "Firewall configured"
 
@@ -404,8 +575,18 @@ do_harden() {
     if [[ "${USE_LETSENCRYPT:-false}" == "true" ]] && [[ -n "${SUPABASE_DOMAIN:-}" ]]; then
         # Configure DNS via Cloudflare (if script exists)
         if [[ -x "$SCRIPT_DIR/scripts/cloudflare-dns.sh" ]]; then
-            log_info "Configuring DNS for ${SUPABASE_DOMAIN}..."
-            "$SCRIPT_DIR/scripts/cloudflare-dns.sh" "${CLIENT_NAME}" "${VPS_HOST}" || log_warn "DNS config failed"
+            log_info "Configuring DNS records..."
+            if [[ "${DNS_MODE:-platform}" == "platform" ]]; then
+                BASE_DOMAIN="${BASE_DOMAIN:-bitsneura.com}" \
+                CF_API_TOKEN="${CF_API_TOKEN:-}" \
+                CF_ZONE_ID="${CF_ZONE_ID:-}" \
+                "$SCRIPT_DIR/scripts/cloudflare-dns.sh" create-platform "${VPS_HOST}" "${BASE_DOMAIN}" || log_warn "DNS config failed"
+            else
+                BASE_DOMAIN="${BASE_DOMAIN:-bitsneura.com}" \
+                CF_API_TOKEN="${CF_API_TOKEN:-}" \
+                CF_ZONE_ID="${CF_ZONE_ID:-}" \
+                "$SCRIPT_DIR/scripts/cloudflare-dns.sh" create-client "${CLIENT_NAME}" "${VPS_HOST}" || log_warn "DNS config failed"
+            fi
             sleep 10  # Wait for DNS propagation
         fi
 
@@ -415,19 +596,68 @@ do_harden() {
 
         # Update Supabase URLs to HTTPS
         log_info "Updating Supabase URLs to HTTPS..."
+        local app_domain="${APP_DOMAIN:-${SUPABASE_DOMAIN}}"
+        local api_domain="${API_DOMAIN:-api.${SUPABASE_DOMAIN}}"
         ssh_cmd "cd /opt/supabase && \
-            sudo sed -i 's|SUPABASE_PUBLIC_URL=.*|SUPABASE_PUBLIC_URL=https://${SUPABASE_DOMAIN}|' .env && \
-            sudo sed -i 's|API_EXTERNAL_URL=.*|API_EXTERNAL_URL=https://api.${SUPABASE_DOMAIN}|' .env && \
-            sudo sed -i 's|SITE_URL=.*|SITE_URL=https://${SUPABASE_DOMAIN}|' .env && \
+            sudo sed -i 's|SUPABASE_PUBLIC_URL=.*|SUPABASE_PUBLIC_URL=https://${app_domain}|' .env && \
+            sudo sed -i 's|API_EXTERNAL_URL=.*|API_EXTERNAL_URL=https://${api_domain}|' .env && \
+            sudo sed -i 's|SITE_URL=.*|SITE_URL=https://${app_domain}|' .env && \
             sudo docker compose up -d"
-        log_success "SSL configured for ${SUPABASE_DOMAIN}"
+        log_success "SSL configured for ${app_domain}"
     fi
+
+    # Enforce modern TLS protocols only
+    log_info "Hardening TLS protocols (TLSv1.2/TLSv1.3)..."
+    ssh_cmd "
+        for f in /etc/nginx/conf.d/*.conf; do
+            [ -f \"\$f\" ] || continue
+            sudo sed -i 's/ssl_protocols TLSv1 TLSv1.1 TLSv1.2 TLSv1.3;/ssl_protocols TLSv1.2 TLSv1.3;/' \"\$f\"
+        done
+        sudo nginx -t && sudo systemctl reload nginx
+    "
+    log_success "TLS protocol hardening applied"
+
+    # Fix TUS resumable upload Location header behind reverse proxy
+    # Studio upload uses TUS and requires HTTPS Location for browser PATCH requests.
+    log_info "Applying TUS proxy header fix for API domain..."
+    local api_host="${API_DOMAIN:-api.${SUPABASE_DOMAIN}}"
+    ssh_cmd "bash -s" <<EOF
+set -e
+CONF=/etc/nginx/conf.d/supabase-api.conf
+if [ -f "\$CONF" ]; then
+  cp -a "\$CONF" "\${CONF}.bak.\$(date +%Y%m%d-%H%M%S)"
+  if ! grep -q 'proxy_redirect http://\\\$host:8000/ https://\\\$host/;' "\$CONF"; then
+    awk '
+      /proxy_set_header X-Forwarded-For \\$proxy_add_x_forwarded_for;/ {
+        print;
+        print "        proxy_set_header X-Forwarded-Proto \\$scheme;";
+        print "        proxy_set_header X-Forwarded-Port \\$server_port;";
+        print "        proxy_set_header X-Forwarded-Host \\$host;";
+        print "        proxy_redirect http://\\$host:8000/ https://\\$host/;";
+        print "        proxy_redirect http://${api_host}:8000/ https://${api_host}/;";
+        next
+      }
+      { print }
+    ' "\$CONF" > /tmp/supabase-api.conf.new
+    mv /tmp/supabase-api.conf.new "\$CONF"
+  fi
+  nginx -t >/dev/null
+  systemctl reload nginx
+fi
+EOF
+    log_success "TUS proxy header fix applied"
 
     # Health endpoint
     log_info "Setting up health endpoint..."
     source "$SCRIPT_DIR/scripts/health.sh"
     setup_health_endpoint
     log_success "Health endpoint at http://${VPS_HOST}:8080/health"
+
+    # Monitoring alerts + alertmanager notifications
+    log_info "Configuring monitoring alerts..."
+    source "$SCRIPT_DIR/scripts/monitoring.sh"
+    setup_monitoring_alerts
+    configure_alertmanager_email
 
     # Configure Pigsty home at /pigsty/ (since root serves Flutter app)
     log_info "Configuring Pigsty home at /pigsty/..."
@@ -464,7 +694,7 @@ do_flutter() {
     fi
 
     # Get Supabase credentials
-    local supabase_url="https://${SUPABASE_DOMAIN}"
+    local supabase_url="https://${API_DOMAIN:-api.${SUPABASE_DOMAIN}}"
     if [[ -z "${ANON_KEY:-}" ]]; then
         log_error "ANON_KEY not found in .env"
         return 1
@@ -491,9 +721,9 @@ do_flutter() {
     ssh_cmd "sudo mkdir -p /var/www/${FLUTTER_APP_NAME} && sudo chown ${SSH_USER}:${SSH_USER} /var/www/${FLUTTER_APP_NAME}"
 
     # Upload build files
-    local SSH_KEY="${SSH_KEY_PATH:-$HOME/.ssh/id_ed25519}"
+    local SSH_KEY="$(ssh_key_path)"
     rsync -avz --delete \
-        -e "ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR" \
+        -e "ssh -i ${SSH_KEY} -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=$(known_hosts_path) -o LogLevel=ERROR" \
         "${FLUTTER_FULL_PATH}/build/web/" \
         "${SSH_USER}@${VPS_HOST}:/var/www/${FLUTTER_APP_NAME}/"
 
@@ -502,7 +732,7 @@ do_flutter() {
     ssh_cmd "sudo nginx -t && sudo systemctl reload nginx"
 
     log_success "Flutter Web deployed!"
-    log_info "Main site: https://${SUPABASE_DOMAIN}/"
+    log_info "Main site: https://${APP_DOMAIN:-${SUPABASE_DOMAIN}}/"
 }
 
 #==============================================================================#
@@ -734,10 +964,10 @@ do_status() {
     echo -e "${BOLD}URLs:${NC}"
     local proto="http"
     [[ "${USE_LETSENCRYPT:-false}" == "true" ]] && proto="https"
-    echo "  App:     ${proto}://${SUPABASE_DOMAIN:-$VPS_HOST}"
-    echo "  API:     ${proto}://api.${SUPABASE_DOMAIN:-$VPS_HOST}:8000"
-    echo "  Studio:  ${proto}://studio.${SUPABASE_DOMAIN:-$VPS_HOST}:3001"
-    echo "  Grafana: http://${VPS_HOST}:3000"
+    echo "  App:     ${proto}://${APP_DOMAIN:-${SUPABASE_DOMAIN:-$VPS_HOST}}"
+    echo "  API:     ${proto}://${API_DOMAIN:-api.${SUPABASE_DOMAIN:-$VPS_HOST}}"
+    echo "  Studio:  ${proto}://${STUDIO_DOMAIN:-studio.${SUPABASE_DOMAIN:-$VPS_HOST}}"
+    echo "  Grafana: ${proto}://${GRAFANA_DOMAIN:-grafana.${SUPABASE_DOMAIN:-$VPS_HOST}}"
     echo "  Health:  http://${VPS_HOST}:8080/health"
 
     # Connection Poolers
@@ -761,6 +991,7 @@ do_all() {
     do_supabase
     do_harden
     do_flutter
+    run_health_gate
     do_pgdog
     do_status
 
@@ -789,6 +1020,7 @@ Commands:
   supabase     Launch Supabase containers + apply app schema
   harden       Apply security (DNS, SSL, Firewall, Health endpoint)
   flutter      Build and deploy Flutter Web application
+  gate         Verify app/api/studio/vault availability (fails on bad status)
   pgdog        Deploy PgDog advanced connection pooler (port 6433)
   status       Check deployment status
   sync-schema  Export app schema from staging (194.163.149.70)
@@ -816,6 +1048,7 @@ main() {
         supabase)    do_supabase ;;
         harden)      do_harden ;;
         flutter)     do_flutter ;;
+        gate)        run_health_gate ;;
         pgdog)       do_pgdog ;;
         status)      do_status ;;
         sync-schema) do_sync_schema "${2:-}" ;;

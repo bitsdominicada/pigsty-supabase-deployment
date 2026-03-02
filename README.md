@@ -61,6 +61,8 @@ S3_ENDPOINT=https://s3.us-east-005.backblazeb2.com
 S3_REGION=us-east-005
 S3_ACCESS_KEY=your-key
 S3_SECRET_KEY=your-secret
+# Optional relay if storage container cannot reach internet directly
+S3_RELAY_IP=10.10.10.4
 
 # SMTP for emails
 SMTP_HOST=smtp.resend.com
@@ -69,6 +71,7 @@ SMTP_USER=resend
 SMTP_PASSWORD=re_xxxxx
 SMTP_SENDER_NAME=YourApp
 SMTP_ADMIN_EMAIL=noreply@yourdomain.com
+ALERT_EMAIL_TO=ops@yourdomain.com
 ```
 
 ### 3. Deploy
@@ -84,6 +87,7 @@ That's it. The script handles everything:
 - SSL certificates
 - pgBackRest backups to B2
 - Security hardening
+- Monitoring probes + alerting rules
 
 ---
 
@@ -94,7 +98,7 @@ That's it. The script handles everything:
 ./deploy setup        # Only configure (generate pigsty.yml)
 ./deploy install      # Only install Pigsty
 ./deploy supabase     # Only launch Supabase containers
-./deploy harden       # Only security setup (SSL, firewall)
+./deploy harden       # Security + health + monitoring alerts
 ./deploy status       # Check deployment status
 ```
 
@@ -172,6 +176,7 @@ Automated backups to Backblaze B2 with pgBackRest:
 
 | Setting | Value |
 |---------|-------|
+| Incremental backup | Every 4 hours |
 | Full backup | Sunday 1:00 AM |
 | Diff backup | Mon-Sat 1:00 AM |
 | Retention | 2 full + 7 diff |

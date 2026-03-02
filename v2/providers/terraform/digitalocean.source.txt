@@ -1,0 +1,4 @@
+provider=digitalocean
+version=v4.2.0
+source_url=https://raw.githubusercontent.com/pgsty/pigsty/v4.2.0/terraform/spec/digitalocean.tf
+fetched_at=2026-02-28T20:34:14Z
