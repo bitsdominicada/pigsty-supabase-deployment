@@ -37,10 +37,10 @@ check() {
 
   if [[ "${result}" == "${expected}" ]]; then
     echo -e "  ${GREEN}[PASS]${NC} ${label}"
-    ((PASS++))
+    PASS=$((PASS + 1))
   else
     echo -e "  ${RED}[FAIL]${NC} ${label} (got: ${result}, expected: ${expected})"
-    ((FAIL++))
+    FAIL=$((FAIL + 1))
   fi
 }
 
@@ -51,10 +51,10 @@ check_warn() {
 
   if [[ "${result}" == "${expected}" ]]; then
     echo -e "  ${GREEN}[PASS]${NC} ${label}"
-    ((PASS++))
+    PASS=$((PASS + 1))
   else
     echo -e "  ${YELLOW}[WARN]${NC} ${label} (got: ${result})"
-    ((WARN++))
+    WARN=$((WARN + 1))
   fi
 }
 
@@ -67,15 +67,15 @@ echo ""
 # 1. SSH Connectivity
 # -----------------------------------------------------------
 echo "1. SSH Connectivity"
-for NODE_DESC in "meta:${META_IP}" "db1:${DB1_PRIVATE_IP}" "db2:${DB2_PRIVATE_IP}"; do
+META_RESULT=$(ssh -o ConnectTimeout=5 -o BatchMode=yes "${META}" "echo true" 2>/dev/null || echo "false")
+check "SSH to meta (${META_IP})" "${META_RESULT}"
+
+# Data nodes are only reachable via VPC from meta
+for NODE_DESC in "db1:${DB1_PRIVATE_IP}" "db2:${DB2_PRIVATE_IP}"; do
   NODE_NAME="${NODE_DESC%%:*}"
   NODE_IP="${NODE_DESC##*:}"
-  if [[ "${NODE_IP}" == "${META_IP}" ]]; then
-    RESULT=$(ssh -o ConnectTimeout=5 -o BatchMode=yes "${SSH_USER}@${NODE_IP}" "echo true" 2>/dev/null || echo "false")
-  else
-    RESULT=$(ssh -o ConnectTimeout=5 "${META}" "ssh -o ConnectTimeout=5 -o BatchMode=yes ${NODE_IP} 'echo true'" 2>/dev/null || echo "false")
-  fi
-  check "SSH to ${NODE_NAME} (${NODE_IP})" "${RESULT}"
+  RESULT=$(ssh -o ConnectTimeout=5 "${META}" "ssh -o ConnectTimeout=3 -o StrictHostKeyChecking=no -o BatchMode=yes ${NODE_IP} 'echo true' 2>/dev/null" 2>/dev/null || echo "false")
+  check "SSH to ${NODE_NAME} (${NODE_IP}) via meta" "${RESULT}"
 done
 echo ""
 
@@ -83,8 +83,8 @@ echo ""
 # 2. PostgreSQL
 # -----------------------------------------------------------
 echo "2. PostgreSQL"
-PG_RUNNING=$(ssh "${META}" "systemctl is-active postgresql 2>/dev/null || systemctl is-active patroni 2>/dev/null" || echo "inactive")
-check "PostgreSQL/Patroni service" "${PG_RUNNING}" "active"
+PG_RUNNING=$(ssh "${META}" "systemctl is-active patroni 2>/dev/null || systemctl is-active postgresql 2>/dev/null" || echo "inactive")
+check "Patroni/PostgreSQL service" "${PG_RUNNING}" "active"
 
 PG_VER=$(ssh "${META}" "sudo -u postgres psql -t -c 'SHOW server_version;'" 2>/dev/null | xargs)
 echo -e "  ${GREEN}[INFO]${NC} PostgreSQL version: ${PG_VER}"
@@ -136,7 +136,7 @@ echo -e "  ${GREEN}[INFO]${NC} Healthy containers: ${HEALTHY_COUNT}/${CONTAINER_
 UNHEALTHY=$(ssh "${META}" "docker ps --filter 'name=supabase' --filter 'health=unhealthy' --format '{{.Names}}'" 2>/dev/null)
 if [[ -n "${UNHEALTHY}" ]]; then
   echo -e "  ${RED}[FAIL]${NC} Unhealthy containers: ${UNHEALTHY}"
-  ((FAIL++))
+  FAIL=$((FAIL + 1))
 fi
 echo ""
 
