@@ -1,56 +1,127 @@
-# Pigsty Supabase V2 (Greenfield)
+# Pigsty Supabase V2
 
-This is a clean start (`v2`) that runs in parallel with legacy `./deploy`.
+Reproducible deployment of **Supabase** on **PostgreSQL 18** with [Pigsty](https://github.com/pgsty/pigsty).
 
-Goals:
-- Keep legacy flow untouched while building a safer replacement.
-- Use upstream Pigsty cloud templates directly (Hetzner, DigitalOcean, AWS, GCP, Azure, etc.).
-- Separate concerns: infrastructure provisioning first, app deployment second.
+Separates concerns into sequential phases:
 
-## Phase 0: Infrastructure Baseline
+| Phase | Command | What it does |
+|-------|---------|-------------|
+| 0 | `iac init/plan/apply` | Provision cloud infra with Terraform |
+| 1 | `validate` | Verify `.env` contract — all secrets present |
+| 2a | `install` | Install Pigsty + PostgreSQL + Patroni HA |
+| 2b | `supabase` | Deploy Supabase containers + SSL certs |
+| 3 | `harden` | UFW, fail2ban, SSH hardening on all nodes |
+| 4 | `verify` | Health checks and smoke tests |
 
-0. Set local credentials via `v2/.env`:
+Or run everything at once: `./v2/bin/pigsty-v2 deploy`
+
+---
+
+## Quick Start
+
+### 0. Prerequisites
+
+- macOS or Linux with `bash`, `curl`, `terraform`, `ssh`
+- A cloud provider account (Vultr, Hetzner, DigitalOcean, etc.)
+- A domain managed on Cloudflare (for DNS + SSL)
+
+### 1. Configure credentials
 
 ```bash
 cp v2/.env.example v2/.env
-# Edit v2/.env and set at least VULTR_API_KEY (or your provider token)
+# Fill ALL required variables (the validator will tell you what's missing)
 ```
 
-1. Pull upstream cloud template:
+### 2. Provision infrastructure
 
 ```bash
-./v2/bin/pigsty-v2 provider pull hetzner v4.2.0
-```
-
-2. Activate provider in local Terraform workspace:
-
-```bash
-./v2/bin/pigsty-v2 provider use hetzner
-```
-
-3. Run Terraform lifecycle:
-
-```bash
+./v2/bin/pigsty-v2 provider pull vultr v4.2.0
+./v2/bin/pigsty-v2 provider use vultr
 ./v2/bin/pigsty-v2 iac init
 ./v2/bin/pigsty-v2 iac plan
 ./v2/bin/pigsty-v2 iac apply
 ```
 
-You can verify env/tooling:
+After `apply`, copy the IPs from Terraform output into `.env`:
+
+```bash
+./v2/bin/pigsty-v2 iac output
+# Set META_IP, META_PRIVATE_IP, DB1_PRIVATE_IP, DB2_PRIVATE_IP in .env
+```
+
+### 3. Deploy everything
+
+```bash
+./v2/bin/pigsty-v2 deploy
+```
+
+Or run phases individually:
+
+```bash
+./v2/bin/pigsty-v2 validate   # Phase 1: check config
+./v2/bin/pigsty-v2 install    # Phase 2a: Pigsty + PG
+./v2/bin/pigsty-v2 supabase   # Phase 2b: Supabase containers
+./v2/bin/pigsty-v2 harden     # Phase 3: security
+./v2/bin/pigsty-v2 verify     # Phase 4: smoke tests
+```
+
+### 4. Verify
+
+```bash
+./v2/bin/pigsty-v2 verify
+```
+
+### 5. Check tooling
 
 ```bash
 ./v2/bin/pigsty-v2 doctor
 ```
 
-## Why this approach
+---
 
-- You can compare providers quickly using official Pigsty specs.
-- You avoid hardcoding provider logic in your own deployment script.
-- You can upgrade Pigsty version by re-pulling templates.
+## Project Structure
 
-## Next planned phases
+```
+v2/
+├── bin/
+│   └── pigsty-v2              # CLI entrypoint
+├── config/
+│   ├── pigsty.yml.tpl         # Pigsty config template (envsubst)
+│   └── supabase.env.tpl       # Supabase .env template (envsubst)
+├── modules/
+│   ├── validate.sh            # Phase 1: .env validation
+│   ├── install.sh             # Phase 2a: Pigsty bootstrap + deploy
+│   ├── supabase.sh            # Phase 2b: Docker + Supabase + SSL
+│   ├── harden.sh              # Phase 3: UFW, fail2ban, sysctl, SSH
+│   └── verify.sh              # Phase 4: full health check report
+├── providers/
+│   └── terraform/             # Upstream Pigsty cloud templates
+├── scripts/
+│   └── fetch-provider-template.sh
+├── terraform/                 # Active Terraform workspace
+├── .env.example               # Full variable contract
+└── .env                       # Your secrets (git-ignored)
+```
 
-- Phase 1: Strict config contract (`.env` + validation)
-- Phase 2: Pigsty install/app deploy modules (idempotent)
-- Phase 3: Security baseline (least-privilege ports, host-key checks)
-- Phase 4: Post-deploy verification and smoke tests
+## What Gets Deployed
+
+| Component | Details |
+|-----------|---------|
+| PostgreSQL 18 | Pigsty-managed, Patroni HA (3-node cluster) |
+| Supabase | Kong, GoTrue, Storage, Realtime, PostgREST, Studio, Analytics |
+| Reverse Proxy | Nginx with Let's Encrypt SSL |
+| Backups | pgBackRest → Backblaze B2 (AES-256, incremental) |
+| Monitoring | Grafana + vmalert + node_exporter + pg_exporter |
+| Security | UFW, fail2ban, SSH key-only, kernel hardening |
+| DNS | Cloudflare automation |
+
+## Supported Providers
+
+Hetzner, DigitalOcean, Vultr, AWS, GCP, Azure, Linode, Aliyun, Qcloud.
+
+Pull any provider's template:
+
+```bash
+./v2/bin/pigsty-v2 provider pull hetzner v4.2.0
+./v2/bin/pigsty-v2 provider use hetzner
+```

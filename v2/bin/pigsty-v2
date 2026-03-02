@@ -6,29 +6,44 @@ V2_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 FETCH_SCRIPT="${V2_DIR}/scripts/fetch-provider-template.sh"
 PROVIDER_DIR="${V2_DIR}/providers/terraform"
 TF_DIR="${V2_DIR}/terraform"
+MODULES_DIR="${V2_DIR}/modules"
 ENV_FILE="${V2_DIR}/.env"
 
 usage() {
   cat << 'USAGE'
-Pigsty Supabase V2 (greenfield)
+Pigsty Supabase V2
 
-Commands:
-  provider list
-  provider pull <provider> [pigsty_version]
-  provider use <provider>
-  iac init
-  iac plan
-  iac apply
-  iac destroy
-  iac output
-  doctor
+Usage: pigsty-v2 <command> [subcommand] [options]
+
+Phase 0 — Infrastructure:
+  provider list                       List supported cloud providers
+  provider pull <provider> [version]  Download upstream Terraform template
+  provider use <provider>             Activate a provider template
+  iac init|plan|apply|destroy|output  Terraform lifecycle commands
+
+Phase 1 — Configuration:
+  validate                            Validate .env contract
+
+Phase 2 — Deploy:
+  install                             Install Pigsty + PostgreSQL on cluster
+  supabase                            Deploy Supabase containers + SSL
+
+Phase 3 — Security:
+  harden                              Apply security hardening to all nodes
+
+Phase 4 — Verification:
+  verify                              Run post-deploy health checks
+
+Lifecycle:
+  deploy                              Run all phases (validate → install → supabase → harden → verify)
+  doctor                              Check local tooling and credentials
 
 Examples:
-  ./v2/bin/pigsty-v2 provider list
-  ./v2/bin/pigsty-v2 provider pull hetzner v4.2.0
-  ./v2/bin/pigsty-v2 provider use hetzner
-  ./v2/bin/pigsty-v2 iac init
+  ./v2/bin/pigsty-v2 provider pull vultr v4.2.0
   ./v2/bin/pigsty-v2 iac plan
+  ./v2/bin/pigsty-v2 validate
+  ./v2/bin/pigsty-v2 deploy
+  ./v2/bin/pigsty-v2 verify
 USAGE
 }
 
@@ -169,6 +184,45 @@ main() {
       ;;
     iac)
       iac_run "${2:-}"
+      ;;
+    validate)
+      bash "${MODULES_DIR}/validate.sh"
+      ;;
+    install)
+      bash "${MODULES_DIR}/install.sh"
+      ;;
+    supabase)
+      bash "${MODULES_DIR}/supabase.sh"
+      ;;
+    harden)
+      bash "${MODULES_DIR}/harden.sh"
+      ;;
+    verify)
+      bash "${MODULES_DIR}/verify.sh"
+      ;;
+    deploy)
+      echo "═══════════════════════════════════════════"
+      echo "  Pigsty Supabase V2 — Full Deploy"
+      echo "═══════════════════════════════════════════"
+      echo ""
+      echo "Phase 1: Validate configuration..."
+      bash "${MODULES_DIR}/validate.sh"
+      echo ""
+      echo "Phase 2a: Install Pigsty + PostgreSQL..."
+      bash "${MODULES_DIR}/install.sh"
+      echo ""
+      echo "Phase 2b: Deploy Supabase..."
+      bash "${MODULES_DIR}/supabase.sh"
+      echo ""
+      echo "Phase 3: Security hardening..."
+      bash "${MODULES_DIR}/harden.sh"
+      echo ""
+      echo "Phase 4: Verification..."
+      bash "${MODULES_DIR}/verify.sh"
+      echo ""
+      echo "═══════════════════════════════════════════"
+      echo "  Deploy complete!"
+      echo "═══════════════════════════════════════════"
       ;;
     doctor)
       doctor
