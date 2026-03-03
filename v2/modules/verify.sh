@@ -187,10 +187,12 @@ echo ""
 # 7. SSL Certificates
 # -----------------------------------------------------------
 echo "7. SSL Certificates"
-for FQDN in "${PORTAL_FQDN}" "${APP_FQDN}" "${API_FQDN}" "${STUDIO_FQDN}"; do
+for FQDN in "${APP_FQDN}" "${API_FQDN}" "${STUDIO_FQDN}"; do
   CERT_EXISTS=$(ssh "${META}" "test -d /etc/letsencrypt/live/${FQDN} && echo true || echo false" 2>/dev/null)
   check "Let's Encrypt cert for ${FQDN}" "${CERT_EXISTS}"
 done
+CERT_EXISTS=$(ssh "${META}" "test -d /etc/letsencrypt/live/${PORTAL_FQDN} && echo true || echo false" 2>/dev/null)
+check_warn "Let's Encrypt cert for ${PORTAL_FQDN}" "${CERT_EXISTS}"
 for FQDN in "${POS_FQDN}" "${AI_FQDN}"; do
   CERT_EXISTS=$(ssh "${META}" "test -d /etc/letsencrypt/live/${FQDN} && echo true || echo false" 2>/dev/null)
   check_warn "Let's Encrypt cert for ${FQDN}" "${CERT_EXISTS}"

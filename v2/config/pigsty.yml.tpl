@@ -164,7 +164,7 @@ all:
     certbot_email: ${CERTBOT_EMAIL}
 
     infra_portal:
-      home      : { domain: ${PORTAL_FQDN}, certbot: ${PORTAL_FQDN} }
+      home      : { domain: ${PORTAL_FQDN} }
       pgadmin   : { domain: adm.pigsty ,endpoint: "${META_IP}:8885" }
       bytebase  : { domain: ddl.pigsty ,endpoint: "${META_IP}:8887" }
       supabase-api:

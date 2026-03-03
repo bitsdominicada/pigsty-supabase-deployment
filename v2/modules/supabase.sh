@@ -54,6 +54,17 @@ export PORTAL_FQDN="${PORTAL_SUBDOMAIN:-home}.${DOMAIN}"
 export REGISTRY_FQDN="${REGISTRY_SUBDOMAIN:-registry}.${DOMAIN}"
 export REGISTRY_UI_FQDN="${REGISTRY_UI_SUBDOMAIN:-registry-ui}.${DOMAIN}"
 
+# Keep inventory in sync before running Pigsty playbooks.
+if [[ -f "${TEMPLATES_DIR}/pigsty.yml.tpl" ]]; then
+  step "Rendering and uploading pigsty inventory..."
+  envsubst < "${TEMPLATES_DIR}/pigsty.yml.tpl" > /tmp/pigsty-v2-generated.yml
+  scp /tmp/pigsty-v2-generated.yml "${META}:${PIGSTY_DIR}/pigsty.yml"
+  scp /tmp/pigsty-v2-generated.yml "${META}:${PIGSTY_DIR}/pigsty-ha.yml"
+  echo "Uploaded pigsty.yml and pigsty-ha.yml"
+else
+  warn "No pigsty.yml.tpl found — using existing inventory on server."
+fi
+
 if [[ -f "${TEMPLATES_DIR}/supabase.env.tpl" ]]; then
   envsubst < "${TEMPLATES_DIR}/supabase.env.tpl" > /tmp/supabase-v2.env
   scp /tmp/supabase-v2.env "${META}:/opt/supabase/.env"
@@ -145,7 +156,7 @@ ssh "${META}" "cd ${PIGSTY_DIR} && ./infra.yml -t nginx_config,nginx_reload"
 ssh "${META}" "mkdir -p /www/acme/.well-known/acme-challenge"
 
 # Request Let's Encrypt certificates for all domains
-for FQDN in "${PORTAL_FQDN}" "${APP_FQDN}" "${POS_FQDN}" "${AI_FQDN}" "${API_FQDN}" "${STUDIO_FQDN}"; do
+for FQDN in "${APP_FQDN}" "${POS_FQDN}" "${AI_FQDN}" "${API_FQDN}" "${STUDIO_FQDN}"; do
   step "Requesting SSL certificate for ${FQDN}..."
   ssh "${META}" "
     if [[ -d /etc/letsencrypt/live/${FQDN} ]]; then
@@ -162,7 +173,7 @@ done
 
 # Copy certs to nginx cert dir
 ssh "${META}" "
-  for FQDN in ${PORTAL_FQDN} ${APP_FQDN} ${POS_FQDN} ${AI_FQDN} ${API_FQDN} ${STUDIO_FQDN}; do
+  for FQDN in ${APP_FQDN} ${POS_FQDN} ${AI_FQDN} ${API_FQDN} ${STUDIO_FQDN}; do
     if [[ -d /etc/letsencrypt/live/\${FQDN} ]]; then
       mkdir -p /etc/nginx/conf.d/cert
       cp /etc/letsencrypt/live/\${FQDN}/fullchain.pem /etc/nginx/conf.d/cert/\${FQDN}.crt
@@ -177,15 +188,15 @@ ssh "${META}" "
 # -----------------------------------------------------------
 step "Quick smoke test..."
 
-PORTAL_STATUS=$(ssh "${META}" "curl -s -o /dev/null -w '%{http_code}' https://${PORTAL_FQDN}" 2>/dev/null)
-API_STATUS=$(ssh "${META}" "curl -s -o /dev/null -w '%{http_code}' https://${API_FQDN}/rest/v1/ -H 'apikey: placeholder'" 2>/dev/null)
-APP_STATUS=$(ssh "${META}" "curl -s -o /dev/null -w '%{http_code}' https://${APP_FQDN}" 2>/dev/null)
-POS_STATUS=$(ssh "${META}" "curl -s -o /dev/null -w '%{http_code}' https://${POS_FQDN}" 2>/dev/null)
-AI_STATUS=$(ssh "${META}" "curl -s -o /dev/null -w '%{http_code}' https://${AI_FQDN}/health" 2>/dev/null)
-LITELLM_STATUS=$(ssh "${META}" "curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:4000/health" 2>/dev/null)
-STUDIO_STATUS=$(ssh "${META}" "curl -s -o /dev/null -w '%{http_code}' https://${STUDIO_FQDN}" 2>/dev/null)
-REGISTRY_STATUS=$(ssh "${META}" "curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:5000/v2/" 2>/dev/null)
-REGISTRY_UI_STATUS=$(ssh "${META}" "curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:5080" 2>/dev/null)
+PORTAL_STATUS=$(ssh "${META}" "curl -sk -o /dev/null -w '%{http_code}' https://${PORTAL_FQDN}" 2>/dev/null || echo "000")
+API_STATUS=$(ssh "${META}" "curl -sk -o /dev/null -w '%{http_code}' https://${API_FQDN}/rest/v1/ -H 'apikey: placeholder'" 2>/dev/null || echo "000")
+APP_STATUS=$(ssh "${META}" "curl -sk -o /dev/null -w '%{http_code}' https://${APP_FQDN}" 2>/dev/null || echo "000")
+POS_STATUS=$(ssh "${META}" "curl -sk -o /dev/null -w '%{http_code}' https://${POS_FQDN}" 2>/dev/null || echo "000")
+AI_STATUS=$(ssh "${META}" "curl -sk -o /dev/null -w '%{http_code}' https://${AI_FQDN}/health" 2>/dev/null || echo "000")
+LITELLM_STATUS=$(ssh "${META}" "curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:4000/health" 2>/dev/null || echo "000")
+STUDIO_STATUS=$(ssh "${META}" "curl -sk -o /dev/null -w '%{http_code}' https://${STUDIO_FQDN}" 2>/dev/null || echo "000")
+REGISTRY_STATUS=$(ssh "${META}" "curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:5000/v2/" 2>/dev/null || echo "000")
+REGISTRY_UI_STATUS=$(ssh "${META}" "curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:5080" 2>/dev/null || echo "000")
 
 echo "  Portal (${PORTAL_FQDN}): HTTP ${PORTAL_STATUS} $([ "${PORTAL_STATUS}" = "200" ] || [ "${PORTAL_STATUS}" = "307" ] && echo '✓' || echo '?')"
 echo "  API    (${API_FQDN}):    HTTP ${API_STATUS} $([ "${API_STATUS}" = "401" ] && echo '✓' || echo '?')"
