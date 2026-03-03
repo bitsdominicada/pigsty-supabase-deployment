@@ -25,6 +25,11 @@ META="${SSH_USER}@${META_IP}"
 export APP_FQDN="${APP_SUBDOMAIN:-app}.${DOMAIN}"
 export API_FQDN="${API_SUBDOMAIN:-api}.${DOMAIN}"
 export STUDIO_FQDN="${STUDIO_SUBDOMAIN:-studio}.${DOMAIN}"
+export POS_FQDN="${POS_SUBDOMAIN:-pos}.${DOMAIN}"
+export AI_FQDN="${AI_SUBDOMAIN:-ai}.${DOMAIN}"
+export PORTAL_FQDN="${PORTAL_SUBDOMAIN:-home}.${DOMAIN}"
+export REGISTRY_FQDN="${REGISTRY_SUBDOMAIN:-registry}.${DOMAIN}"
+export REGISTRY_UI_FQDN="${REGISTRY_UI_SUBDOMAIN:-registry-ui}.${DOMAIN}"
 
 PASS=0
 FAIL=0
@@ -144,23 +149,55 @@ echo ""
 # 6. HTTPS Endpoints
 # -----------------------------------------------------------
 echo "6. HTTPS Endpoints (from server)"
+PORTAL_STATUS=$(ssh "${META}" "curl -sk -o /dev/null -w '%{http_code}' https://${PORTAL_FQDN}" 2>/dev/null || echo "000")
+check_warn "Portal ${PORTAL_FQDN} returns 200 or 307" "$([ "${PORTAL_STATUS}" = "200" ] || [ "${PORTAL_STATUS}" = "307" ] && echo true || echo false)"
+
 API_STATUS=$(ssh "${META}" "curl -sk -o /dev/null -w '%{http_code}' https://${API_FQDN}/rest/v1/ -H 'apikey: placeholder'" 2>/dev/null || echo "000")
 check "API ${API_FQDN} returns 401 (auth required)" "${API_STATUS}" "401"
 
 APP_STATUS=$(ssh "${META}" "curl -sk -o /dev/null -w '%{http_code}' https://${APP_FQDN}" 2>/dev/null || echo "000")
 check "App ${APP_FQDN} returns 200" "${APP_STATUS}" "200"
 
+POS_STATUS=$(ssh "${META}" "curl -sk -o /dev/null -w '%{http_code}' https://${POS_FQDN}" 2>/dev/null || echo "000")
+check_warn "POS ${POS_FQDN} returns 200" "${POS_STATUS}" "200"
+
+AI_STATUS=$(ssh "${META}" "curl -sk -o /dev/null -w '%{http_code}' https://${AI_FQDN}/health" 2>/dev/null || echo "000")
+check_warn "AI ${AI_FQDN}/health returns 200" "${AI_STATUS}" "200"
+
+LITELLM_STATUS=$(ssh "${META}" "curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:4000/health" 2>/dev/null || echo "000")
+check_warn "LiteLLM internal health returns 200" "${LITELLM_STATUS}" "200"
+
 STUDIO_STATUS=$(ssh "${META}" "curl -sk -o /dev/null -w '%{http_code}' https://${STUDIO_FQDN}" 2>/dev/null || echo "000")
 check_warn "Studio ${STUDIO_FQDN} returns 200 or 307" "$([ "${STUDIO_STATUS}" = "200" ] || [ "${STUDIO_STATUS}" = "307" ] && echo true || echo false)"
+
+REGISTRY_STATUS=$(ssh "${META}" "curl -sk -o /dev/null -w '%{http_code}' https://${REGISTRY_FQDN}/v2/" 2>/dev/null || echo "000")
+check_warn "Registry ${REGISTRY_FQDN}/v2/ returns 200 or 401 (public DNS optional)" "$([ "${REGISTRY_STATUS}" = "200" ] || [ "${REGISTRY_STATUS}" = "401" ] && echo true || echo false)"
+
+REGISTRY_UI_STATUS=$(ssh "${META}" "curl -sk -o /dev/null -w '%{http_code}' https://${REGISTRY_UI_FQDN}" 2>/dev/null || echo "000")
+check_warn "Registry UI ${REGISTRY_UI_FQDN} returns 200 or 307 (public DNS optional)" "$([ "${REGISTRY_UI_STATUS}" = "200" ] || [ "${REGISTRY_UI_STATUS}" = "307" ] && echo true || echo false)"
+
+REGISTRY_LOCAL_STATUS=$(ssh "${META}" "curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:5000/v2/" 2>/dev/null || echo "000")
+check_warn "Registry local 127.0.0.1:5000/v2/ returns 200 or 401" "$([ "${REGISTRY_LOCAL_STATUS}" = "200" ] || [ "${REGISTRY_LOCAL_STATUS}" = "401" ] && echo true || echo false)"
+
+REGISTRY_UI_LOCAL_STATUS=$(ssh "${META}" "curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:5080" 2>/dev/null || echo "000")
+check_warn "Registry UI local 127.0.0.1:5080 returns 200 or 307" "$([ "${REGISTRY_UI_LOCAL_STATUS}" = "200" ] || [ "${REGISTRY_UI_LOCAL_STATUS}" = "307" ] && echo true || echo false)"
 echo ""
 
 # -----------------------------------------------------------
 # 7. SSL Certificates
 # -----------------------------------------------------------
 echo "7. SSL Certificates"
-for FQDN in "${APP_FQDN}" "${API_FQDN}" "${STUDIO_FQDN}"; do
+for FQDN in "${PORTAL_FQDN}" "${APP_FQDN}" "${API_FQDN}" "${STUDIO_FQDN}"; do
   CERT_EXISTS=$(ssh "${META}" "test -d /etc/letsencrypt/live/${FQDN} && echo true || echo false" 2>/dev/null)
   check "Let's Encrypt cert for ${FQDN}" "${CERT_EXISTS}"
+done
+for FQDN in "${POS_FQDN}" "${AI_FQDN}"; do
+  CERT_EXISTS=$(ssh "${META}" "test -d /etc/letsencrypt/live/${FQDN} && echo true || echo false" 2>/dev/null)
+  check_warn "Let's Encrypt cert for ${FQDN}" "${CERT_EXISTS}"
+done
+for FQDN in "${REGISTRY_FQDN}" "${REGISTRY_UI_FQDN}"; do
+  CERT_EXISTS=$(ssh "${META}" "test -d /etc/letsencrypt/live/${FQDN} && echo true || echo false" 2>/dev/null)
+  check_warn "Let's Encrypt cert for ${FQDN}" "${CERT_EXISTS}"
 done
 echo ""
 

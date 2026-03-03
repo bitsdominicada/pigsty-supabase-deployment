@@ -48,6 +48,11 @@ step "Generating Supabase .env..."
 export APP_FQDN="${APP_SUBDOMAIN:-app}.${DOMAIN}"
 export API_FQDN="${API_SUBDOMAIN:-api}.${DOMAIN}"
 export STUDIO_FQDN="${STUDIO_SUBDOMAIN:-studio}.${DOMAIN}"
+export POS_FQDN="${POS_SUBDOMAIN:-pos}.${DOMAIN}"
+export AI_FQDN="${AI_SUBDOMAIN:-ai}.${DOMAIN}"
+export PORTAL_FQDN="${PORTAL_SUBDOMAIN:-home}.${DOMAIN}"
+export REGISTRY_FQDN="${REGISTRY_SUBDOMAIN:-registry}.${DOMAIN}"
+export REGISTRY_UI_FQDN="${REGISTRY_UI_SUBDOMAIN:-registry-ui}.${DOMAIN}"
 
 if [[ -f "${TEMPLATES_DIR}/supabase.env.tpl" ]]; then
   envsubst < "${TEMPLATES_DIR}/supabase.env.tpl" > /tmp/supabase-v2.env
@@ -62,6 +67,48 @@ fi
 # -----------------------------------------------------------
 step "Running Pigsty app.yml (launches Supabase containers)..."
 ssh "${META}" "cd ${PIGSTY_DIR} && ./app.yml"
+
+# Install Pigsty registry app explicitly. The same host belongs to multiple
+# app groups, so we force app selection here to avoid inventory precedence.
+step "Running Pigsty app.yml for Docker registry mirror..."
+ssh "${META}" "cd ${PIGSTY_DIR} && ./app.yml -e app=registry"
+
+# Pigsty's bundled registry app defaults to proxy mode (Docker Hub mirror),
+# which can fail on networks with restricted egress. Keep a plain local registry.
+step "Configuring registry as local private registry (no upstream proxy)..."
+ssh "${META}" "cat > /opt/registry/config.yml <<'CFG'
+version: 0.1
+log:
+  fields:
+    service: registry
+  level: info
+
+storage:
+  cache:
+    blobdescriptor: inmemory
+  filesystem:
+    rootdirectory: /var/lib/registry
+  delete:
+    enabled: true
+
+http:
+  addr: 0.0.0.0:5000
+  headers:
+    X-Content-Type-Options: [nosniff]
+    Access-Control-Allow-Origin: ['*']
+    Access-Control-Allow-Methods: ['HEAD', 'GET', 'OPTIONS', 'DELETE']
+    Access-Control-Allow-Headers: ['Authorization', 'Accept', 'Cache-Control']
+    Access-Control-Max-Age: [1728000]
+    Access-Control-Allow-Credentials: [true]
+    Access-Control-Expose-Headers: ['Docker-Content-Digest']
+
+health:
+  storagedriver:
+    enabled: true
+    interval: 10s
+    threshold: 3
+CFG
+cd /opt/registry && docker compose up -d registry registry-ui"
 
 # -----------------------------------------------------------
 # 4. Wait for containers to become healthy
@@ -91,11 +138,14 @@ fi
 # -----------------------------------------------------------
 step "Setting up Nginx reverse proxy and SSL certificates..."
 
+# Re-render Nginx from infra_portal so app/pos/ai endpoints are published.
+ssh "${META}" "cd ${PIGSTY_DIR} && ./infra.yml -t nginx_config,nginx_reload"
+
 # Ensure certbot and acme challenge dir exist
 ssh "${META}" "mkdir -p /www/acme/.well-known/acme-challenge"
 
 # Request Let's Encrypt certificates for all domains
-for FQDN in "${APP_FQDN}" "${API_FQDN}" "${STUDIO_FQDN}"; do
+for FQDN in "${PORTAL_FQDN}" "${APP_FQDN}" "${POS_FQDN}" "${AI_FQDN}" "${API_FQDN}" "${STUDIO_FQDN}"; do
   step "Requesting SSL certificate for ${FQDN}..."
   ssh "${META}" "
     if [[ -d /etc/letsencrypt/live/${FQDN} ]]; then
@@ -112,7 +162,7 @@ done
 
 # Copy certs to nginx cert dir
 ssh "${META}" "
-  for FQDN in ${APP_FQDN} ${API_FQDN} ${STUDIO_FQDN}; do
+  for FQDN in ${PORTAL_FQDN} ${APP_FQDN} ${POS_FQDN} ${AI_FQDN} ${API_FQDN} ${STUDIO_FQDN}; do
     if [[ -d /etc/letsencrypt/live/\${FQDN} ]]; then
       mkdir -p /etc/nginx/conf.d/cert
       cp /etc/letsencrypt/live/\${FQDN}/fullchain.pem /etc/nginx/conf.d/cert/\${FQDN}.crt
@@ -127,13 +177,25 @@ ssh "${META}" "
 # -----------------------------------------------------------
 step "Quick smoke test..."
 
+PORTAL_STATUS=$(ssh "${META}" "curl -s -o /dev/null -w '%{http_code}' https://${PORTAL_FQDN}" 2>/dev/null)
 API_STATUS=$(ssh "${META}" "curl -s -o /dev/null -w '%{http_code}' https://${API_FQDN}/rest/v1/ -H 'apikey: placeholder'" 2>/dev/null)
 APP_STATUS=$(ssh "${META}" "curl -s -o /dev/null -w '%{http_code}' https://${APP_FQDN}" 2>/dev/null)
+POS_STATUS=$(ssh "${META}" "curl -s -o /dev/null -w '%{http_code}' https://${POS_FQDN}" 2>/dev/null)
+AI_STATUS=$(ssh "${META}" "curl -s -o /dev/null -w '%{http_code}' https://${AI_FQDN}/health" 2>/dev/null)
+LITELLM_STATUS=$(ssh "${META}" "curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:4000/health" 2>/dev/null)
 STUDIO_STATUS=$(ssh "${META}" "curl -s -o /dev/null -w '%{http_code}' https://${STUDIO_FQDN}" 2>/dev/null)
+REGISTRY_STATUS=$(ssh "${META}" "curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:5000/v2/" 2>/dev/null)
+REGISTRY_UI_STATUS=$(ssh "${META}" "curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:5080" 2>/dev/null)
 
+echo "  Portal (${PORTAL_FQDN}): HTTP ${PORTAL_STATUS} $([ "${PORTAL_STATUS}" = "200" ] || [ "${PORTAL_STATUS}" = "307" ] && echo '✓' || echo '?')"
 echo "  API    (${API_FQDN}):    HTTP ${API_STATUS} $([ "${API_STATUS}" = "401" ] && echo '✓' || echo '?')"
 echo "  App    (${APP_FQDN}):    HTTP ${APP_STATUS} $([ "${APP_STATUS}" = "200" ] && echo '✓' || echo '?')"
+echo "  POS    (${POS_FQDN}):    HTTP ${POS_STATUS} $([ "${POS_STATUS}" = "200" ] && echo '✓' || echo '?')"
+echo "  AI     (${AI_FQDN}):     HTTP ${AI_STATUS} $([ "${AI_STATUS}" = "200" ] && echo '✓' || echo '?')"
+echo "  LiteLLM (127.0.0.1):     HTTP ${LITELLM_STATUS} $([ "${LITELLM_STATUS}" = "200" ] && echo '✓' || echo '?')"
 echo "  Studio (${STUDIO_FQDN}): HTTP ${STUDIO_STATUS} $([ "${STUDIO_STATUS}" = "200" ] || [ "${STUDIO_STATUS}" = "307" ] && echo '✓' || echo '?')"
+echo "  Registry (127.0.0.1:5000/v2/): HTTP ${REGISTRY_STATUS} $([ "${REGISTRY_STATUS}" = "200" ] || [ "${REGISTRY_STATUS}" = "401" ] && echo '✓' || echo '?')"
+echo "  Registry UI (127.0.0.1:5080):   HTTP ${REGISTRY_UI_STATUS} $([ "${REGISTRY_UI_STATUS}" = "200" ] || [ "${REGISTRY_UI_STATUS}" = "307" ] && echo '✓' || echo '?')"
 
 echo ""
 echo -e "${GREEN}Phase 2b complete: Supabase deployed and accessible.${NC}"

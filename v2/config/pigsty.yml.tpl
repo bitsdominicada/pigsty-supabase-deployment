@@ -97,7 +97,6 @@ all:
           - '00 01 * * * /pg/bin/pg-backup full'
           - '*  *  * * * /pg/bin/supa-kick'
 
-    #----------------------------------------------#
     # Supabase (Docker)
     #----------------------------------------------#
     supabase:
@@ -141,6 +140,15 @@ all:
               SMTP_PASS: ${SMTP_PASS}
               SMTP_SENDER_NAME: ${SMTP_SENDER_NAME}
               ENABLE_ANONYMOUS_USERS: false
+          registry:
+            file:
+              - { path: /data/registry ,state: directory ,mode: 0755 }
+            conf:
+              REGISTRY_DATA: /data/registry
+              REGISTRY_PORT: 5000
+              REGISTRY_UI_PORT: 5080
+              REGISTRY_STORAGE_DELETE_ENABLED: true
+              REGISTRY_LOG_LEVEL: info
 
   #==============================================================#
   # Global Parameters
@@ -156,9 +164,9 @@ all:
     certbot_email: ${CERTBOT_EMAIL}
 
     infra_portal:
-      home      : { domain: ${APP_FQDN} }
-      pgadmin   : { domain: adm.pigsty ,endpoint: "$${admin_ip}:8885" }
-      bytebase  : { domain: ddl.pigsty ,endpoint: "$${admin_ip}:8887" }
+      home      : { domain: ${PORTAL_FQDN}, certbot: ${PORTAL_FQDN} }
+      pgadmin   : { domain: adm.pigsty ,endpoint: "${META_IP}:8885" }
+      bytebase  : { domain: ddl.pigsty ,endpoint: "${META_IP}:8887" }
       supabase-api:
         domain: ${API_FQDN}
         endpoint: "${META_IP}:8000"
@@ -169,6 +177,26 @@ all:
         endpoint: "${META_IP}:3001"
         websocket: true
         certbot: ${STUDIO_FQDN}
+      neura-core:
+        domain: ${APP_FQDN}
+        endpoint: "${META_IP}:8081"
+        certbot: ${APP_FQDN}
+      neura-pos:
+        domain: ${POS_FQDN}
+        endpoint: "${META_IP}:8082"
+        certbot: ${POS_FQDN}
+      neura-ai:
+        domain: ${AI_FQDN}
+        endpoint: "${META_IP}:3000"
+        websocket: true
+        certbot: ${AI_FQDN}
+      registry:
+        domain: ${REGISTRY_FQDN}
+        endpoint: "${META_IP}:5000"
+      registry-ui:
+        domain: ${REGISTRY_UI_FQDN}
+        endpoint: "${META_IP}:5080"
+      # LiteLLM stays internal on 127.0.0.1:4000 and is consumed by flare-server.
       supa:
         domain: supa.pigsty
         endpoint: "${META_IP}:8000"
@@ -180,7 +208,7 @@ all:
     nodename_overwrite: false
     node_tune: tiny
     node_etc_hosts:
-      - ${META_IP} i.pigsty sss.pigsty supa.pigsty
+      - ${META_IP} i.pigsty sss.pigsty supa.pigsty ${PORTAL_FQDN} ${APP_FQDN} ${POS_FQDN} ${AI_FQDN} ${API_FQDN} ${STUDIO_FQDN} ${REGISTRY_FQDN} ${REGISTRY_UI_FQDN}
     node_repo_modules: node,pgsql,infra
     node_repo_remove: true
 

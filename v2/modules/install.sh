@@ -61,12 +61,18 @@ fi
 export APP_FQDN="${APP_SUBDOMAIN:-app}.${DOMAIN}"
 export API_FQDN="${API_SUBDOMAIN:-api}.${DOMAIN}"
 export STUDIO_FQDN="${STUDIO_SUBDOMAIN:-studio}.${DOMAIN}"
+export POS_FQDN="${POS_SUBDOMAIN:-pos}.${DOMAIN}"
+export AI_FQDN="${AI_SUBDOMAIN:-ai}.${DOMAIN}"
+export PORTAL_FQDN="${PORTAL_SUBDOMAIN:-home}.${DOMAIN}"
+export REGISTRY_FQDN="${REGISTRY_SUBDOMAIN:-registry}.${DOMAIN}"
+export REGISTRY_UI_FQDN="${REGISTRY_UI_SUBDOMAIN:-registry-ui}.${DOMAIN}"
 
 envsubst < "${TEMPLATES_DIR}/pigsty.yml.tpl" > /tmp/pigsty-v2-generated.yml
 
-# Upload
+# Upload to default and HA inventory names (Pigsty may point ansible.cfg to either)
 scp /tmp/pigsty-v2-generated.yml "${META}:${PIGSTY_DIR}/pigsty.yml"
-echo "Uploaded pigsty.yml to ${META}:${PIGSTY_DIR}/pigsty.yml"
+scp /tmp/pigsty-v2-generated.yml "${META}:${PIGSTY_DIR}/pigsty-ha.yml"
+echo "Uploaded inventory to ${META}:${PIGSTY_DIR}/pigsty.yml and pigsty-ha.yml"
 
 # -----------------------------------------------------------
 # 4. Configure Pigsty
@@ -76,6 +82,7 @@ ssh "${META}" "cd ${PIGSTY_DIR} && ./configure -c supabase -i ${META_PRIVATE_IP}
 
 # Overwrite with our generated config (configure may reset it)
 scp /tmp/pigsty-v2-generated.yml "${META}:${PIGSTY_DIR}/pigsty.yml"
+scp /tmp/pigsty-v2-generated.yml "${META}:${PIGSTY_DIR}/pigsty-ha.yml"
 
 # -----------------------------------------------------------
 # 5. Run deploy.yml (Pigsty + PGSQL + ETCD + MinIO)
