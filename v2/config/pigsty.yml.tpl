@@ -190,13 +190,8 @@ all:
         endpoint: "${META_IP}:3000"
         websocket: true
         certbot: ${AI_FQDN}
-      registry:
-        domain: ${REGISTRY_FQDN}
-        endpoint: "${META_IP}:5000"
-      registry-ui:
-        domain: ${REGISTRY_UI_FQDN}
-        endpoint: "${META_IP}:5080"
       # LiteLLM stays internal on 127.0.0.1:4000 and is consumed by flare-server.
+      # Docker registry stays private on localhost:5000 and localhost:5080.
       supa:
         domain: supa.pigsty
         endpoint: "${META_IP}:8000"

@@ -109,7 +109,7 @@ v2/
 |-----------|---------|
 | PostgreSQL 18 | Pigsty-managed, Patroni HA (3-node cluster) |
 | Supabase | Kong, GoTrue, Storage, Realtime, PostgREST, Studio, Analytics |
-| Registry | Pigsty `registry` + `registry-ui` for local image cache/hosting |
+| Registry | Pigsty `registry` + `registry-ui` as private local image cache/hosting (`127.0.0.1:5000/5080`) |
 | Reverse Proxy | Nginx with Let's Encrypt SSL |
 | Backups | pgBackRest → Backblaze B2 (AES-256, incremental) |
 | Monitoring | Grafana + vmalert + node_exporter + pg_exporter |
