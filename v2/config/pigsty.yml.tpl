@@ -179,15 +179,15 @@ all:
         certbot: ${STUDIO_FQDN}
       neura-core:
         domain: ${APP_FQDN}
-        endpoint: "${META_IP}:8081"
+        endpoint: "127.0.0.1:8081"
         certbot: ${APP_FQDN}
       neura-pos:
         domain: ${POS_FQDN}
-        endpoint: "${META_IP}:8082"
+        endpoint: "127.0.0.1:8082"
         certbot: ${POS_FQDN}
       neura-ai:
         domain: ${AI_FQDN}
-        endpoint: "${META_IP}:3003"
+        endpoint: "127.0.0.1:3003"
         websocket: true
         certbot: ${AI_FQDN}
       # LiteLLM stays internal on 127.0.0.1:4000 and is consumed by flare-server.
