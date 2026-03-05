@@ -27,6 +27,7 @@ export API_FQDN="${API_SUBDOMAIN:-api}.${DOMAIN}"
 export STUDIO_FQDN="${STUDIO_SUBDOMAIN:-studio}.${DOMAIN}"
 export POS_FQDN="${POS_SUBDOMAIN:-pos}.${DOMAIN}"
 export AI_FQDN="${AI_SUBDOMAIN:-ai}.${DOMAIN}"
+export DDL_FQDN="${DDL_SUBDOMAIN:-ddl}.${DOMAIN}"
 export PORTAL_FQDN="${PORTAL_SUBDOMAIN:-home}.${DOMAIN}"
 
 PASS=0
@@ -162,6 +163,9 @@ check_warn "POS ${POS_FQDN} returns 200" "${POS_STATUS}" "200"
 AI_STATUS=$(ssh "${META}" "curl -sk -o /dev/null -w '%{http_code}' https://${AI_FQDN}/health" 2>/dev/null || echo "000")
 check_warn "AI ${AI_FQDN}/health returns 200" "${AI_STATUS}" "200"
 
+DDL_STATUS=$(ssh "${META}" "curl -sk -o /dev/null -w '%{http_code}' https://${DDL_FQDN}" 2>/dev/null || echo "000")
+check_warn "Bytebase ${DDL_FQDN} returns 200 or 307" "$([ "${DDL_STATUS}" = "200" ] || [ "${DDL_STATUS}" = "307" ] && echo true || echo false)"
+
 LITELLM_STATUS=$(ssh "${META}" "curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:4000/health" 2>/dev/null || echo "000")
 check_warn "LiteLLM internal health returns 200" "${LITELLM_STATUS}" "200"
 
@@ -185,7 +189,7 @@ for FQDN in "${APP_FQDN}" "${API_FQDN}" "${STUDIO_FQDN}"; do
 done
 CERT_EXISTS=$(ssh "${META}" "test -d /etc/letsencrypt/live/${PORTAL_FQDN} && echo true || echo false" 2>/dev/null)
 check_warn "Let's Encrypt cert for ${PORTAL_FQDN}" "${CERT_EXISTS}"
-for FQDN in "${POS_FQDN}" "${AI_FQDN}"; do
+for FQDN in "${POS_FQDN}" "${AI_FQDN}" "${DDL_FQDN}"; do
   CERT_EXISTS=$(ssh "${META}" "test -d /etc/letsencrypt/live/${FQDN} && echo true || echo false" 2>/dev/null)
   check_warn "Let's Encrypt cert for ${FQDN}" "${CERT_EXISTS}"
 done

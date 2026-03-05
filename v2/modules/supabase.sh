@@ -50,6 +50,7 @@ export API_FQDN="${API_SUBDOMAIN:-api}.${DOMAIN}"
 export STUDIO_FQDN="${STUDIO_SUBDOMAIN:-studio}.${DOMAIN}"
 export POS_FQDN="${POS_SUBDOMAIN:-pos}.${DOMAIN}"
 export AI_FQDN="${AI_SUBDOMAIN:-ai}.${DOMAIN}"
+export DDL_FQDN="${DDL_SUBDOMAIN:-ddl}.${DOMAIN}"
 export PORTAL_FQDN="${PORTAL_SUBDOMAIN:-home}.${DOMAIN}"
 export REGISTRY_FQDN="${REGISTRY_SUBDOMAIN:-registry}.${DOMAIN}"
 export REGISTRY_UI_FQDN="${REGISTRY_UI_SUBDOMAIN:-registry-ui}.${DOMAIN}"
@@ -156,7 +157,7 @@ ssh "${META}" "cd ${PIGSTY_DIR} && ./infra.yml -t nginx_config,nginx_reload"
 ssh "${META}" "mkdir -p /www/acme/.well-known/acme-challenge"
 
 # Request Let's Encrypt certificates for all domains
-for FQDN in "${APP_FQDN}" "${POS_FQDN}" "${AI_FQDN}" "${API_FQDN}" "${STUDIO_FQDN}"; do
+for FQDN in "${APP_FQDN}" "${POS_FQDN}" "${AI_FQDN}" "${API_FQDN}" "${STUDIO_FQDN}" "${DDL_FQDN}"; do
   step "Requesting SSL certificate for ${FQDN}..."
   ssh "${META}" "
     if [[ -d /etc/letsencrypt/live/${FQDN} ]]; then
@@ -173,7 +174,7 @@ done
 
 # Copy certs to nginx cert dir
 ssh "${META}" "
-  for FQDN in ${APP_FQDN} ${POS_FQDN} ${AI_FQDN} ${API_FQDN} ${STUDIO_FQDN}; do
+  for FQDN in ${APP_FQDN} ${POS_FQDN} ${AI_FQDN} ${API_FQDN} ${STUDIO_FQDN} ${DDL_FQDN}; do
     if [[ -d /etc/letsencrypt/live/\${FQDN} ]]; then
       mkdir -p /etc/nginx/conf.d/cert
       cp /etc/letsencrypt/live/\${FQDN}/fullchain.pem /etc/nginx/conf.d/cert/\${FQDN}.crt
@@ -193,6 +194,7 @@ API_STATUS=$(ssh "${META}" "curl -sk -o /dev/null -w '%{http_code}' https://${AP
 APP_STATUS=$(ssh "${META}" "curl -sk -o /dev/null -w '%{http_code}' https://${APP_FQDN}" 2>/dev/null || echo "000")
 POS_STATUS=$(ssh "${META}" "curl -sk -o /dev/null -w '%{http_code}' https://${POS_FQDN}" 2>/dev/null || echo "000")
 AI_STATUS=$(ssh "${META}" "curl -sk -o /dev/null -w '%{http_code}' https://${AI_FQDN}/health" 2>/dev/null || echo "000")
+DDL_STATUS=$(ssh "${META}" "curl -sk -o /dev/null -w '%{http_code}' https://${DDL_FQDN}" 2>/dev/null || echo "000")
 LITELLM_STATUS=$(ssh "${META}" "curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:4000/health" 2>/dev/null || echo "000")
 STUDIO_STATUS=$(ssh "${META}" "curl -sk -o /dev/null -w '%{http_code}' https://${STUDIO_FQDN}" 2>/dev/null || echo "000")
 REGISTRY_STATUS=$(ssh "${META}" "curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:5000/v2/" 2>/dev/null || echo "000")
@@ -203,6 +205,7 @@ echo "  API    (${API_FQDN}):    HTTP ${API_STATUS} $([ "${API_STATUS}" = "401" 
 echo "  App    (${APP_FQDN}):    HTTP ${APP_STATUS} $([ "${APP_STATUS}" = "200" ] && echo '✓' || echo '?')"
 echo "  POS    (${POS_FQDN}):    HTTP ${POS_STATUS} $([ "${POS_STATUS}" = "200" ] && echo '✓' || echo '?')"
 echo "  AI     (${AI_FQDN}):     HTTP ${AI_STATUS} $([ "${AI_STATUS}" = "200" ] && echo '✓' || echo '?')"
+echo "  DDL    (${DDL_FQDN}):    HTTP ${DDL_STATUS} $([ "${DDL_STATUS}" = "200" ] || [ "${DDL_STATUS}" = "307" ] && echo '✓' || echo '?')"
 echo "  LiteLLM (127.0.0.1):     HTTP ${LITELLM_STATUS} $([ "${LITELLM_STATUS}" = "200" ] && echo '✓' || echo '?')"
 echo "  Studio (${STUDIO_FQDN}): HTTP ${STUDIO_STATUS} $([ "${STUDIO_STATUS}" = "200" ] || [ "${STUDIO_STATUS}" = "307" ] && echo '✓' || echo '?')"
 echo "  Registry (127.0.0.1:5000/v2/): HTTP ${REGISTRY_STATUS} $([ "${REGISTRY_STATUS}" = "200" ] || [ "${REGISTRY_STATUS}" = "401" ] && echo '✓' || echo '?')"
