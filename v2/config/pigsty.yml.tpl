@@ -152,7 +152,7 @@ all:
           bytebase:
             conf:
               BB_PORT: 8887
-              BB_DOMAIN: https://${DDL_FQDN}
+              BB_DOMAIN: http://ddl.pigsty
               BB_PGURL: "postgresql://dbuser_bytebase:${PG_ADMIN_PASSWORD}@172.17.0.1:5436/bytebase?sslmode=disable"
 
   #==============================================================#
@@ -171,7 +171,7 @@ all:
     infra_portal:
       home      : { domain: ${PORTAL_FQDN} }
       pgadmin   : { domain: adm.pigsty ,endpoint: "${META_IP}:8885" }
-      bytebase  : { domain: ${DDL_FQDN} ,endpoint: "127.0.0.1:8887" ,certbot: ${DDL_FQDN} }
+      bytebase  : { domain: ddl.pigsty ,endpoint: "127.0.0.1:8887" }
       supabase-api:
         domain: ${API_FQDN}
         endpoint: "${META_IP}:8000"
@@ -208,7 +208,7 @@ all:
     nodename_overwrite: false
     node_tune: tiny
     node_etc_hosts:
-      - ${META_IP} i.pigsty sss.pigsty supa.pigsty ${PORTAL_FQDN} ${APP_FQDN} ${POS_FQDN} ${AI_FQDN} ${API_FQDN} ${STUDIO_FQDN} ${REGISTRY_FQDN} ${REGISTRY_UI_FQDN} ${DDL_FQDN}
+      - ${META_IP} i.pigsty sss.pigsty supa.pigsty ${PORTAL_FQDN} ${APP_FQDN} ${POS_FQDN} ${AI_FQDN} ${API_FQDN} ${STUDIO_FQDN} ${REGISTRY_FQDN} ${REGISTRY_UI_FQDN}
     node_repo_modules: node,pgsql,infra
     node_repo_remove: true
 
