@@ -11,6 +11,7 @@ Separates concerns into sequential phases:
 | 2a | `install` | Install Pigsty + PostgreSQL + Patroni HA |
 | 2b | `supabase` | Deploy Supabase containers + SSL certs |
 | 2c | `functions deploy` | Sync all Supabase Edge Functions from local repo to VPS |
+| 2d | `migrations apply` | Apply app SQL migrations incrementally on current leader |
 | 3 | `harden` | UFW, fail2ban, SSH hardening on all nodes |
 | 4 | `verify` | Health checks and smoke tests |
 
@@ -64,6 +65,8 @@ Or run phases individually:
 ./v2/bin/pigsty-v2 supabase   # Phase 2b: Supabase containers
 ./v2/bin/pigsty-v2 functions deploy --source /abs/path/to/supabase/functions
 ./v2/bin/pigsty-v2 functions smoke
+./v2/bin/pigsty-v2 migrations status --source /abs/path/to/deployment/migrations
+./v2/bin/pigsty-v2 migrations apply --source /abs/path/to/deployment/migrations
 ./v2/bin/pigsty-v2 harden     # Phase 3: security
 ./v2/bin/pigsty-v2 verify     # Phase 4: smoke tests
 ```
@@ -116,6 +119,7 @@ v2/
 │   ├── install.sh             # Phase 2a: Pigsty bootstrap + deploy
 │   ├── supabase.sh            # Phase 2b: Docker + Supabase + SSL
 │   ├── functions.sh           # Phase 2c: Edge Functions deploy + smoke tests
+│   ├── migrations.sh          # Phase 2d: Incremental app SQL migrations
 │   ├── harden.sh              # Phase 3: UFW, fail2ban, sysctl, SSH
 │   └── verify.sh              # Phase 4: full health check report
 ├── providers/
