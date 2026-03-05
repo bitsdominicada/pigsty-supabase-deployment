@@ -92,7 +92,7 @@ all:
         pg_hba_rules:
           - { user: all ,db: postgres  ,addr: intra         ,auth: pwd ,title: 'allow supabase access from intranet'    ,order: 50 }
           - { user: all ,db: all       ,addr: admin         ,auth: pwd ,title: allow supabase through local haproxy ,order: 50 }
-          - { user: all ,db: postgres  ,addr: 172.17.0.0/16 ,auth: pwd ,title: 'allow access from local docker network' ,order: 50 }
+          - { user: all ,db: all       ,addr: 172.16.0.0/12 ,auth: pwd ,title: 'allow access from local docker bridge networks' ,order: 50 }
         pg_crontab:
           - '00 01 * * * /pg/bin/pg-backup full'
           - '*  *  * * * /pg/bin/supa-kick'
@@ -149,6 +149,11 @@ all:
               REGISTRY_UI_PORT: 5080
               REGISTRY_STORAGE_DELETE_ENABLED: true
               REGISTRY_LOG_LEVEL: info
+          bytebase:
+            conf:
+              BB_PORT: 8887
+              BB_DOMAIN: http://ddl.pigsty
+              BB_PGURL: "postgresql://dbuser_bytebase:${PG_ADMIN_PASSWORD}@172.17.0.1:5436/bytebase?sslmode=disable"
 
   #==============================================================#
   # Global Parameters
@@ -166,7 +171,7 @@ all:
     infra_portal:
       home      : { domain: ${PORTAL_FQDN} }
       pgadmin   : { domain: adm.pigsty ,endpoint: "${META_IP}:8885" }
-      bytebase  : { domain: ddl.pigsty ,endpoint: "${META_IP}:8887" }
+      bytebase  : { domain: ddl.pigsty ,endpoint: "127.0.0.1:8887" }
       supabase-api:
         domain: ${API_FQDN}
         endpoint: "${META_IP}:8000"
