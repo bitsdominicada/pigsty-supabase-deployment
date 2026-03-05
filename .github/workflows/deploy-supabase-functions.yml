@@ -1,0 +1,84 @@
+name: Deploy Supabase Edge Functions
+
+on:
+  workflow_dispatch:
+    inputs:
+      app_ref:
+        description: "bits_flare_platform ref to deploy (branch or tag)"
+        required: true
+        default: "main"
+        type: string
+      smoke_mode:
+        description: "Smoke test mode"
+        required: true
+        default: "safe"
+        type: choice
+        options:
+          - safe
+          - live
+      run_smoke:
+        description: "Run smoke tests after deploy"
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-functions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout infra repository
+        uses: actions/checkout@v4
+
+      - name: Checkout app repository
+        uses: actions/checkout@v4
+        with:
+          repository: bitsdominicada/bits_flare_platform
+          ref: ${{ inputs.app_ref }}
+          path: bits_flare_platform
+          token: ${{ secrets.BITS_PLATFORM_REPO_TOKEN }}
+
+      - name: Start SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+
+      - name: Configure known_hosts (pinned)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "${VPS_SSH_KNOWN_HOSTS}" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+        env:
+          VPS_SSH_KNOWN_HOSTS: ${{ secrets.VPS_SSH_KNOWN_HOSTS }}
+
+      - name: Deploy edge functions to VPS
+        shell: bash
+        env:
+          META_IP: ${{ secrets.V2_META_IP }}
+          SSH_USER: ${{ secrets.V2_SSH_USER }}
+        run: |
+          set -euo pipefail
+          chmod +x ./v2/bin/pigsty-v2
+          ./v2/bin/pigsty-v2 functions deploy \
+            --source "${GITHUB_WORKSPACE}/bits_flare_platform/supabase/functions"
+
+      - name: Smoke tests
+        if: ${{ inputs.run_smoke }}
+        shell: bash
+        env:
+          META_IP: ${{ secrets.V2_META_IP }}
+          SSH_USER: ${{ secrets.V2_SSH_USER }}
+          DOMAIN: ${{ secrets.V2_DOMAIN }}
+          API_SUBDOMAIN: ${{ secrets.V2_API_SUBDOMAIN }}
+          ANON_KEY: ${{ secrets.V2_ANON_KEY }}
+          SERVICE_ROLE_KEY: ${{ secrets.V2_SERVICE_ROLE_KEY }}
+        run: |
+          set -euo pipefail
+          ./v2/bin/pigsty-v2 functions smoke --mode "${{ inputs.smoke_mode }}"

@@ -10,6 +10,7 @@ Separates concerns into sequential phases:
 | 1 | `validate` | Verify `.env` contract — all secrets present |
 | 2a | `install` | Install Pigsty + PostgreSQL + Patroni HA |
 | 2b | `supabase` | Deploy Supabase containers + SSL certs |
+| 2c | `functions deploy` | Sync all Supabase Edge Functions from local repo to VPS |
 | 3 | `harden` | UFW, fail2ban, SSH hardening on all nodes |
 | 4 | `verify` | Health checks and smoke tests |
 
@@ -61,6 +62,8 @@ Or run phases individually:
 ./v2/bin/pigsty-v2 validate   # Phase 1: check config
 ./v2/bin/pigsty-v2 install    # Phase 2a: Pigsty + PG
 ./v2/bin/pigsty-v2 supabase   # Phase 2b: Supabase containers
+./v2/bin/pigsty-v2 functions deploy --source /abs/path/to/supabase/functions
+./v2/bin/pigsty-v2 functions smoke
 ./v2/bin/pigsty-v2 harden     # Phase 3: security
 ./v2/bin/pigsty-v2 verify     # Phase 4: smoke tests
 ```
@@ -77,6 +80,26 @@ Or run phases individually:
 ./v2/bin/pigsty-v2 doctor
 ```
 
+### 6. Manual release workflow (GitHub Actions)
+
+Use workflow `Deploy Supabase Edge Functions` and set:
+
+- `app_ref`: branch or tag from `bits_flare_platform` (example: `main` or `v1.2.3`)
+- `smoke_mode`: `safe` (recommended) or `live`
+- `run_smoke`: `true` to validate after deploy
+
+Required repository secrets:
+
+- `BITS_PLATFORM_REPO_TOKEN` (read access to `bits_flare_platform`)
+- `VPS_SSH_PRIVATE_KEY`
+- `VPS_SSH_KNOWN_HOSTS` (pinned host key line)
+- `V2_META_IP`
+- `V2_SSH_USER`
+- `V2_DOMAIN`
+- `V2_API_SUBDOMAIN`
+- `V2_ANON_KEY`
+- `V2_SERVICE_ROLE_KEY`
+
 ---
 
 ## Project Structure
@@ -92,6 +115,7 @@ v2/
 │   ├── validate.sh            # Phase 1: .env validation
 │   ├── install.sh             # Phase 2a: Pigsty bootstrap + deploy
 │   ├── supabase.sh            # Phase 2b: Docker + Supabase + SSL
+│   ├── functions.sh           # Phase 2c: Edge Functions deploy + smoke tests
 │   ├── harden.sh              # Phase 3: UFW, fail2ban, sysctl, SSH
 │   └── verify.sh              # Phase 4: full health check report
 ├── providers/

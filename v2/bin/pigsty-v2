@@ -27,6 +27,7 @@ Phase 1 — Configuration:
 Phase 2 — Deploy:
   install                             Install Pigsty + PostgreSQL on cluster
   supabase                            Deploy Supabase containers + SSL
+  functions deploy|smoke|all          Sync Supabase Edge Functions to VPS and test them
 
 Phase 3 — Security:
   harden                              Apply security hardening to all nodes
@@ -42,6 +43,8 @@ Examples:
   ./v2/bin/pigsty-v2 provider pull vultr v4.2.0
   ./v2/bin/pigsty-v2 iac plan
   ./v2/bin/pigsty-v2 validate
+  ./v2/bin/pigsty-v2 functions deploy --source /abs/path/to/supabase/functions
+  ./v2/bin/pigsty-v2 functions smoke
   ./v2/bin/pigsty-v2 deploy
   ./v2/bin/pigsty-v2 verify
 USAGE
@@ -193,6 +196,9 @@ main() {
       ;;
     supabase)
       bash "${MODULES_DIR}/supabase.sh"
+      ;;
+    functions)
+      bash "${MODULES_DIR}/functions.sh" "${2:-}" "${@:3}"
       ;;
     harden)
       bash "${MODULES_DIR}/harden.sh"
