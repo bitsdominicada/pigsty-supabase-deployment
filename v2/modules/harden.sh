@@ -8,6 +8,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 V2_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 ENV_FILE="${V2_DIR}/.env"
+COMMON_SH="${SCRIPT_DIR}/common.sh"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -18,6 +19,8 @@ set -a
 # shellcheck disable=SC1090
 source "${ENV_FILE}"
 set +a
+# shellcheck disable=SC1090
+source "${COMMON_SH}"
 
 SSH_USER="${SSH_USER:-root}"
 ALL_NODES=("${META_IP}" "${DB1_PRIVATE_IP}" "${DB2_PRIVATE_IP}")
@@ -25,21 +28,14 @@ ALL_NODES=("${META_IP}" "${DB1_PRIVATE_IP}" "${DB2_PRIVATE_IP}")
 step() { echo -e "\n${GREEN}▶ $1${NC}"; }
 warn() { echo -e "${YELLOW}⚠ $1${NC}"; }
 
-run_on() {
-  local host="$1"
-  shift
-  ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=no "${SSH_USER}@${host}" "$@"
-}
-
-# For data nodes, we must jump through meta
 run_on_node() {
   local host="$1"
   shift
+  local script="$1"
   if [[ "${host}" == "${META_IP}" ]]; then
-    run_on "${host}" "$@"
+    bash_on_meta "${script}"
   else
-    # Data nodes are only reachable via private IP from meta
-    ssh -o ConnectTimeout=10 "${SSH_USER}@${META_IP}" "ssh -o StrictHostKeyChecking=no ${host} '$*'"
+    bash_on_private_via_meta "${host}" "${script}"
   fi
 }
 
@@ -54,8 +50,18 @@ for NODE_IP in "${ALL_NODES[@]}"; do
   # -----------------------------------------------------------
   echo "  [SSH] Setting PermitRootLogin prohibit-password..."
   run_on_node "${NODE_IP}" "
+    mkdir -p /etc/ssh/sshd_config.d
+    cat > /etc/ssh/sshd_config.d/99-tailscale-hardening.conf << 'SSHCFG'
+PermitRootLogin prohibit-password
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+ChallengeResponseAuthentication no
+PubkeyAuthentication yes
+AuthenticationMethods publickey
+SSHCFG
     sed -i 's/^#*PermitRootLogin.*/PermitRootLogin prohibit-password/' /etc/ssh/sshd_config
     sed -i 's/^#*PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
+    sshd -t
     systemctl reload sshd
   "
 
@@ -152,7 +158,7 @@ done
 # 5. Add pgbackrest verify to cron (meta node only)
 # -----------------------------------------------------------
 step "Adding pgBackRest verify to weekly cron..."
-run_on "${META_IP}" "
+bash_on_meta "
   EXISTING=\$(sudo -u postgres crontab -l 2>/dev/null || true)
   if echo \"\${EXISTING}\" | grep -q 'pgbackrest.*verify'; then
     echo 'pgbackrest verify cron already exists'

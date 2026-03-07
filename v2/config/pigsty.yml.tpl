@@ -13,7 +13,7 @@ all:
     #----------------------------------------------#
     infra:
       hosts:
-        ${META_IP}: { infra_seq: 1 }
+        ${META_PRIVATE_IP}: { infra_seq: 1 }
       vars:
         repo_enabled: false
 
@@ -22,7 +22,9 @@ all:
     #----------------------------------------------#
     etcd:
       hosts:
-        ${META_IP}: { etcd_seq: 1 }
+        ${META_PRIVATE_IP}: { etcd_seq: 1 }
+        ${DB1_PRIVATE_IP}: { etcd_seq: 2 }
+        ${DB2_PRIVATE_IP}: { etcd_seq: 3 }
       vars:
         etcd_cluster: etcd
         etcd_safeguard: false
@@ -32,7 +34,7 @@ all:
     #----------------------------------------------#
     minio:
       hosts:
-        ${META_IP}: { minio_seq: 1 }
+        ${META_PRIVATE_IP}: { minio_seq: 1 }
       vars:
         minio_cluster: minio
         minio_users:
@@ -45,7 +47,9 @@ all:
     #----------------------------------------------#
     ${PG_CLUSTER_NAME}:
       hosts:
-        ${META_IP}: { pg_seq: 1, pg_role: primary }
+        ${META_PRIVATE_IP}: { pg_seq: 1, pg_role: primary }
+        ${DB1_PRIVATE_IP}: { pg_seq: 2, pg_role: replica }
+        ${DB2_PRIVATE_IP}: { pg_seq: 3, pg_role: replica }
       vars:
         pg_cluster: ${PG_CLUSTER_NAME}
         pg_users:
@@ -101,7 +105,7 @@ all:
     #----------------------------------------------#
     supabase:
       hosts:
-        ${META_IP}: {}
+        ${META_PRIVATE_IP}: {}
       vars:
         docker_enabled: true
         app: supabase
@@ -169,7 +173,7 @@ all:
     certbot_email: ${CERTBOT_EMAIL}
 
     infra_portal:
-      home      : { domain: ${PORTAL_FQDN} }
+      home      : { domain: ${PORTAL_FQDN}, certbot: ${PORTAL_FQDN} }
       pgadmin   : { domain: adm.pigsty ,endpoint: "${META_IP}:8885" }
       bytebase  : { domain: ddl.pigsty ,endpoint: "127.0.0.1:8887" }
       supabase-api:

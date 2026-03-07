@@ -8,6 +8,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 V2_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 ENV_FILE="${V2_DIR}/.env"
+COMMON_SH="${SCRIPT_DIR}/common.sh"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -54,6 +55,8 @@ set -a
 # shellcheck disable=SC1090
 source "${ENV_FILE}"
 set +a
+# shellcheck disable=SC1090
+source "${COMMON_SH}"
 
 echo "Section: Cluster Identity"
 check_var META_IP "public IP of pg-meta (from terraform output)"
@@ -95,9 +98,18 @@ echo "Section: SMTP (optional)"
 check_var_optional SMTP_PASS
 echo ""
 
-echo "Section: Cloudflare (optional)"
+echo "Section: Cloudflare (optional for DNS sync)"
 check_var_optional CLOUDFLARE_API_TOKEN
 check_var_optional CLOUDFLARE_ZONE_ID
+echo ""
+
+echo "Section: Remote Access"
+echo -e "  ${GREEN}[OK]${NC}      SSH_TRANSPORT=${SSH_TRANSPORT:-direct}"
+if using_tailscale_transport; then
+  check_var TAILSCALE_META_HOST "MagicDNS name or Tailscale IP for pg-meta"
+  check_var_optional TAILSCALE_DB1_HOST
+  check_var_optional TAILSCALE_DB2_HOST
+fi
 echo ""
 
 echo "Section: Provider Tokens (at least one required)"
@@ -138,8 +150,8 @@ echo ""
 
 # SSH connectivity test
 if [[ -n "${META_IP:-}" ]]; then
-  echo -n "Testing SSH to ${SSH_USER:-root}@${META_IP}... "
-  if ssh -o ConnectTimeout=5 -o BatchMode=yes "${SSH_USER:-root}@${META_IP}" "true" 2>/dev/null; then
+  echo -n "Testing SSH to $(meta_target)... "
+  if ssh "${V2_SSH_ARGS[@]}" -o BatchMode=yes "$(meta_target)" "true" 2>/dev/null; then
     echo -e "${GREEN}OK${NC}"
   else
     echo -e "${YELLOW}FAILED (non-blocking)${NC}"

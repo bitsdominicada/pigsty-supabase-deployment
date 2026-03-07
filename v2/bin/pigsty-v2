@@ -37,7 +37,7 @@ Phase 4 — Verification:
   verify                              Run post-deploy health checks
 
 Lifecycle:
-  deploy                              Run all phases (validate → install → supabase → harden → verify)
+  deploy                              Run base platform phases (validate → install → supabase → harden → verify)
   doctor                              Check local tooling and credentials
 
 Examples:
@@ -137,7 +137,7 @@ iac_run() {
 
 doctor() {
   echo "Checking local tooling..."
-  for cmd in bash curl; do
+  for cmd in bash curl ssh scp rsync python3 envsubst; do
     if command -v "$cmd" >/dev/null 2>&1; then
       echo "[ok] $cmd"
     else
@@ -151,6 +151,20 @@ doctor() {
     echo "[missing] terraform (required for iac commands)"
   fi
 
+  if [[ "${SSH_TRANSPORT:-direct}" == "tailscale" ]]; then
+    if command -v tailscale >/dev/null 2>&1; then
+      echo "[ok] tailscale"
+    else
+      echo "[missing] tailscale (required when SSH_TRANSPORT=tailscale)"
+    fi
+
+    if [[ -n "${TAILSCALE_META_HOST:-}" ]]; then
+      echo "[ok] TAILSCALE_META_HOST=${TAILSCALE_META_HOST}"
+    else
+      echo "[missing] TAILSCALE_META_HOST (required when SSH_TRANSPORT=tailscale)"
+    fi
+  fi
+
   echo "Checking provider credentials..."
   for var_name in VULTR_API_KEY HCLOUD_TOKEN DIGITALOCEAN_TOKEN AWS_ACCESS_KEY_ID ARM_CLIENT_ID GOOGLE_APPLICATION_CREDENTIALS LINODE_TOKEN; do
     if [[ -n "${!var_name:-}" ]]; then
@@ -161,6 +175,7 @@ doctor() {
   done
 
   echo "V2 directory: ${V2_DIR}"
+  echo "SSH transport: ${SSH_TRANSPORT:-direct}"
   if [[ -f "${ENV_FILE}" ]]; then
     echo "Local env loaded: ${ENV_FILE}"
   else

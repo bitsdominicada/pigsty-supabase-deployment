@@ -114,44 +114,64 @@ resource "vultr_firewall_group" "pigsty_fw" {
   description = "Pigsty Firewall Group"
 }
 
-# Allow all inbound TCP (demo only - restrict in production!)
-resource "vultr_firewall_rule" "allow_tcp" {
+# Public web/API via reverse proxy only
+resource "vultr_firewall_rule" "allow_web_v4" {
   firewall_group_id = vultr_firewall_group.pigsty_fw.id
   protocol          = "tcp"
   ip_type           = "v4"
   subnet            = "0.0.0.0"
   subnet_size       = 0
-  port              = "1:65535"
-  notes             = "Allow all TCP"
+  port              = "80:443"
+  notes             = "Allow web IPv4"
 }
 
-resource "vultr_firewall_rule" "allow_tcp_v6" {
+resource "vultr_firewall_rule" "allow_web_v6" {
   firewall_group_id = vultr_firewall_group.pigsty_fw.id
   protocol          = "tcp"
   ip_type           = "v6"
   subnet            = "::"
   subnet_size       = 0
-  port              = "1:65535"
-  notes             = "Allow all TCP IPv6"
+  port              = "80:443"
+  notes             = "Allow web IPv6"
 }
 
-resource "vultr_firewall_rule" "allow_udp" {
+# Allow all internal cluster traffic on private VPC
+resource "vultr_firewall_rule" "allow_private_tcp" {
+  firewall_group_id = vultr_firewall_group.pigsty_fw.id
+  protocol          = "tcp"
+  ip_type           = "v4"
+  subnet            = "10.10.10.0"
+  subnet_size       = 24
+  port              = "1:65535"
+  notes             = "Allow private VPC TCP"
+}
+
+resource "vultr_firewall_rule" "allow_private_udp" {
   firewall_group_id = vultr_firewall_group.pigsty_fw.id
   protocol          = "udp"
   ip_type           = "v4"
-  subnet            = "0.0.0.0"
-  subnet_size       = 0
+  subnet            = "10.10.10.0"
+  subnet_size       = 24
   port              = "1:65535"
-  notes             = "Allow all UDP"
+  notes             = "Allow private VPC UDP"
 }
 
-resource "vultr_firewall_rule" "allow_icmp" {
+resource "vultr_firewall_rule" "allow_icmp_v4" {
   firewall_group_id = vultr_firewall_group.pigsty_fw.id
   protocol          = "icmp"
   ip_type           = "v4"
   subnet            = "0.0.0.0"
   subnet_size       = 0
-  notes             = "Allow ICMP"
+  notes             = "Allow ICMP IPv4"
+}
+
+resource "vultr_firewall_rule" "allow_icmp_v6" {
+  firewall_group_id = vultr_firewall_group.pigsty_fw.id
+  protocol          = "icmp"
+  ip_type           = "v6"
+  subnet            = "::"
+  subnet_size       = 0
+  notes             = "Allow ICMP IPv6"
 }
 
 

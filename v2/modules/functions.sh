@@ -7,6 +7,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 V2_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 ENV_FILE="${V2_DIR}/.env"
+COMMON_SH="${SCRIPT_DIR}/common.sh"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -34,14 +35,11 @@ USAGE
 }
 
 load_env() {
-  if [[ -f "${ENV_FILE}" ]]; then
-    set -a
-    # shellcheck disable=SC1090
-    source "${ENV_FILE}"
-    set +a
-  else
+  if [[ ! -f "${ENV_FILE}" ]]; then
     warn "Env file not found (${ENV_FILE}). Falling back to process environment variables."
   fi
+  # shellcheck disable=SC1090
+  source "${COMMON_SH}"
 }
 
 require_cmd() {
@@ -85,9 +83,7 @@ resolve_source() {
 }
 
 ssh_target() {
-  require_env_var META_IP
-  local user="${SSH_USER:-root}"
-  echo "${user}@${META_IP}"
+  meta_target
 }
 
 edge_deploy() {
@@ -102,12 +98,12 @@ edge_deploy() {
   meta="$(ssh_target)"
 
   step "Checking SSH connectivity to ${meta}"
-  ssh -o BatchMode=yes -o ConnectTimeout=8 "${meta}" "echo ok" >/dev/null
+  ssh "${V2_SSH_ARGS[@]}" -o BatchMode=yes "${meta}" "echo ok" >/dev/null
 
   step "Ensuring edge functions directory exists on VPS"
-  ssh "${meta}" "mkdir -p '${REMOTE_BASE}'"
+  ssh_to_meta "mkdir -p '${REMOTE_BASE}'"
 
-  if ! ssh "${meta}" "test -d '${REMOTE_BASE}/main'"; then
+  if ! ssh_to_meta "test -d '${REMOTE_BASE}/main'"; then
     err "Remote '${REMOTE_BASE}/main' not found. Deploy Supabase first (./v2/bin/pigsty-v2 supabase)."
     exit 1
   fi
@@ -120,8 +116,8 @@ edge_deploy() {
     [[ -d "${fn_dir}" ]] || continue
     count=$((count + 1))
     echo "  - ${fn_name}"
-    ssh "${meta}" "mkdir -p '${REMOTE_BASE}/${fn_name}'" < /dev/null
-    rsync -az --delete \
+    ssh_to_meta "mkdir -p '${REMOTE_BASE}/${fn_name}'" < /dev/null
+    rsync -az --delete -e "${V2_RSYNC_RSH}" \
       --exclude '.DS_Store' \
       --exclude 'node_modules' \
       --exclude '.git' \
@@ -134,13 +130,13 @@ edge_deploy() {
   fi
 
   step "Cleaning default hello sample function (if present)"
-  ssh "${meta}" "rm -rf '${REMOTE_BASE}/hello'"
+  ssh_to_meta "rm -rf '${REMOTE_BASE}/hello'"
 
   step "Restarting ${EDGE_CONTAINER}"
-  ssh "${meta}" "docker restart '${EDGE_CONTAINER}' >/dev/null"
+  ssh_to_meta "docker restart '${EDGE_CONTAINER}' >/dev/null"
 
   step "Verifying remote function directories"
-  ssh "${meta}" "ls -1 '${REMOTE_BASE}' | sort"
+  ssh_to_meta "ls -1 '${REMOTE_BASE}' | sort"
 
   echo -e "\n${GREEN}Deploy complete: ${count} functions synced.${NC}"
 }
@@ -244,7 +240,7 @@ edge_smoke() {
   smoke_case "${api_base}" "verify-ecf-timbre" "POST" "verify-ecf-timbre" "none" "" "" '{"url":"https://example.com/not-dgii"}' "400" "url validation"
 
   step "Runtime check"
-  ssh "${meta}" "docker ps --filter name=${EDGE_CONTAINER} --format '{{.Names}} {{.Status}}'"
+  ssh_to_meta "docker ps --filter name=${EDGE_CONTAINER} --format '{{.Names}} {{.Status}}'"
 
   echo ""
   echo "Smoke summary: PASS=${SMOKE_PASS} FAIL=${SMOKE_FAIL}"

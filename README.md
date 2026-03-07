@@ -18,6 +18,32 @@ cp v2/.env.example v2/.env
 ./v2/bin/pigsty-v2 verify
 ```
 
+## Tailscale SSH
+
+V2 now supports using your tailnet as the admin path to `pg-meta`.
+
+Set these in `v2/.env.example`:
+
+```bash
+SSH_TRANSPORT=tailscale
+TAILSCALE_META_HOST=pg-meta.your-tailnet.ts.net
+TAILSCALE_DB1_HOST=pg-data-1.your-tailnet.ts.net
+TAILSCALE_DB2_HOST=pg-data-2.your-tailnet.ts.net
+```
+
+Then validate connectivity with:
+
+```bash
+tailscale ping pg-meta.your-tailnet.ts.net
+tailscale ssh root@pg-meta 'hostname'
+tailscale ssh root@pg-data-1 'hostname'
+tailscale ssh root@pg-data-2 'hostname'
+```
+
+## DNS And Certificates
+
+`home`, `app`, `pos`, `ai`, `api`, and `studio` must resolve publicly to `META_IP` before `./v2/bin/pigsty-v2 supabase` can obtain Let's Encrypt certificates. If you set `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ZONE_ID`, the `supabase` phase will upsert those `A` records automatically; otherwise create them manually.
+
 ## Edge Functions
 
 Deploy all functions from your app repo:

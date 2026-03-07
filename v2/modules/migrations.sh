@@ -7,6 +7,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 V2_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 ENV_FILE="${V2_DIR}/.env"
+COMMON_SH="${SCRIPT_DIR}/common.sh"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -34,14 +35,11 @@ USAGE
 }
 
 load_env() {
-  if [[ -f "${ENV_FILE}" ]]; then
-    set -a
-    # shellcheck disable=SC1090
-    source "${ENV_FILE}"
-    set +a
-  else
+  if [[ ! -f "${ENV_FILE}" ]]; then
     warn "Env file not found (${ENV_FILE}). Using process environment variables."
   fi
+  # shellcheck disable=SC1090
+  source "${COMMON_SH}"
 }
 
 require_cmd() {
@@ -61,9 +59,7 @@ require_env_var() {
 }
 
 ssh_target() {
-  require_env_var META_IP
-  local user="${SSH_USER:-root}"
-  echo "${user}@${META_IP}"
+  meta_target
 }
 
 resolve_source() {
@@ -89,7 +85,7 @@ resolve_source() {
 
 leader_ip() {
   local meta="$1"
-  ssh "${meta}" "patronictl -c /etc/patroni/patroni.yml list -f json | python3 -c 'import sys,json; d=json.load(sys.stdin); print(next(x[\"Host\"] for x in d if x[\"Role\"]==\"Leader\"))'" < /dev/null
+  ssh "${V2_SSH_ARGS[@]}" "${meta}" "patronictl -c /etc/patroni/patroni.yml list -f json | python3 -c 'import sys,json; d=json.load(sys.stdin); print(next(x[\"Host\"] for x in d if x[\"Role\"]==\"Leader\"))'" < /dev/null
 }
 
 sql_escape_literal() {
@@ -125,7 +121,7 @@ CREATE TABLE IF NOT EXISTS ${schema}.${name} (
   mode text NOT NULL DEFAULT 'apply',
   applied_at timestamptz NOT NULL DEFAULT now()
 );"
-  ssh "${meta}" "ssh ${leader} \"sudo -u postgres psql -d ${db} -v ON_ERROR_STOP=1 -c \\\"${sql}\\\"\"" < /dev/null >/dev/null
+  ssh "${V2_SSH_ARGS[@]}" "${meta}" "ssh ${leader} \"sudo -u postgres psql -d ${db} -v ON_ERROR_STOP=1 -c \\\"${sql}\\\"\"" < /dev/null >/dev/null
 }
 
 fetch_applied() {
@@ -133,7 +129,7 @@ fetch_applied() {
   local leader="$2"
   local db="$3"
   local table="$4"
-  ssh "${meta}" "ssh ${leader} \"sudo -u postgres psql -d ${db} -tAc \\\"select filename from ${table} order by 1;\\\"\"" < /dev/null 2>/dev/null | sed '/^\s*$/d'
+  ssh "${V2_SSH_ARGS[@]}" "${meta}" "ssh ${leader} \"sudo -u postgres psql -d ${db} -tAc \\\"select filename from ${table} order by 1;\\\"\"" < /dev/null 2>/dev/null | sed '/^\s*$/d'
 }
 
 insert_tracking_row() {
@@ -153,7 +149,7 @@ insert_tracking_row() {
   mode_esc="$(printf '%s' "${mode}" | sql_escape_literal)"
 
   local sql="insert into ${table}(filename, checksum, mode) values ('${fn_esc}', '${ch_esc}', '${mode_esc}') on conflict (filename) do nothing;"
-  ssh "${meta}" "ssh ${leader} \"sudo -u postgres psql -d ${db} -v ON_ERROR_STOP=1 -c \\\"${sql}\\\"\"" < /dev/null >/dev/null
+  ssh "${V2_SSH_ARGS[@]}" "${meta}" "ssh ${leader} \"sudo -u postgres psql -d ${db} -v ON_ERROR_STOP=1 -c \\\"${sql}\\\"\"" < /dev/null >/dev/null
 }
 
 collect_migrations() {
@@ -238,7 +234,7 @@ cmd_apply() {
     fi
 
     step "Applying ${base}"
-    cat "${file}" | ssh "${meta}" "ssh ${leader} \"sudo -u postgres psql -d ${db} -v ON_ERROR_STOP=1\"" > /tmp/migrate_apply.out 2>/tmp/migrate_apply.err || {
+    cat "${file}" | ssh "${V2_SSH_ARGS[@]}" "${meta}" "ssh ${leader} \"sudo -u postgres psql -d ${db} -v ON_ERROR_STOP=1\"" > /tmp/migrate_apply.out 2>/tmp/migrate_apply.err || {
       err "Migration failed: ${base}"
       sed -n '1,120p' /tmp/migrate_apply.err
       rm -f "${applied_tmp}"
@@ -253,8 +249,8 @@ cmd_apply() {
   rm -f "${applied_tmp}"
 
   step "Reloading PostgREST schema cache"
-  ssh "${meta}" "ssh ${leader} \"sudo -u postgres psql -d ${db} -c \\\"NOTIFY pgrst, 'reload schema';\\\"\"" < /dev/null >/dev/null || warn "Could not send NOTIFY pgrst"
-  ssh "${meta}" "docker restart supabase-rest >/dev/null" < /dev/null || warn "Could not restart supabase-rest container"
+  ssh "${V2_SSH_ARGS[@]}" "${meta}" "ssh ${leader} \"sudo -u postgres psql -d ${db} -c \\\"NOTIFY pgrst, 'reload schema';\\\"\"" < /dev/null >/dev/null || warn "Could not send NOTIFY pgrst"
+  ssh "${V2_SSH_ARGS[@]}" "${meta}" "docker restart supabase-rest >/dev/null" < /dev/null || warn "Could not restart supabase-rest container"
 
   echo ""
   echo "Applied migrations : ${applied_count}"

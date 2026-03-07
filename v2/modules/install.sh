@@ -9,6 +9,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 V2_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 ENV_FILE="${V2_DIR}/.env"
 TEMPLATES_DIR="${V2_DIR}/config"
+COMMON_SH="${SCRIPT_DIR}/common.sh"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -20,9 +21,10 @@ set -a
 # shellcheck disable=SC1090
 source "${ENV_FILE}"
 set +a
+# shellcheck disable=SC1090
+source "${COMMON_SH}"
 
 SSH_USER="${SSH_USER:-root}"
-META="${SSH_USER}@${META_IP}"
 
 step() { echo -e "\n${GREEN}▶ $1${NC}"; }
 warn() { echo -e "${YELLOW}⚠ $1${NC}"; }
@@ -32,8 +34,7 @@ warn() { echo -e "${YELLOW}⚠ $1${NC}"; }
 # -----------------------------------------------------------
 step "Checking if Pigsty is already installed on ${META_IP}..."
 
-PIGSTY_INSTALLED=$(ssh -o ConnectTimeout=10 "${META}" \
-  "test -f /root/pigsty/pigsty.yml && echo yes || echo no")
+PIGSTY_INSTALLED="$(ssh_to_meta "test -f /root/pigsty/pigsty.yml && echo yes || echo no")"
 
 if [[ "${PIGSTY_INSTALLED}" == "yes" ]]; then
   warn "Pigsty already installed at /root/pigsty. Skipping bootstrap."
@@ -43,7 +44,7 @@ else
   # 2. Bootstrap Pigsty
   # -----------------------------------------------------------
   step "Downloading Pigsty ${PIGSTY_VERSION}..."
-  ssh "${META}" "curl -fsSL https://repo.pigsty.io/get | bash -s -- ${PIGSTY_VERSION}"
+  ssh_to_meta "curl -fsSL https://repo.pigsty.io/get | bash -s -- ${PIGSTY_VERSION}"
   PIGSTY_DIR="/root/pigsty"
 fi
 
@@ -70,31 +71,31 @@ export REGISTRY_UI_FQDN="${REGISTRY_UI_SUBDOMAIN:-registry-ui}.${DOMAIN}"
 envsubst < "${TEMPLATES_DIR}/pigsty.yml.tpl" > /tmp/pigsty-v2-generated.yml
 
 # Upload to default and HA inventory names (Pigsty may point ansible.cfg to either)
-scp /tmp/pigsty-v2-generated.yml "${META}:${PIGSTY_DIR}/pigsty.yml"
-scp /tmp/pigsty-v2-generated.yml "${META}:${PIGSTY_DIR}/pigsty-ha.yml"
-echo "Uploaded inventory to ${META}:${PIGSTY_DIR}/pigsty.yml and pigsty-ha.yml"
+scp_to_meta /tmp/pigsty-v2-generated.yml "${PIGSTY_DIR}/pigsty.yml"
+scp_to_meta /tmp/pigsty-v2-generated.yml "${PIGSTY_DIR}/pigsty-ha.yml"
+echo "Uploaded inventory to $(meta_target):${PIGSTY_DIR}/pigsty.yml and pigsty-ha.yml"
 
 # -----------------------------------------------------------
 # 4. Configure Pigsty
 # -----------------------------------------------------------
 step "Running Pigsty configure..."
-ssh "${META}" "cd ${PIGSTY_DIR} && ./configure -c supabase -i ${META_PRIVATE_IP} <<< 'y' || true"
+ssh_to_meta "cd ${PIGSTY_DIR} && ./configure -c supabase -i ${META_PRIVATE_IP} <<< 'y' || true"
 
 # Overwrite with our generated config (configure may reset it)
-scp /tmp/pigsty-v2-generated.yml "${META}:${PIGSTY_DIR}/pigsty.yml"
-scp /tmp/pigsty-v2-generated.yml "${META}:${PIGSTY_DIR}/pigsty-ha.yml"
+scp_to_meta /tmp/pigsty-v2-generated.yml "${PIGSTY_DIR}/pigsty.yml"
+scp_to_meta /tmp/pigsty-v2-generated.yml "${PIGSTY_DIR}/pigsty-ha.yml"
 
 # -----------------------------------------------------------
 # 5. Run deploy.yml (Pigsty + PGSQL + ETCD + MinIO)
 # -----------------------------------------------------------
 step "Running Pigsty deploy.yml (this takes ~15-20 min on first run)..."
-ssh "${META}" "cd ${PIGSTY_DIR} && ./deploy.yml"
+ssh_to_meta "cd ${PIGSTY_DIR} && ./deploy.yml"
 
 # -----------------------------------------------------------
 # 6. Verify PostgreSQL is running
 # -----------------------------------------------------------
 step "Verifying PostgreSQL..."
-PG_VERSION_REMOTE=$(ssh "${META}" "sudo -u postgres psql -t -c 'SELECT version();'" 2>/dev/null | head -1 | xargs)
+PG_VERSION_REMOTE="$(ssh_to_meta "sudo -u postgres psql -t -c 'SELECT version();'" 2>/dev/null | head -1 | xargs)"
 
 if [[ -n "${PG_VERSION_REMOTE}" ]]; then
   echo -e "${GREEN}PostgreSQL running: ${PG_VERSION_REMOTE}${NC}"
@@ -107,7 +108,7 @@ fi
 # 7. Verify Patroni cluster
 # -----------------------------------------------------------
 step "Verifying Patroni cluster..."
-ssh "${META}" "patronictl -c /etc/patroni/patroni.yml list" 2>/dev/null || warn "Patroni check skipped"
+ssh_to_meta "patronictl -c /etc/patroni/patroni.yml list" 2>/dev/null || warn "Patroni check skipped"
 
 echo ""
 echo -e "${GREEN}Phase 2a complete: Pigsty installed and PostgreSQL running.${NC}"
